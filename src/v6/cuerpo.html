@@ -1,0 +1,523 @@
+<!doctype html>
+<html lang="es" data-theme="cueva">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mega Cueva Tester</title>
+<meta name="description" content="MEGA CUEVA TESTER · TIS · Trade It Simple: el método TIS para validar una estrategia, con la demo Oro RSI(4) 25/55 en XAUUSD diario.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders:opsz,wght@10..72,500..900&family=Atkinson+Hyperlegible+Next:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/*__CSS__*/
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-trigger" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="currentColor"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4" stroke="currentColor" stroke-width="2"/></symbol>
+  <symbol id="i-filtro" viewBox="0 0 24 24"><path d="M3 4h18l-7 8v6l-4 2v-8z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="i-salida" viewBox="0 0 24 24"><path d="M10 4H5v16h5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M14 8l4 4-4 4M8 12h10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-gestion" viewBox="0 0 24 24"><path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M8.5 12l2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+  <symbol id="i-ejec" viewBox="0 0 24 24"><circle cx="12" cy="13" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 9v4l3 2M9 2h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-velas" viewBox="0 0 24 24"><path d="M6 3v18M12 6v14M18 2v16" stroke="currentColor" stroke-width="1.6"/><rect x="4" y="7" width="4" height="8" fill="currentColor"/><rect x="10" y="9" width="4" height="6" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="16" y="5" width="4" height="9" fill="currentColor"/></symbol>
+  <symbol id="i-lupa" viewBox="0 0 24 24"><circle cx="10" cy="10" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15 15l6 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
+  <symbol id="i-ajuste" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="16" cy="7" r="2.4" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="10" cy="17" r="2.4" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+  <symbol id="i-pico" viewBox="0 0 24 24"><path d="M2 20h20" stroke="currentColor" stroke-width="2"/><path d="M3 18l5-3 3-11 3 11 7 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="i-escudo" viewBox="0 0 24 24"><path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="i-copiar" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 8V4H4v13h4" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+  <symbol id="i-subir" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M4 20h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+</svg>
+<div class="app">
+<aside class="rail" aria-label="Manual de la herramienta">
+  <div class="rail-top">
+    <div class="brand"><b>MEGA CUEVA<i>·</i>TESTER</b><span><em>TIS</em> · Trade It Simple</span></div>
+    <b class="brand-min" aria-hidden="true">MC</b>
+    <button type="button" class="pliega" id="b-rail" aria-expanded="true" aria-controls="rail-tabs" title="Plegar el menú (tecla M)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="sr">Plegar o desplegar el menú</span></button>
+  </div>
+  <nav class="tabs" id="rail-tabs" role="tablist" aria-label="Vistas" aria-orientation="vertical">
+    <button class="tab tab-mesa" role="tab" id="t-mesa" aria-controls="v-mesa" data-v="mesa" title="Tu mesa"><span class="tn">0</span><span class="tx"><b>Tu mesa</b><small>Tus 4 agentes de regalo</small></span></button>
+    <p class="rail-t" aria-hidden="true">Recorrido · 8 pasos</p>
+    <button class="tab" role="tab" id="t-fases" aria-controls="v-fases" data-v="fases"><span class="tn">1</span><span class="tx"><b>Las fases</b><small>Cómo se valida una idea</small></span></button>
+    <button class="tab" role="tab" id="t-resumen" aria-controls="v-resumen" data-v="resumen"><span class="tn">2</span><span class="tx"><b>Ficha técnica</b><small>La estrategia de un vistazo</small></span></button>
+    <button class="tab" role="tab" id="t-estrategia" aria-controls="v-estrategia" data-v="estrategia"><span class="tn">3</span><span class="tx"><b>Estrategia</b><small>Qué decide y cuándo</small></span></button>
+    <button class="tab" role="tab" id="t-prueba" aria-controls="v-prueba" data-v="prueba"><span class="tn">4</span><span class="tx"><b>Prueba inicial</b><small>Escribe y corre tu idea</small></span></button>
+    <button class="tab" role="tab" id="t-backtest" aria-controls="v-backtest" data-v="backtest"><span class="tn">5</span><span class="tx"><b>Backtest</b><small>Curva, rachas y código</small></span></button>
+    <button class="tab" role="tab" id="t-operaciones" aria-controls="v-operaciones" data-v="operaciones"><span class="tn">6</span><span class="tx"><b>Operaciones</b><small>Cada operación, en velas</small></span></button>
+    <button class="tab" role="tab" id="t-validacion" aria-controls="v-validacion" data-v="validacion"><span class="tn">7</span><span class="tx"><b>Validación</b><small>Las 5 pruebas, una a una</small></span></button>
+    <button class="tab" role="tab" id="t-protocolo" aria-controls="v-protocolo" data-v="protocolo"><span class="tn">8</span><span class="tx"><b>Protocolo completo</b><small>El sello final</small></span></button>
+  </nav>
+  <div class="rail-pie">
+    <p class="rail-t" id="nivel-lb">Nivel de detalle</p>
+    <div class="seg nivel" role="group" aria-labelledby="nivel-lb" id="nivel"><button type="button" data-n="entender" aria-pressed="true" title="La app explicada (tecla N)">ENTENDER</button><button type="button" data-n="avanzado" aria-pressed="false" title="Terminal del oro completa (tecla N)">AVANZADO</button></div>
+  </div>
+</aside>
+
+<header class="top">
+  <div class="ctx"><span class="chip oos" id="ctx-chip">DEMO</span><span class="tuya" id="ctx-tuya" title="Estás viendo tu estrategia, no la demo" hidden><span class="tl">TU ESTRATEGIA</span><span class="ts">TUYA</span></span><b id="ctx-nom">ORO RSI(4) 25/55</b><span class="mono c-dim ctx-sub" id="ctx-sub">XAUUSD · diario · 1998–2026</span></div>
+  <nav class="hchips" id="hchips" aria-label="Fases: pulsa para ver la prueba"></nav>
+  <div class="tools">
+    <div class="seg disenos" role="group" aria-label="Diseño" id="s-theme"><button type="button" data-th="cueva">CUEVA</button><button type="button" data-th="oscuro">OSCURO</button><button type="button" data-th="blanco">BLANCO</button></div>
+    <button class="hoychip" id="hoychip" title="Ver la señal de hoy en el árbol de decisión"><span class="dot"></span>HOY <b id="hoy-senal">—</b></button>
+    <button class="btn gold" id="b-pres" title="Modo presentación (tecla P)">▶ PRESENTAR</button>
+    <button class="btn gold hide-p" id="b-demo" hidden title="Descartar tu prueba y volver a la demo">VOLVER A LA DEMO</button>
+    <button class="btn hide-p" id="b-set" title="Tamaño de letra" aria-label="Tamaño de letra">Aa</button>
+    <button class="btn hide-p" id="b-help" title="Cómo se usa (tecla ?)" aria-label="Ayuda">?</button>
+  </div>
+</header>
+
+<main>
+<!-- ============ 0 TU MESA ============ -->
+<section class="view" id="v-mesa" role="tabpanel" aria-labelledby="t-mesa">
+  <header class="mhead">
+    <div>
+      <p class="eyebrow">Regalo de la Mega Cueva</p>
+      <h1>Tu mesa: <span>4 agentes</span> trabajan tu idea</h1>
+      <p class="lead">Tú pones el criterio. Ellos la ordenan, fase a fase, hasta este tester.</p>
+    </div>
+    <button type="button" class="btn gold" data-go="prueba">PROBAR MI IDEA →</button>
+  </header>
+  <section class="panel oficina" aria-label="La oficina de tu mesa">
+    <div class="of-marco" id="of-marco">
+      <div class="of-esc" id="of-esc">
+        <canvas id="of-cv" role="img" aria-label="Oficina pixel-art: el Director, Hipótesis, Reglas y Validador en sus mesas y el tester al fondo"></canvas>
+        <div class="of-tags" id="of-tags"></div>
+      </div>
+    </div>
+    <ol class="of-flujo" id="of-flujo" aria-label="El recorrido de tu idea por la mesa"></ol>
+  </section>
+  <aside class="panel agdet" id="ag-det" aria-live="polite" aria-label="Detalle del agente"></aside>
+  <section class="montar" aria-label="Cómo montar tu mesa">
+    <h2 class="sec-t">Cómo montar tu mesa</h2>
+    <ol class="pasos3">
+      <li><b>1</b><div><h3>VS Code + Claude Code</h3><p>Instala VS Code (gratis) y la extensión <strong>Claude Code</strong>. Sin suscripción, vale Copilot Free.</p></div></li>
+      <li><b>2</b><div><h3>Abre la carpeta mesa-tis</h3><p>Archivo → Abrir carpeta… → <strong>mesa-tis</strong>. El Director y los 3 agentes se cargan solos.</p></div></li>
+      <li><b>3</b><div><h3>Instala Pixel Agents</h3><p>Extensiones (Ctrl+Shift+X) → <strong>Pixel Agents</strong>. Verás a tu mesa trabajar en su oficina.</p></div></li>
+    </ol>
+    <p class="credito">Oficina dibujada a mano en el espíritu de Pixel Agents (Pablo De Lucca, licencia MIT). Personajes originales de TIS.</p>
+  </section>
+</section>
+
+<!-- ============ 1 LAS FASES ============ -->
+<section class="view" id="v-fases" role="tabpanel" aria-labelledby="t-fases">
+  <div class="fhero">
+    <h1>¿Cómo sabemos que esta estrategia tiene <span>probabilidades de ganar dinero real</span>?</h1>
+    <div class="fhero-b"><button class="btn gold" data-go="resumen">VER LA DEMO →</button><button class="btn" data-go="prueba">PROBAR MI IDEA →</button></div>
+  </div>
+  <section class="trampas" aria-label="3 trampas que debes evitar">
+    <h2 class="sec-t">3 trampas que debes evitar</h2>
+    <div class="q3">
+      <article class="panel trampa">
+        <svg viewBox="0 0 118 88" aria-hidden="true"><g fill="var(--dim2)"><circle cx="10" cy="60" r="3"/><circle cx="24" cy="38" r="3"/><circle cx="38" cy="55" r="3"/><circle cx="52" cy="30" r="3"/><circle cx="66" cy="48" r="3"/><circle cx="80" cy="22" r="3"/><circle cx="94" cy="40" r="3"/><circle cx="108" cy="16" r="3"/></g>
+          <path d="M10 60 L24 38 L38 55 L52 30 L66 48 L80 22 L94 40 L108 16" fill="none" stroke="var(--red)" stroke-width="2.2"/><path d="M8 62 L110 18" fill="none" stroke="var(--cy)" stroke-width="2.2" stroke-dasharray="5 4"/></svg>
+        <div><h4><small>1</small>Sobreajuste</h4><p>Retocar los números hasta que el pasado sale perfecto.</p><p class="ej" id="tr-ej1"></p></div>
+      </article>
+      <article class="panel trampa">
+        <svg viewBox="0 0 118 88" aria-hidden="true"><line x1="38" y1="8" x2="38" y2="72" stroke="var(--dim2)" stroke-width="1.5"/><rect x="31" y="20" width="14" height="40" fill="var(--red)" opacity=".85"/>
+          <line x1="82" y1="12" x2="82" y2="70" stroke="var(--dim2)" stroke-width="1.5"/><rect x="75" y="24" width="14" height="30" fill="var(--cy)" opacity=".85"/>
+          <path d="M46 60 H70" stroke="var(--gold)" stroke-width="2" stroke-dasharray="4 3"/><path d="M66 56l5 4-5 4" fill="none" stroke="var(--gold)" stroke-width="2"/></svg>
+        <div><h4><small>2</small>Mirar el futuro</h4><p>Decidir con el cierre y comprar a ese mismo cierre.</p><p class="ej">TIS: orden en la <b>apertura siguiente</b>.</p></div>
+      </article>
+      <article class="panel trampa">
+        <svg viewBox="0 0 118 88" aria-hidden="true"><rect x="14" y="14" width="34" height="58" fill="var(--dim2)" opacity=".55"/><rect x="64" y="34" width="34" height="38" fill="var(--gold)"/>
+          <path d="M64 34 H98" stroke="var(--red)" stroke-width="2"/></svg>
+        <div><h4><small>3</small>Olvidar los costes</h4><p>Spread, comisión y swap: poco por operación, mucho en años.</p><p class="ej" id="tr-ej3"></p></div>
+      </article>
+    </div>
+  </section>
+  <section class="panel galp" aria-label="Recorrido del protocolo">
+    <div class="ph"><h3>El recorrido · <em>pulsa una prueba</em></h3><span class="c-dim ph-n">Falla una → no se avanza</span></div>
+    <div class="estac" id="gal" role="group" aria-label="Pruebas del protocolo TIS"></div>
+  </section>
+  <section class="panel fasedet" id="fase-det" aria-live="polite" aria-label="Detalle de la prueba"></section>
+  <section class="panel flujo" aria-label="El método TIS">
+    <div class="ph"><h3>El método TIS · <em>de la idea al dinero real</em></h3></div>
+    <div class="flow-g"><span style="grid-column:1/5">PREPARAR</span><span style="grid-column:5/10">VALIDAR · 5 FASES</span><span style="grid-column:10/13">EJECUTAR</span></div>
+    <ol class="flow" id="flow"></ol>
+  </section>
+</section>
+
+<!-- ============ 2 FICHA TÉCNICA ============ -->
+<section class="view" id="v-resumen" role="tabpanel" aria-labelledby="t-resumen">
+  <div class="fthead">
+    <div><h1 id="r-tit">ORO RSI(4) <span>25/55</span></h1><p class="c-dim" id="r-sub">Ficha técnica · XAUUSD diario · solo compras</p></div>
+    <div class="rulebox" aria-label="Regla" id="r-regla">
+      <span class="k">COMPRA</span> si cierre &gt; <span class="term" data-t="sma">media 200</span> y <span class="term" data-t="rsi">RSI(4)</span> &lt; <span class="g">25</span><br>
+      <span class="k">VENDE</span>&nbsp; si <span class="term" data-t="rsi">RSI(4)</span> &gt; <span class="g">55</span> · <span class="c-dim">orden en la apertura siguiente</span>
+    </div>
+  </div>
+  <section class="panel eqp" aria-label="Curva de capital">
+    <div class="ph"><h3>Curva de capital · <em>cuenta de 100.000 USD</em> · <em id="r-eqend">—</em></h3>
+      <span class="legend" style="margin:0"><span><i style="background:var(--cy)"></i>capital</span><span><i style="background:rgba(var(--gold-rgb),.35)"></i><span class="term" data-t="oos">prueba honesta</span></span></span></div>
+    <div class="cv" id="cv-eqmini"><canvas role="img" aria-label="Curva de capital de una cuenta de 100.000 USD"></canvas><div class="tt"></div></div>
+  </section>
+  <aside class="ftside">
+    <section class="panel ftv" id="r-verd" aria-label="Veredicto"></section>
+    <section class="panel ftm" aria-label="Cuánto gana">
+      <div class="ph"><h3>¿Cuánto gana?</h3><span class="c-dim mono" id="r-ops-anio"></span></div>
+      <div class="ftbig"><span class="big pos" id="r-exp">—</span><span>por operación<br><span class="c-dim" id="r-exp-pct"></span></span></div>
+      <dl class="mini" id="r-money"></dl>
+      <p class="nota" id="r-obj-nota"></p>
+    </section>
+    <section class="panel ftr" aria-label="Riesgo">
+      <div class="ph"><h3>Riesgo</h3></div>
+      <dl class="mini" id="r-riesgo"></dl>
+    </section>
+    <section class="panel fth" aria-label="Qué hace hoy">
+      <div class="ph"><h3>¿Qué hace hoy?</h3><span class="c-dim mono" id="r-fecha"></span></div>
+      <div class="fthoy"><span class="dot"></span><span class="big c-gold" id="r-senal">—</span><button class="link" data-go="estrategia">ver por qué →</button></div>
+      <div class="gauge" id="r-gauge"><span style="left:25%">25 compra</span><span style="left:55%">55 venta</span></div>
+    </section>
+  </aside>
+  <section class="kpis" id="r-kpis" aria-label="Indicadores clave"></section>
+  <section class="panel core" id="r-core" aria-label="Core logic"></section>
+</section>
+
+<!-- ============ 3 ESTRATEGIA ============ -->
+<section class="view" id="v-estrategia" role="tabpanel" aria-labelledby="t-estrategia">
+  <div class="vh"><h2>Estrategia</h2><p id="e-head"></p></div>
+  <section class="panel treep" aria-label="Árbol de decisión">
+    <div class="ph"><h3>Árbol de decisión · <em id="e-mode">ruta de hoy</em></h3>
+      <div class="treebar">
+        <div class="seg" role="group" aria-label="Qué ruta mostrar"><button id="e-hoy" aria-pressed="true">HOY</button><button id="e-op" aria-pressed="false">UNA OPERACIÓN</button></div>
+        <button class="btn" id="e-prev" title="Operación anterior">◀</button>
+        <span class="mono c-dim" id="e-opn" style="min-width:3.5rem;text-align:center">#149</span>
+        <button class="btn" id="e-next" title="Operación siguiente">▶</button>
+      </div></div>
+    <svg id="tree" viewBox="0 0 1250 440" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Árbol de decisión de la estrategia"></svg>
+    <div class="pathtxt" id="e-path" aria-live="polite"></div>
+  </section>
+  <aside class="rulep" id="e-reglas" aria-label="Reglas de la estrategia"></aside>
+  <section class="panel pricep" aria-label="Gráfico de precio">
+    <div class="ph"><h3 id="e-ptit">Precio · últimas velas · <em>media 200</em> y <em>RSI(4)</em></h3>
+      <div class="treebar">
+        <label class="mono c-dim" for="e-anio">Año</label><select id="e-anio" class="sel"></select>
+        <button class="btn" id="e-mejor">▲ MEJOR DEL AÑO</button><button class="btn" id="e-peor">▼ PEOR DEL AÑO</button>
+        <button class="btn" id="e-ultimas" hidden>ÚLTIMAS VELAS</button>
+      </div></div>
+    <div class="cv" id="cv-price"><canvas role="img" aria-label="Velas diarias con media de 200 días, RSI de 4 días y operaciones"></canvas><div class="tt"></div></div>
+  </section>
+</section>
+
+<!-- ============ 4 PRUEBA INICIAL ============ -->
+<section class="view" id="v-prueba" role="tabpanel" aria-labelledby="t-prueba">
+  <div class="vh"><h2>Prueba inicial</h2><p>Escribe tu idea y <strong>córrela con costes</strong>.</p>
+    <span style="display:flex;gap:.5rem;flex-wrap:wrap;margin-left:auto"><button type="button" class="btn" id="pi-demo">RESTAURAR LA DEL ORO</button><button type="button" class="btn" id="pi-nas">CARGAR EL EJEMPLO NAS100 DE LA MEGA CUEVA</button><button type="button" class="btn" id="pi-vaciar">EMPEZAR EN BLANCO</button></span></div>
+  <div class="pi-izq" id="pi-izq">
+    <section class="panel idea" id="pi-mesa" aria-label="Tu idea en lenguaje natural">
+      <div class="idea-h"><h3><label for="pi-idea-t">Escribe tu idea en lenguaje natural</label></h3><span class="c-dim ph-n">como se la contarías a otra persona</span></div>
+      <textarea id="pi-idea-t" spellcheck="true" placeholder="Ej.: Compro oro en diario cuando el RSI de 4 baja de 25 y el precio está por encima de la media de 200. Vendo cuando el RSI sube de 55."></textarea>
+      <div class="idea-b">
+        <button type="button" class="btn gold" id="pi-ia">TRADUCIR CON IA (DEEPSEEK)</button>
+        <button type="button" class="btn" id="pi-a03">PÁSASELA A TU AGENTE 03 REGLAS</button>
+        <button type="button" class="btn" id="pi-trad">TRADUCIR AQUÍ</button>
+        <button type="button" class="link" id="pi-idea-ej">ver un ejemplo</button>
+      </div>
+      <div class="ia-clave" id="pi-ia-clave">
+        <label for="pi-ia-k">Tu clave de DeepSeek</label>
+        <input type="password" id="pi-ia-k" autocomplete="off" spellcheck="false" placeholder="sk-…" aria-describedby="pi-ia-k-n">
+        <button type="button" class="btn" id="pi-ia-borrar">BORRAR CLAVE</button>
+        <span class="ia-k-n" id="pi-ia-k-n"><a href="https://platform.deepseek.com/api_keys" target="_blank" rel="noopener">Consíguela aquí</a> · cuesta céntimos; se guarda solo en este navegador. <span id="pi-ia-k-est"></span></span>
+      </div>
+      <div class="idea-out" id="pi-idea-out" hidden></div>
+      <details class="pegar" id="pi-pegar">
+        <summary><span class="pg-t">¿Ya te respondió tu agente <em>04 Validador</em>? Pega aquí sus piezas</span></summary>
+        <p class="csvhelp" style="margin:.5rem 0 .4rem">Una pieza por línea: <code>ENTRADA:</code> · <code>SALIDA:</code> · <code>STOP:</code> · <code>HORARIO:</code> · <code>DIRECCIÓN:</code> · <code>OPERACIONES POR DÍA:</code> · costes · reparto 70/30.</p>
+        <textarea id="pi-pegar-t" spellcheck="false" placeholder="ACTIVO: XAUUSD · diario&#10;ENTRADA: RSI(4) < 25 y cierre > media de 200&#10;SALIDA: RSI(4) > 55&#10;STOP: sin stop&#10;DIRECCIÓN: compra&#10;COMISIÓN: 0,01 pb (supuesto)&#10;DESLIZAMIENTO: 3 pb&#10;REPARTO: 70/30"></textarea>
+        <div class="codebar"><button type="button" class="btn gold" id="pi-pegar-b">RELLENAR EL FORMULARIO</button><button type="button" class="btn" id="pi-pegar-ej">VER UN EJEMPLO</button></div>
+        <ul class="res" id="pi-pegar-r"></ul>
+      </details>
+      <div class="mesa-mini" id="pi-mesa-mini"></div>
+    </section>
+    <form class="form" id="pi-form" autocomplete="off" onsubmit="return false">
+      <fieldset class="panel fs t1"><legend class="sr">Activo</legend>
+        <div class="ph"><h3><i class="fsn">1</i>Activo</h3><span class="c-dim ph-n">qué operas y en qué sentido</span></div>
+        <div class="campos">
+          <div class="campo"><label for="f-nombre">Nombre de la idea</label><input type="text" id="f-nombre" data-k="nombre" placeholder="p. ej. Oro rebote"></div>
+          <div class="campo"><label for="f-simbolo">Activo (símbolo)</label><input type="text" id="f-simbolo" data-k="activo.simbolo" placeholder="p. ej. XAUUSD"></div>
+          <div class="campo"><label for="f-clase">Tipo de activo</label><select id="f-clase" data-k="activo.clase">
+            <option value="metal">Metal (oro, plata)</option><option value="indice">Índice</option><option value="forex">Divisa</option><option value="accion_etf">Acción / ETF</option><option value="cripto">Cripto</option><option value="energia">Energía</option></select></div>
+          <div class="campo"><label for="f-tf">Temporalidad</label><select id="f-tf" data-k="temporalidad">
+            <option value="M5">5 minutos</option><option value="M15">15 minutos</option><option value="H1">1 hora</option><option value="H4">4 horas</option><option value="D1">Diario</option><option value="W1">Semanal</option></select></div>
+          <div class="campo"><label for="f-dir">Dirección</label><select id="f-dir" data-k="direccion">
+            <option value="largo">Solo compras</option><option value="corto">Solo ventas en corto</option><option value="ambos">Compras y ventas</option></select></div>
+        </div>
+      </fieldset>
+      <fieldset class="panel fs t2"><legend class="sr">Datos</legend>
+        <div class="ph"><h3><i class="fsn">2</i>Datos</h3><span class="c-dim ph-n">todo en hora del servidor del bróker</span></div>
+        <div class="campos">
+          <div class="campo"><label for="f-fuente">Fuente de datos</label><select id="f-fuente" data-k="datos.fuente">
+            <option value="darwinex_mt5">MT5 Darwinex</option><option value="csv_propio">CSV propio</option><option value="dukascopy">Dukascopy</option><option value="yahoo">Yahoo Finance</option></select></div>
+          <div class="campo ancho"><label for="f-zona">Zona horaria de las velas</label><select id="f-zona" data-k="datos.zona_horaria">
+            <option value="servidor_gmt3_usdst">Servidor del bróker (GMT+3, DST EE. UU.)</option><option value="utc">UTC</option><option value="nueva_york">Nueva York</option><option value="madrid">Madrid</option></select></div>
+          <div class="campo"><label for="f-desde">Datos desde</label><input type="date" id="f-desde" data-k="datos.desde"></div>
+          <div class="campo"><label for="f-hasta">Datos hasta</label><input type="date" id="f-hasta" data-k="datos.hasta"></div>
+        </div>
+      </fieldset>
+      <fieldset class="panel fs t2b" id="f-sesion"><legend class="sr">Sesión</legend>
+        <div class="ph"><h3><i class="fsn">2b</i>Sesión</h3><span class="c-dim ph-n" id="f-ses-n">solo velas intradía</span></div>
+        <div class="ses-off" id="f-ses-off">En velas diarias o semanales no hay sesión: cada vela es un día. Elige 5 min, 15 min, 1 hora o 4 horas para usarla.</div>
+        <div class="ses-on" id="f-ses-on">
+          <label class="ses-chk"><input type="checkbox" id="f-ses-act"> Operar solo dentro de una sesión (vela 1 = la que empieza a la hora de inicio)</label>
+          <div class="campos">
+            <div class="campo"><label for="f-ses-z">Zona de la sesión</label><select id="f-ses-z" data-k="sesion.zona_horaria">
+              <option value="America/New_York">Nueva York</option><option value="Europe/London">Londres</option><option value="Europe/Madrid">Madrid</option><option value="Europe/Berlin">Fráncfort</option><option value="Asia/Tokyo">Tokio</option><option value="UTC">UTC</option></select></div>
+            <div class="campo"><label for="f-ses-i">Inicio (HH:MM)</label><input type="time" id="f-ses-i" data-k="sesion.inicio" step="60"></div>
+            <div class="campo"><label for="f-ses-f">Fin (HH:MM)</label><input type="time" id="f-ses-f" data-k="sesion.fin" step="60"></div>
+            <div class="campo"><label for="f-ses-c">Cerrar al final de la sesión</label><select id="f-ses-c" data-k="sesion.cerrar_al_final" data-bool="1"><option value="true">Sí, a su cierre</option><option value="false">No</option></select></div>
+            <div class="campo"><label for="f-ses-m">Máx. operaciones al día</label><input type="number" id="f-ses-m" data-k="sesion.max_operaciones_dia" step="1" min="1" placeholder="vacío = sin límite"></div>
+          </div>
+        </div>
+      </fieldset>
+      <fieldset class="panel fs t3"><legend class="sr">Reglas</legend>
+        <div class="ph"><h3><i class="fsn">3</i>Reglas</h3><span class="c-dim ph-n">entrar = todo se cumple · <b>↶</b> = hace N velas (0 = la actual)</span></div>
+        <div class="bl-t"><h4>Niveles <span>(precios con nombre, p. ej. NIVEL = máximo de la sesión anterior)</span></h4><button type="button" class="btn" id="f-add-nivel">+ NIVEL</button></div>
+        <div class="bloques" id="bl-niveles"></div>
+        <div class="bl-t"><h4>Pasos <span>(secuencia en orden antes de entrar: RUPTURA → RETESTEO…)</span></h4><button type="button" class="btn" id="f-add-paso">+ PASO</button></div>
+        <div class="bloques" id="bl-pasos"></div>
+        <div class="bl-t"><h4>Filtros <span>(cuándo se permite operar)</span></h4><button type="button" class="btn" data-add="filtros">+ FILTRO</button></div>
+        <div class="bloques" id="bl-filtros"></div>
+        <div class="bl-t"><h4>Entrada <span>(el disparo)</span></h4><button type="button" class="btn" data-add="entrada">+ CONDICIÓN</button></div>
+        <div class="bloques" id="bl-entrada"></div>
+        <div class="bl-t"><h4>Salida <span>(cuándo cerrar)</span></h4><span class="salmodo"><select id="f-salmodo" data-k="reglas.salida_modo" aria-label="Cómo se combinan las condiciones de salida"><option value="cualquiera">basta una</option><option value="todas">todas a la vez</option></select><button type="button" class="btn" data-add="salida">+ CONDICIÓN</button></span></div>
+        <div class="bloques" id="bl-salida"></div>
+        <div class="campos" style="margin-top:.7rem">
+          <div class="campo ancho"><label for="f-ejec">Cuándo se ejecuta la orden</label><select id="f-ejec" data-k="ejecucion.momento">
+            <option value="apertura_siguiente">Apertura de la vela siguiente</option><option value="cierre_misma_vela">Cierre de la misma vela de la señal</option></select></div>
+        </div>
+      </fieldset>
+      <fieldset class="panel fs t4"><legend class="sr">Gestión</legend>
+        <div class="ph"><h3><i class="fsn">4</i>Gestión</h3><span class="c-dim ph-n">stop, objetivo y salida por tiempo</span></div>
+        <div class="campos">
+          <div class="campo"><label for="f-stop-t">Stop de pérdidas</label><select id="f-stop-t" data-k="gestion.stop.tipo"><option value="ninguno">Sin stop</option><option value="pct">% del precio</option><option value="atr">Múltiplo de ATR</option><option value="nivel">Un precio de la vela de la señal</option></select></div>
+          <div class="campo" id="f-stop-vc"><label for="f-stop-v">Valor del stop</label><input type="number" id="f-stop-v" data-k="gestion.stop.valor" step="0.1" min="0"></div>
+          <div class="campo ancho" id="f-stop-nv" hidden><span class="lbl">Stop en</span><div id="f-stop-op"></div></div>
+          <div class="campo"><label for="f-obj-t">Objetivo de beneficio</label><select id="f-obj-t" data-k="gestion.objetivo.tipo"><option value="ninguno">Sin objetivo</option><option value="pct">% del precio</option><option value="atr">Múltiplo de ATR</option></select></div>
+          <div class="campo"><label for="f-obj-v">Valor del objetivo</label><input type="number" id="f-obj-v" data-k="gestion.objetivo.valor" step="0.1" min="0"></div>
+          <div class="campo"><label for="f-tiempo">Salida por tiempo (velas)</label><input type="number" id="f-tiempo" data-k="gestion.salida_tiempo_velas" step="1" min="0" placeholder="vacío = sin límite"></div>
+        </div>
+      </fieldset>
+      <fieldset class="panel fs t5"><legend class="sr">Tamaño</legend>
+        <div class="ph"><h3><i class="fsn">5</i>Tamaño</h3><span class="c-dim ph-n">cuánto pones en cada operación</span></div>
+        <div class="campos">
+          <div class="campo"><label for="f-siz-t">Tamaño de posición</label><select id="f-siz-t" data-k="sizing.tipo"><option value="pct_capital">% del capital (nocional)</option><option value="riesgo_pct">% de riesgo hasta el stop</option><option value="lotes_fijos" disabled>Lotes fijos (próximamente)</option></select></div>
+          <div class="campo"><label for="f-siz-v">Valor del tamaño</label><input type="number" id="f-siz-v" data-k="sizing.valor" step="0.01" min="0"></div>
+        </div>
+      </fieldset>
+      <fieldset class="panel fs t6"><legend class="sr">Costes</legend>
+        <div class="ph"><h3><i class="fsn">6</i>Costes</h3><span class="c-dim ph-n">pb = 0,01 % del importe</span></div>
+        <div class="campos">
+          <div class="campo"><label for="f-perfil">Perfil de costes</label><select id="f-perfil" data-k="costes.perfil"><option value="darwinex_mt5">Darwinex MT5 (terminal)</option><option value="manual">Manual</option></select></div>
+          <div class="campo"><label for="f-spread">Spread (pb)</label><input type="number" id="f-spread" data-k="costes.spread_pb" step="0.01" min="0"></div>
+          <div class="campo"><label for="f-com">Comisión por lado (pb)</label><input type="number" id="f-com" data-k="costes.comision_pb_lado" step="0.01" min="0"></div>
+          <div class="campo"><label for="f-desl">Deslizamiento por lado (pb)</label><input type="number" id="f-desl" data-k="costes.deslizamiento_pb_lado" step="0.1" min="0"></div>
+          <div class="campo"><label for="f-swl">Swap compras (% anual)</label><input type="number" id="f-swl" data-k="costes.swap_largo_pct_anual" step="0.01"></div>
+          <div class="campo"><label for="f-sws">Swap ventas (% anual)</label><input type="number" id="f-sws" data-k="costes.swap_corto_pct_anual" step="0.01"></div>
+        </div>
+        <p class="fuente" id="f-costes-fuente"></p>
+      </fieldset>
+      <fieldset class="panel fs t7"><legend class="sr">Corte diseño / prueba</legend>
+        <div class="ph"><h3><i class="fsn">7</i>Corte diseño / prueba</h3><span class="c-dim ph-n">la <span class="term" data-t="oos">prueba honesta</span> se mira al final</span></div>
+        <div class="campos">
+          <div class="campo"><label for="f-corte-t">Cómo cortar</label><select id="f-corte-t" data-k="corte.tipo"><option value="auto">Automático (70/30)</option><option value="fecha">Por fecha</option><option value="pct">Por porcentaje</option></select></div>
+          <div class="campo"><label for="f-corte-f">Fecha de corte</label><input type="date" id="f-corte-f" data-k="corte.fecha"></div>
+          <div class="campo"><label for="f-corte-p">% para diseñar</label><input type="number" id="f-corte-p" data-k="corte.is_pct" step="1" min="10" max="95"></div>
+        </div>
+        <p class="fuente" id="f-corte-auto"></p>
+        <div class="cortes" id="f-corte-vis" aria-hidden="true"></div>
+      </fieldset>
+      <fieldset class="panel fs t8"><legend class="sr">Meseta</legend>
+        <div class="ph"><h3><i class="fsn">8</i>Meseta</h3><span class="c-dim ph-n">2 números de tu regla, 5 valores cada uno</span></div>
+        <div class="mesetaf" id="f-meseta"></div>
+      </fieldset>
+    </form>
+    <div id="pi-res" class="pi-res" hidden></div>
+  </div>
+  <div class="pi-der">
+    <section class="panel codep" aria-label="Traducción en vivo">
+      <div class="ph"><h3>Lo que entiende el motor · <em>en vivo</em></h3>
+        <div class="seg" role="group" aria-label="Formato"><button type="button" data-fmt="pseudo" aria-pressed="true">PSEUDOCÓDIGO</button><button type="button" data-fmt="json" aria-pressed="false">SPEC JSON</button></div></div>
+      <pre class="codigo" id="pi-codigo" aria-live="polite" tabindex="0"></pre>
+      <div class="codebar"><button type="button" class="btn" id="pi-copiar">COPIAR</button><button type="button" class="btn" id="pi-bajar">⇩ SPEC.JSON</button></div>
+    </section>
+    <section class="panel checkp" aria-label="Qué falta para correrla">
+      <div class="ph"><h3>¿Lista para correr?</h3><span class="mono c-dim" id="pi-cuenta"></span></div>
+      <ul class="chk" id="pi-check"></ul>
+    </section>
+    <section class="panel correr" aria-label="Correr la prueba">
+      <div class="csvrow" id="pi-csvz">
+        <button type="button" class="btn" id="pi-csv-b"><svg class="ic"><use href="#i-subir"/></svg> SUBIR CSV</button>
+        <span class="c-dim" id="pi-csv-n">Datos de ejemplo del oro (XAUUSD D1)</span>
+        <button type="button" class="link" id="pi-csv-x" hidden>quitar</button>
+        <button type="button" class="link" id="pi-ndx">usar datos de ejemplo del Nasdaq (NDX diario)</button>
+        <input type="file" id="pi-csv" accept=".csv,.txt,text/csv" class="sr" tabindex="-1" aria-hidden="true">
+      </div>
+      <p class="csvhelp">CSV de TradingView tal cual: <code>time,open,high,low,close,Volume</code> (time ISO con zona horaria o UNIX). Velas de 5/15 min u 1 hora: la hora ISO se convierte sola a la hora de la sesión. <button type="button" class="link" id="pi-csv-ayuda">Cómo exportarlo →</button></p>
+      <button type="button" class="btn gold bigb" id="pi-correr">▶ CORRER PRUEBA INICIAL</button>
+      <div class="etapas" id="pi-etapas" aria-hidden="true"></div>
+      <div class="prog" aria-hidden="true"><i id="pi-prog"></i></div>
+      <p class="c-dim nota-motor" id="pi-nota-motor" aria-live="polite"></p>
+    </section>
+  </div>
+</section>
+
+<!-- ============ 5 BACKTEST ============ -->
+<section class="view" id="v-backtest" role="tabpanel" aria-labelledby="t-backtest">
+  <div class="vh"><h2>Backtest</h2><p id="b-head"></p></div>
+  <section class="panel eqbig" aria-label="Curva de capital y caídas">
+    <div class="ph"><h3>Capital <em>(cuenta de 100.000 USD)</em> y <span class="term" data-t="dd">caídas</span></h3>
+      <div style="display:flex;gap:.6rem;flex-wrap:wrap">
+        <div class="seg" role="group" aria-label="Periodo" id="b-range">
+          <button data-r="all" aria-pressed="true">TODO</button><button data-r="is">DISEÑO</button><button data-r="oos">PRUEBA</button><button data-r="10">10 AÑOS</button><button data-r="3">3 AÑOS</button></div>
+        <div class="seg" role="group" aria-label="Operaciones"><button id="b-ops" aria-pressed="true">OPERACIONES</button></div>
+      </div></div>
+    <div class="cv" id="cv-eq"><canvas role="img" aria-label="Curva de capital y caídas"></canvas><div class="tt"></div></div>
+    <div class="legend"><span><i style="background:var(--cy)"></i>capital</span><span><i style="background:var(--red)"></i>caída desde el máximo</span><span><i style="background:rgba(var(--gold-rgb),.35)"></i>prueba honesta</span><span><i style="background:var(--ok);border-radius:50%"></i>ganadora</span><span><i style="background:var(--red);border-radius:50%"></i>perdedora</span></div>
+  </section>
+  <aside class="btside">
+    <section class="panel" aria-label="Comparativa diseño y prueba">
+      <div class="ph"><h3>Diseño vs <span class="term" data-t="oos">prueba honesta</span></h3></div>
+      <table class="cmp" id="b-cmp"></table>
+    </section>
+    <section class="panel annp" aria-label="Resultado por año">
+      <div class="ph"><h3>Por año · <em id="b-anios">—</em></h3></div>
+      <div class="cv" id="cv-anual"><canvas role="img" aria-label="Barras de resultado anual"></canvas><div class="tt"></div></div>
+    </section>
+  </aside>
+  <div class="btstats">
+    <section class="panel rachas" aria-label="Rachas" id="b-rachas"></section>
+    <section class="panel mfep" aria-label="MFE y MAE">
+      <div class="ph"><h3><span class="term" data-t="mfe">MFE</span> / <span class="term" data-t="mae">MAE</span> · <em>cada operación</em></h3><span class="mono c-dim" id="b-mfe-m"></span></div>
+      <div class="cv" id="cv-mfe"><canvas role="img" aria-label="Dispersión de MFE frente a MAE por operación"></canvas><div class="tt"></div></div>
+    </section>
+    <section class="panel statp" aria-label="Estadísticas de operaciones">
+      <div class="ph"><h3>Operaciones por…</h3>
+        <div class="seg" role="group" aria-label="Agrupar por" id="b-stat"><button data-s="dia" aria-pressed="true">DÍA</button><button data-s="mes" aria-pressed="false">MES</button><button data-s="dur" aria-pressed="false">DURACIÓN</button></div></div>
+      <div class="cv" id="cv-stat"><canvas role="img" aria-label="Estadísticas de operaciones"></canvas><div class="tt"></div></div>
+    </section>
+  </div>
+  <section class="panel codigo-p" aria-label="Código para tu plataforma">
+    <div class="ph"><h3>Código para tu plataforma</h3>
+      <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center">
+        <div class="seg" role="group" aria-label="Plataforma" id="b-cod"><button data-c="pine" aria-pressed="true">PINE SCRIPT · TRADINGVIEW</button><button data-c="mql5" aria-pressed="false">METATRADER 5</button></div>
+        <button type="button" class="btn gold" id="b-copiar"><svg class="ic"><use href="#i-copiar"/></svg> COPIAR</button>
+      </div></div>
+    <p class="nota" id="b-cod-nota"></p>
+    <pre class="codigo" id="b-codigo" tabindex="0"></pre>
+  </section>
+</section>
+
+<!-- ============ 6 OPERACIONES ============ -->
+<section class="view" id="v-operaciones" role="tabpanel" aria-labelledby="t-operaciones">
+  <div class="vh"><h2>Operaciones</h2><p id="o-head">Pulsa una fila (o ↑ ↓) para ver su ficha.</p></div>
+  <section class="panel tablep" aria-label="Lista de operaciones">
+    <div class="filters">
+      <div class="seg" role="group" aria-label="Filtro" id="o-filt">
+        <button data-f="all" aria-pressed="true">TODAS</button><button data-f="is">DISEÑO</button><button data-f="oos">PRUEBA</button><button data-f="win">GANADORAS</button><button data-f="loss">PERDEDORAS</button></div>
+      <span class="mono c-dim" id="o-count"></span>
+    </div>
+    <div class="tscroll" id="o-scroll">
+      <table class="ops" aria-label="Operaciones">
+        <thead><tr>
+          <th scope="col"><button data-s="n">#</button></th><th scope="col"><button data-s="fi">ENTRADA</button></th><th scope="col"><button data-s="fo">SALIDA</button></th>
+          <th scope="col"><button data-s="pi">PRECIO</button></th><th scope="col"><button data-s="dias">DÍAS</button></th><th scope="col"><button data-s="ret">RESULTADO</button></th><th scope="col" class="thv">VELAS</th></tr></thead>
+        <tbody id="o-body"></tbody>
+      </table>
+    </div>
+  </section>
+  <section class="panel detp" id="o-det" aria-live="polite" aria-label="Ficha de la operación"></section>
+  <section class="panel barsp" aria-label="Resultado de cada operación">
+    <div class="ph"><h3>Resultado de cada operación · <em>pulsa una barra</em></h3></div>
+    <div class="cv" id="cv-bars"><canvas role="img" aria-label="Barras con el resultado de cada operación"></canvas><div class="tt"></div></div>
+  </section>
+</section>
+
+<!-- ============ 7 VALIDACIÓN ============ -->
+<section class="view" id="v-validacion" role="tabpanel" aria-labelledby="t-validacion">
+  <div class="vh"><h2>Validación</h2><p id="val-head"></p></div>
+  <div class="conceptos" aria-label="Conceptos">
+    <article class="panel concepto"><svg class="ci"><use href="#i-escudo"/></svg><div><h4>Qué es validar</h4><p>Intentar <b>romper</b> la estrategia antes de que la rompa el mercado. Si sobrevive, se gana el derecho a tocar dinero real.</p></div></article>
+    <article class="panel concepto"><svg class="ci"><use href="#i-ajuste"/></svg><div><h4>Qué es optimizar</h4><p>Buscar los números que mejor funcionan <b>con los datos de diseño</b>. Es legítimo, siempre que luego se pruebe con datos nuevos.</p></div></article>
+    <article class="panel concepto ko"><svg class="ci"><use href="#i-pico"/></svg><div><h4>Qué es sobreajustar</h4><p>Optimizar de más: la regla <b>memoriza el pasado</b> (el ruido) y deja de funcionar con datos nuevos.</p></div></article>
+  </div>
+  <div id="val-grid" style="display:contents"></div>
+</section>
+
+<!-- ============ 8 PROTOCOLO COMPLETO ============ -->
+<section class="view" id="v-protocolo" role="tabpanel" aria-labelledby="t-protocolo">
+  <div class="vh"><h2>Protocolo completo</h2><p id="p-head"></p></div>
+  <div class="prl">
+    <section class="panel sellop" id="p-global" aria-label="Veredicto"></section>
+    <div role="tablist" aria-label="Pruebas" aria-orientation="vertical" id="p-lista" class="plist"></div>
+  </div>
+  <section class="panel prd" id="p-det" role="tabpanel" aria-live="polite"></section>
+</section>
+</main>
+
+<footer class="foot">
+  <span><b>Backtest simulado</b> · <span id="foot-dat">XAUUSD diario 1998–2026</span> · costes Darwinex · no es recomendación de inversión</span>
+  <span class="keys-n">0-8 vista · M menú · N nivel · P presentar · ? ayuda</span>
+  <span class="keys-p">← → avanzar · Esc salir</span>
+  <span class="progress" id="prog" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+</footer>
+</div>
+<div id="avz"><iframe title="Nivel avanzado: terminal del oro" loading="eager"></iframe></div>
+
+<div id="tip" role="tooltip"></div>
+<div class="ovl" id="velas-dlg" role="dialog" aria-modal="true" aria-labelledby="velas-h">
+  <div class="dlg dlg-velas">
+    <div class="ph"><h3 id="velas-h">Operación</h3>
+      <div class="treebar"><button class="btn" id="vd-prev" title="Operación anterior">◀</button><button class="btn" id="vd-next" title="Operación siguiente">▶</button><button class="btn" data-close>CERRAR (Esc)</button></div></div>
+    <div class="vinfo" id="velas-info"></div>
+    <div class="cv" id="cv-velas"><canvas role="img" aria-label="Velas de la operación con entrada y salida"></canvas><div class="tt"></div></div>
+  </div>
+</div>
+<div class="ovl" id="csv-dlg" role="dialog" aria-modal="true" aria-labelledby="csv-h">
+  <div class="dlg">
+    <h2 id="csv-h">CÓMO EXPORTAR EL CSV DE TRADINGVIEW</h2>
+    <ol>
+      <li>Abre TradingView en la computadora (en el celular no se puede exportar).</li>
+      <li>Abre el gráfico del activo y elige la temporalidad.</li>
+      <li>Deja el gráfico limpio, sin indicadores (cada indicador añade columnas).</li>
+      <li>Desplázate a la izquierda para cargar todo el historial: solo se exportan las velas cargadas.</li>
+      <li>Menú del gráfico → <b>Exportar datos del gráfico…</b> → formato de hora <b>ISO</b> → Exportar.</li>
+      <li>Súbelo aquí tal cual, sin abrirlo en Excel (Excel cambia comas y fechas).</li>
+    </ol>
+    <pre class="codigo" style="white-space:pre-wrap">time,open,high,low,close,Volume
+2026-01-05T09:30:00-05:00,21500.25,21540.00,21490.50,21530.75,1234</pre>
+    <p class="nota">También valen los CSV de MetaTrader 5 (como el ejemplo del oro). Comprueba la zona horaria: TIS usa la hora del servidor del bróker. Para años de datos, usa diario o 1 hora.</p>
+    <button class="btn" data-close>ENTENDIDO</button>
+  </div>
+</div>
+<div class="ovl" id="help" role="dialog" aria-modal="true" aria-labelledby="help-h">
+  <div class="dlg">
+    <h2 id="help-h">CÓMO SE USA</h2>
+    <ul>
+      <li><b>Tu mesa</b> (tecla <kbd>0</kbd>) presenta los 4 agentes de regalo. Después, el recorrido en 8 pasos: teclas <kbd>1</kbd>–<kbd>8</kbd> o <kbd>←</kbd> <kbd>→</kbd>.</li>
+      <li>El menú de la izquierda se pliega con el botón de arriba o la tecla <kbd>M</kbd>.</li>
+      <li><b>Diseño</b> (arriba): cueva, oscuro o blanco. Se recuerda en este navegador.</li>
+      <li><b>Prueba inicial</b>: escribe tu idea en lenguaje natural, pásasela a tu agente 03 o tradúcela aquí, sube tu CSV (opcional) y pulsa <b>Correr prueba inicial</b>.</li>
+      <li>Las <span class="term" data-t="pf">palabras subrayadas</span> tienen explicación al pasar el ratón.</li>
+      <li>En <b>Operaciones</b>, «Ver en velas» abre cualquier operación con su entrada y salida.</li>
+      <li><kbd>P</kbd> modo presentación · <kbd>N</kbd> nivel · <kbd>Esc</kbd> salir.</li>
+    </ul>
+    <button class="btn" data-close>ENTENDIDO</button>
+  </div>
+</div>
+<div class="ovl" id="sett" role="dialog" aria-modal="true" aria-labelledby="sett-h">
+  <div class="dlg" style="max-width:30rem">
+    <h2 id="sett-h">TAMAÑO DE LETRA</h2>
+    <div class="setrow"><span>Tamaño</span><div class="seg" role="group" aria-label="Tamaño de letra" id="s-fs"><button data-fs="0.9">A−</button><button data-fs="1">A</button><button data-fs="1.15">A+</button><button data-fs="1.3">A++</button></div></div>
+    <button class="btn" data-close>CERRAR</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<!--__MOTOR__-->
+<script>
+/*__DATOS__*/
+/*__CSV__*/
+</script>
+<script>
+/*__JS__*/
+</script>
+</body>
+</html>

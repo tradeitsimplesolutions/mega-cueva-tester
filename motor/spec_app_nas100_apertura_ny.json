@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "nombre": "NAS100 ruptura y retesteo en la apertura de NY",
+  "activo": {"simbolo": "NAS100", "clase": "indice"},
+  "temporalidad": "M15",
+  "direccion": "largo",
+  "datos": {"fuente": "csv_propio", "zona_horaria": "nueva_york"},
+  "sesion": {"zona_horaria": "America/New_York", "inicio": "09:30", "fin": "16:00",
+             "cerrar_al_final": true, "max_operaciones_dia": 1},
+  "niveles": [{"nombre": "NIVEL", "valor": {"tipo": "sesion_anterior_max"}}],
+  "reglas": {
+    "filtros": [],
+    "pasos": [
+      {"nombre": "RUPTURA",
+       "condiciones": [{"izq": {"tipo": "maximo"}, "op": ">", "der": {"tipo": "nivel", "nombre": "NIVEL"}}],
+       "ventana": {"tipo": "primeras_velas_sesion", "velas": 2}},
+      {"nombre": "RETESTEO",
+       "condiciones": [{"izq": {"tipo": "minimo"}, "op": "<=", "der": {"tipo": "nivel", "nombre": "NIVEL"}},
+                       {"izq": {"tipo": "precio"}, "op": ">", "der": {"tipo": "nivel", "nombre": "NIVEL"}}],
+       "ventana": {"tipo": "velas_tras_anterior", "velas": 8}}
+    ],
+    "entrada": [],
+    "salida": [{"izq": {"tipo": "precio"}, "op": "<", "der": {"tipo": "nivel", "nombre": "NIVEL"}}]
+  },
+  "ejecucion": {"momento": "cierre_misma_vela", "orden": "mercado"},
+  "gestion": {"stop": {"tipo": "nivel", "valor": {"tipo": "minimo"}},
+              "objetivo": {"tipo": "ninguno", "valor": null}, "salida_tiempo_velas": null},
+  "sizing": {"tipo": "pct_capital", "valor": 100},
+  "costes": {"perfil": "darwinex_mt5", "spread_pb": 0.326, "comision_pb_lado": 0.01, "deslizamiento_pb_lado": 3,
+             "swap_largo_pct_anual": -5.55, "swap_corto_pct_anual": 2.25},
+  "corte": {"tipo": "auto"},
+  "optimizar": {"n_ruptura": [1, 2, 3, 4, 5], "n_retesteo": [4, 6, 8, 10, 12]}
+}

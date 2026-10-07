@@ -1,0 +1,31 @@
+{
+  "nombre": "NAS100 ruptura y retesteo en la apertura de NY",
+  "activo": "NAS100",
+  "temporalidad": "M15",
+  "direccion": "largo",
+  "sesion": {"zona_horaria": "America/New_York", "inicio": "09:30", "fin": "16:00", "cerrar_al_final": true},
+  "max_operaciones_dia": 1,
+  "ejecucion": "cierre_misma_vela",
+  "parametros": {"n_ruptura": 2, "n_retesteo": 8},
+  "niveles": {"NIVEL": {"indicador": "sesion_anterior_max"}},
+  "largo": {
+    "pasos": [
+      {"nombre": "RUPTURA",
+       "cuando": [{"indicador": "high", "comparador": ">", "contra": {"indicador": "nivel", "nombre": "NIVEL"}}],
+       "ventana": {"tipo": "primeras_velas_sesion", "velas": "$n_ruptura"}},
+      {"nombre": "RETESTEO",
+       "cuando": [{"indicador": "low", "comparador": "<=", "contra": {"indicador": "nivel", "nombre": "NIVEL"}},
+                  {"indicador": "close", "comparador": ">", "contra": {"indicador": "nivel", "nombre": "NIVEL"}}],
+       "ventana": {"tipo": "velas_tras_anterior", "velas": "$n_retesteo"}}
+    ],
+    "salida": {"op": "O", "bloques": [{"indicador": "close", "comparador": "<", "contra": {"indicador": "nivel", "nombre": "NIVEL"}}]}
+  },
+  "stop": {"tipo": "nivel", "operando": {"indicador": "low"}},
+  "objetivo": null,
+  "salida_tiempo": null,
+  "sizing": {"tipo": "nocional", "pct": 100},
+  "costes": {"spread_pb": 0.326, "comision_pb_lado": 0.01, "deslizamiento_pb_lado": 3.0,
+             "swap_largo_pb_dia": -1.5207, "swap_corto_pb_dia": 0.6162},
+  "corte": {"tipo": "pct", "valor": 70},
+  "optimizar": {"n_ruptura": [1, 2, 3, 4, 5], "n_retesteo": [4, 6, 8, 10, 12]}
+}

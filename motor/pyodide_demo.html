@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Motor en el navegador</title>
+<style>
+  :root { --bg:#fbfaf7; --fg:#1d1d1b; --mut:#6b6a66; --line:#e3e0d8; --ok:#1f7a4d; --ko:#b3261e; --acc:#c9a227; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#141412; --fg:#ecebe6; --mut:#a3a19a; --line:#2e2d29; --ok:#5cc28f; --ko:#ff8a80; --acc:#e0bd4a; } }
+  :root[data-theme="dark"] { --bg:#141412; --fg:#ecebe6; --mut:#a3a19a; --line:#2e2d29; --ok:#5cc28f; --ko:#ff8a80; --acc:#e0bd4a; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width:960px; margin:0 auto; padding:24px 16px 64px; }
+  h1 { font-size:22px; margin:0 0 4px; }
+  p.sub { color:var(--mut); margin:0 0 20px; }
+  .fila { display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin:12px 0; }
+  textarea { width:100%; min-height:220px; font:12px/1.4 ui-monospace, Consolas, monospace; background:transparent; color:var(--fg);
+             border:1px solid var(--line); border-radius:8px; padding:10px; }
+  button { background:var(--acc); color:#1d1d1b; border:0; border-radius:8px; padding:10px 18px; font-weight:600; cursor:pointer; }
+  button:disabled { opacity:.5; cursor:default; }
+  #estado { color:var(--mut); }
+  .tiempos { display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:8px; margin:16px 0; }
+  .t { border:1px solid var(--line); border-radius:8px; padding:8px 10px; }
+  .t b { display:block; font-size:20px; font-variant-numeric:tabular-nums; }
+  .t span { color:var(--mut); font-size:12px; }
+  #veredicto { font-weight:700; margin:12px 0; }
+  .ok { color:var(--ok); } .ko { color:var(--ko); }
+  pre { white-space:pre-wrap; word-break:break-word; border:1px solid var(--line); border-radius:8px; padding:10px; font-size:12px; max-height:480px; overflow:auto; }
+</style>
+</head>
+<body>
+<main>
+  <h1>MEGA CUEVA TESTER · motor en el navegador</h1>
+  <p class="sub">Prueba técnica: Pyodide (Python en WebAssembly) carga numpy + pandas y ejecuta <code>motor_tester.py</code> sobre tu CSV, sin servidor.</p>
+
+  <div class="fila">
+    <input type="file" id="csv" accept=".csv,.txt,text/csv">
+    <button id="correr" disabled>Validar</button>
+    <span id="estado">Cargando Python…</span>
+  </div>
+  <details>
+    <summary>Regla (JSON)</summary>
+    <textarea id="spec"></textarea>
+  </details>
+
+  <div class="tiempos">
+    <div class="t"><b id="t_py">—</b><span>arranque de Python</span></div>
+    <div class="t"><b id="t_pk">—</b><span>numpy + pandas</span></div>
+    <div class="t"><b id="t_csv">—</b><span>lectura del CSV</span></div>
+    <div class="t"><b id="t_val">—</b><span>validación 5 fases</span></div>
+  </div>
+  <div id="veredicto"></div>
+  <pre id="pseudo"></pre>
+  <pre id="salida"></pre>
+</main>
+
+<script src="https://cdn.jsdelivr.net/pyodide/v0.29.3/full/pyodide.js"></script>
+<script>
+const SPEC_ORO = {
+  nombre: "Oro RSI(4) 25/55", activo: "XAUUSD", temporalidad: "D1", direccion: "largo",
+  parametros: { rsi_n: 4, entrada: 25, salida: 55, sma: 200 },
+  filtros: { op: "Y", bloques: [ { indicador: "close", comparador: ">", contra: { indicador: "sma", n: "$sma" } } ] },
+  largo: {
+    entrada: { op: "Y", bloques: [ { indicador: "rsi", n: "$rsi_n", comparador: "<", valor: "$entrada" } ] },
+    salida:  { op: "O", bloques: [ { indicador: "rsi", n: "$rsi_n", comparador: ">", valor: "$salida" } ] }
+  },
+  stop: null, objetivo: null, salida_tiempo: null,
+  sizing: { tipo: "nocional", pct: 100 },
+  costes: { spread_pb: 0.134, comision_pb_lado: 0.01, deslizamiento_pb_lado: 3.0, swap_largo_pb_dia: -1.4368, swap_corto_pb_dia: 0.8013 },
+  corte: { tipo: "pct", valor: 70 },
+  optimizar: { entrada: [15, 20, 25, 30, 35], salida: [45, 50, 55, 60, 65] }
+};
+const $ = (id) => document.getElementById(id);
+const seg = (ms) => (ms / 1000).toFixed(2) + " s";
+$("spec").value = JSON.stringify(SPEC_ORO, null, 2);
+let py = null;
+
+async function arrancar() {
+  try {
+    let t = performance.now();
+    py = await loadPyodide();
+    $("t_py").textContent = seg(performance.now() - t);
+    t = performance.now();
+    await py.loadPackage(["numpy", "pandas"]);
+    $("t_pk").textContent = seg(performance.now() - t);
+    const r = await fetch("motor_tester.py", { cache: "no-store" });
+    if (!r.ok) throw new Error("no encuentro motor_tester.py junto a esta página");
+    py.FS.writeFile("motor_tester.py", await r.text());
+    py.runPython("import sys; sys.path.insert(0, '.'); import motor_tester as mt");
+    $("estado").textContent = "Listo. Sube un CSV (p. ej. datos/XAUUSD_D1_ejemplo.csv).";
+    $("correr").disabled = false;
+  } catch (e) {
+    $("estado").innerHTML = '<span class="ko">No se pudo arrancar: ' + e.message +
+      '. Abre la página con un servidor local (python -m http.server) en vez de doble clic.</span>';
+  }
+}
+
+async function correr() {
+  const f = $("csv").files[0];
+  if (!f) { $("estado").textContent = "Elige primero un CSV."; return; }
+  $("correr").disabled = true;
+  $("estado").textContent = "Validando…";
+  await new Promise((r) => setTimeout(r, 30));
+  try {
+    const texto = await f.text();
+    py.globals.set("TEXTO_CSV", texto);
+    py.globals.set("SPEC_JSON", $("spec").value);
+    let t = performance.now();
+    py.runPython("df = mt.cargar_csv(TEXTO_CSV)");
+    $("t_csv").textContent = seg(performance.now() - t);
+    t = performance.now();
+    const salida = py.runPython(`
+import json
+try:
+    _r = json.dumps(mt.validar(df, SPEC_JSON), ensure_ascii=False)
+except (mt.ErrorDatos, mt.ErrorSpec) as e:
+    _r = json.dumps({"error": str(e)}, ensure_ascii=False)
+_r`);
+    const ms = performance.now() - t;
+    $("t_val").textContent = seg(ms);
+    const res = JSON.parse(salida);
+    window.__resultado = res;
+    window.__ms_validar = ms;
+    if (res.error) {
+      $("veredicto").innerHTML = '<span class="ko">' + res.error + "</span>";
+    } else {
+      const f1 = res.f1;
+      $("veredicto").innerHTML = '<span class="' + (res.verdict.startsWith("PASA") ? "ok" : "ko") + '">' + res.verdict + "</span>" +
+        ` · PF IS ${f1.IS.pf.toFixed(2)} / OOS ${f1.OOS.pf.toFixed(2)} · ${f1.IS.n}/${f1.OOS.n} ops · MaxDD OOS ${(100 * f1.OOS.maxdd).toFixed(1)} %`;
+      $("pseudo").textContent = res.pseudocodigo;
+      const corto = { ...res, eq: `[${res.eq.length} puntos]`, dd: `[${res.dd.length}]`, velas: `[${res.velas.length}]`,
+                      trades: `[${res.trades.length} operaciones]` };
+      $("salida").textContent = JSON.stringify(corto, null, 2);
+    }
+    $("estado").textContent = "Hecho.";
+  } catch (e) {
+    $("estado").innerHTML = '<span class="ko">' + e.message + "</span>";
+  }
+  $("correr").disabled = false;
+}
+$("correr").addEventListener("click", correr);
+arrancar();
+</script>
+</body>
+</html>

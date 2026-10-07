@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="es" data-theme="oscuro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MEGA CUEVA TESTER</title>
+<meta name="description" content="MEGA CUEVA TESTER · Trade It Simple. Entiende y aplica el método TIS para validar una estrategia de trading: las 5 fases, la paridad con MT5 y una prueba inicial guiada.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Big+Shoulders+Display:wght@700;800;900&family=IBM+Plex+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/*__CSS__*/
+</style>
+</head>
+<body data-nivel="entender">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-ok" viewBox="0 0 16 16"><path d="M2.5 8.5l3.5 3.5 7.5-8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-ko" viewBox="0 0 16 16"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
+  <symbol id="i-pend" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3 2.4"/><path d="M8 4.8V8l2.2 1.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  <symbol id="i-aviso" viewBox="0 0 16 16"><path d="M8 1.8l6.6 12H1.4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M8 6.2v3.6M8 11.6v.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-fl" viewBox="0 0 16 16"><path d="M2 8h11M9 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-fli" viewBox="0 0 16 16"><path d="M14 8H3M7 4L3 8l4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-subir" viewBox="0 0 16 16"><path d="M8 11V2.5M4.5 6L8 2.5 11.5 6M2.5 10.5v3h11v-3" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-play" viewBox="0 0 16 16"><path d="M4 2.5l9 5.5-9 5.5z" fill="currentColor"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 16 16"><rect x="3.5" y="3.5" width="9" height="9" fill="currentColor"/></symbol>
+  <symbol id="i-tema" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8 2a6 6 0 0 1 0 12z" fill="currentColor"/></symbol>
+  <symbol id="i-ayuda" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M6.2 6.2a1.9 1.9 0 1 1 2.6 1.8c-.6.3-.8.7-.8 1.3v.3M8 11.4v.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  <symbol id="i-mas" viewBox="0 0 16 16"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+  <symbol id="i-copia" viewBox="0 0 16 16"><rect x="5" y="5" width="8.5" height="8.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M3 10.5V3h7.5" fill="none" stroke="currentColor" stroke-width="1.7"/></symbol>
+  <symbol id="i-desc" viewBox="0 0 16 16"><path d="M8 2.5V11M4.5 7.5L8 11l3.5-3.5M2.5 13.5h11" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-est" viewBox="-13 -13 26 26"><circle class="c" r="10"/><path class="x" d="M-6 0H6M0-6V6"/></symbol>
+</svg>
+
+<div class="app">
+<aside class="rail" aria-label="Navegación">
+  <a class="marca" href="#fases" aria-label="MEGA CUEVA TESTER, inicio"><span class="m1">Mega Cueva</span><span class="m2">Tester</span><span class="m3">Trade It Simple · método TIS de validación</span></a>
+  <nav class="travesia" role="tablist" aria-label="Estaciones" aria-orientation="vertical" id="travesia"></nav>
+  <div class="rail-pie">
+    <div>
+      <p class="rot" id="nivel-lb">Nivel de detalle</p>
+      <div class="seg nivel" role="group" aria-labelledby="nivel-lb" id="nivel">
+        <button type="button" data-n="entender" aria-pressed="true">Entender</button><button type="button" data-n="avanzado" aria-pressed="false">Avanzado</button>
+      </div>
+    </div>
+    <div class="herr">
+      <button type="button" class="btn ancho" id="b-cargar" title="Cargar un JSON de resultados del motor TIS"><svg><use href="#i-subir"/></svg><span class="tx">Cargar resultados (.json)</span></button>
+      <button type="button" class="btn prim ancho" id="b-pres" title="Modo presentación (tecla P)"><svg><use href="#i-play"/></svg><span class="tx">Presentar</span></button>
+      <button type="button" class="btn" id="b-tema" title="Cambiar tema claro / oscuro"><svg><use href="#i-tema"/></svg><span class="tx">Tema</span></button>
+      <button type="button" class="btn" id="b-ayuda" title="Cómo se usa (tecla ?)"><svg><use href="#i-ayuda"/></svg><span class="tx">Ayuda</span></button>
+    </div>
+    <input type="file" id="f-json" accept=".json,application/json" class="sr" tabindex="-1" aria-hidden="true">
+  </div>
+</aside>
+
+<main>
+  <div class="estado" aria-live="polite">
+    <div class="ds"><span class="tag demo" id="st-tag">Demo</span><b id="st-nombre">—</b><span id="st-desc" class="c-dim"></span></div>
+    <div class="der"><span class="pista" id="st-pista"></span></div>
+  </div>
+  <div class="vistas">
+
+<!-- ================= E0 · LAS FASES ================= -->
+<section class="vista" id="v-fases" role="tabpanel" aria-labelledby="t-fases"><div class="in">
+  <div class="nivel-fondo" aria-hidden="true" id="contornos"></div>
+  <div class="sobre">
+  <div class="intro-hero">
+    <div>
+      <p class="kk">MEGA CUEVA TESTER · E0 · Las fases del protocolo</p>
+      <h1>¿Tu estrategia <span>funciona</span>…<br>o solo funcionó?</h1>
+      <p class="en">Un backtest bonito no demuestra nada. El método TIS hace pasar cada idea por <b>cinco pruebas</b> y una comprobación con el <b>bróker real</b>. Aquí las ves, las entiendes y las aplicas a tu propia idea.</p>
+      <p class="av">Protocolo TIS: 5 fases en orden (IS/OOS con 4 criterios duros · walk-forward · meseta y anti-cliff · Monte Carlo 5.000 sims · stress) más <b>paridad MT5</b> (hora del servidor, costes reales y reconciliación con el Strategy Tester). Fallar una fase = no se avanza.</p>
+      <div class="acc">
+        <button type="button" class="btn prim" data-go="resumen">Ver la demo cargada <svg><use href="#i-fl"/></svg></button>
+        <button type="button" class="btn" data-go="prueba">Probar mi idea <svg><use href="#i-fl"/></svg></button>
+      </div>
+    </div>
+    <div class="queval">
+      <h3>Qué es validar</h3>
+      <p class="en">Es intentar <b>romper</b> tu estrategia antes de que la rompa el mercado. Si sobrevive a todo lo que le hacemos, tiene derecho a tocar dinero real. Si no, te has ahorrado perderlo.</p>
+      <p class="av">Validar = falsar. Cada fase tiene un criterio de aprobado explícito y numérico; los umbrales <span class="mono">[calibrable]</span> solo se cambian por estrategia con justificación. Los 4 criterios de la Fase 1 no se bajan.</p>
+      <p class="c-dim2" style="font-size:.9rem;margin:0">La demo es una regla real del oro con datos de 1998 a 2026. No es una recomendación de inversión.</p>
+    </div>
+  </div>
+
+  <div class="trampas" role="list" aria-label="Por qué engañan los backtests">
+    <div class="trampa" role="listitem">
+      <svg viewBox="0 0 118 88" aria-hidden="true"><g fill="var(--caliza-3)"><circle cx="10" cy="60" r="3"/><circle cx="24" cy="38" r="3"/><circle cx="38" cy="55" r="3"/><circle cx="52" cy="30" r="3"/><circle cx="66" cy="48" r="3"/><circle cx="80" cy="22" r="3"/><circle cx="94" cy="40" r="3"/><circle cx="108" cy="16" r="3"/></g>
+        <path d="M10 60 L24 38 L38 55 L52 30 L66 48 L80 22 L94 40 L108 16" fill="none" stroke="var(--falla)" stroke-width="2.2"/><path d="M8 62 L110 18" fill="none" stroke="var(--pasa)" stroke-width="2.2" stroke-dasharray="5 4"/>
+        <text x="59" y="86" font-size="12" text-anchor="middle" fill="var(--caliza-3)" font-family="IBM Plex Mono,monospace">pico ≠ regla</text></svg>
+      <div><h4><small>TRAMPA 1</small>Sobreajuste</h4>
+        <p>Ajustas los números hasta que el pasado sale perfecto. Has aprendido <b>el ruido</b>, no la regla.</p>
+        <p class="ej" id="tr-ej1"></p></div>
+    </div>
+    <div class="trampa" role="listitem">
+      <svg viewBox="0 0 118 88" aria-hidden="true"><line x1="38" y1="8" x2="38" y2="72" stroke="var(--caliza-3)" stroke-width="1.5"/><rect x="31" y="20" width="14" height="40" fill="var(--falla)" opacity=".85"/>
+        <line x1="82" y1="12" x2="82" y2="70" stroke="var(--caliza-3)" stroke-width="1.5"/><rect x="75" y="24" width="14" height="30" fill="var(--pasa)" opacity=".85"/>
+        <path d="M46 60 H70" stroke="var(--cinta)" stroke-width="2" stroke-dasharray="4 3"/><path d="M66 56l5 4-5 4" fill="none" stroke="var(--cinta)" stroke-width="2"/>
+        <text x="38" y="86" font-size="12" text-anchor="middle" fill="var(--caliza-3)" font-family="IBM Plex Mono,monospace">hoy</text><text x="82" y="86" font-size="12" text-anchor="middle" fill="var(--caliza-3)" font-family="IBM Plex Mono,monospace">mañana</text></svg>
+      <div><h4><small>TRAMPA 2</small>Mirar el futuro</h4>
+        <p>Decidir con el cierre de hoy y <b>comprar a ese mismo cierre</b>. En real no llegas: la orden entra en la apertura siguiente.</p>
+        <p class="ej">En TIS: señal al cierre, orden en la <b>apertura siguiente</b>, en hora del servidor MT5.</p></div>
+    </div>
+    <div class="trampa" role="listitem">
+      <svg viewBox="0 0 118 88" aria-hidden="true"><rect x="14" y="14" width="34" height="58" fill="var(--caliza-3)" opacity=".55"/><rect x="64" y="34" width="34" height="38" fill="var(--cinta)"/>
+        <path d="M64 34 H98" stroke="var(--falla)" stroke-width="2"/><text x="31" y="86" font-size="12" text-anchor="middle" fill="var(--caliza-3)" font-family="IBM Plex Mono,monospace">bruto</text><text x="81" y="86" font-size="12" text-anchor="middle" fill="var(--caliza-3)" font-family="IBM Plex Mono,monospace">neto</text></svg>
+      <div><h4><small>TRAMPA 3</small>Olvidar los costes</h4>
+        <p>Spread, comisión, deslizamiento y swap. Pequeños por operación, <b>enormes al cabo de los años</b>.</p>
+        <p class="ej" id="tr-ej3"></p></div>
+    </div>
+  </div>
+
+  <div class="galeria">
+    <section class="pan plano" aria-label="Recorrido del protocolo" style="padding:0">
+      <div class="ph"><h3><small>RECORRIDO</small>La galería se estrecha</h3><span class="nota en">Cada fase es un paso más estrecho. Pulsa una estación.</span><span class="nota av">Pulsa una estación · ← → con el foco en el gráfico</span></div>
+      <svg id="gal-svg" viewBox="0 0 860 262" role="group" aria-label="Las fases del protocolo TIS como una galería que se estrecha"></svg>
+    </section>
+    <section class="pan fase-det" id="fase-det" aria-live="polite" aria-label="Detalle de la fase"></section>
+  </div>
+  </div>
+</div></section>
+
+<!-- ================= E1 · RESUMEN ================= -->
+<section class="vista" id="v-resumen" role="tabpanel" aria-labelledby="t-resumen"><div class="in">
+  <div class="res-cab">
+    <div>
+      <p class="kk mono c-cinta" style="margin:0 0 .3rem;font-size:.8rem;letter-spacing:.14em">E1 · RESUMEN · LAS 4 PREGUNTAS EN 10 SEGUNDOS</p>
+      <h1 id="r-titulo">—</h1>
+      <p id="r-lema"></p>
+    </div>
+    <div class="regla" id="r-regla" aria-label="Regla"></div>
+  </div>
+  <div class="veredicto" id="r-veredicto"></div>
+  <div class="q4">
+    <article class="pan q">
+      <h3 class="qn"><small>01</small>¿Qué es?</h3>
+      <p id="r-quees"></p>
+      <dl class="kv" id="r-quees-kv"></dl>
+      <div class="pie"><button type="button" class="lnk" data-go="estrategia">Ver la regla paso a paso <svg><use href="#i-fl"/></svg></button></div>
+    </article>
+    <article class="pan q">
+      <h3 class="qn"><small>02</small>¿Funciona?</h3>
+      <div style="display:flex;align-items:flex-end;gap:.8rem"><span class="cifra" id="r-pf">—</span><span style="font-size:.95rem;line-height:1.3"><span class="term" data-t="pf">factor de beneficio</span><br><span class="c-dim" id="r-pf-sub"></span></span></div>
+      <p id="r-pftxt"></p>
+      <div class="pie"><button type="button" class="lnk" data-go="protocolo">Ver todas las pruebas <svg><use href="#i-fl"/></svg></button></div>
+    </article>
+    <article class="pan q">
+      <h3 class="qn"><small>03</small>¿Qué hace hoy?</h3>
+      <span class="cifra c-cinta" id="r-senal" style="font-size:2.9rem">—</span>
+      <p id="r-hoytxt"></p>
+      <div id="r-regleta-w"></div>
+      <p id="r-ultima" style="font-size:.92rem"></p>
+      <div class="pie"><button type="button" class="lnk" data-go="estrategia">Ver la decisión de hoy <svg><use href="#i-fl"/></svg></button></div>
+    </article>
+    <article class="pan q">
+      <h3 class="qn"><small>04</small>¿Cuánto gana y cuánto arriesga?</h3>
+      <dl class="kv" id="r-money"></dl>
+      <p id="r-sizing" style="font-size:.9rem"></p>
+      <div class="pie"><button type="button" class="lnk" data-go="backtest">Ver la curva completa <svg><use href="#i-fl"/></svg></button></div>
+    </article>
+  </div>
+  <section class="pan eqp" aria-label="Curva de capital">
+    <div class="ph"><h3 id="r-eqh">Así habría crecido 100</h3>
+      <span class="leyenda"><span><i style="background:var(--cinta)"></i>capital</span><span><i style="background:var(--caliza-3)"></i><span class="term" data-t="oos">fuera de muestra</span> a la derecha de la línea</span></span></div>
+    <div class="cv" id="cv-eqmini"><canvas role="img" aria-label="Curva de capital en base 100"></canvas><div class="tt"></div></div>
+  </section>
+</div></section>
+
+<!-- ================= E2 · ESTRATEGIA ================= -->
+<section class="vista" id="v-estrategia" role="tabpanel" aria-labelledby="t-estrategia"><div class="in">
+  <div class="vh"><div><p class="kk">E2 · Estrategia</p><h2>Así decide, cada día</h2><p class="sub" id="e-head"></p></div></div>
+  <div class="est-grid">
+    <section class="pan arbolp" aria-label="Árbol de decisión">
+      <div class="ph"><h3 id="e-mode">Árbol de decisión</h3>
+        <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+          <div class="seg" role="group" aria-label="Qué ruta mostrar"><button type="button" id="e-hoy" aria-pressed="true">Hoy</button><button type="button" id="e-op" aria-pressed="false">Una operación</button></div>
+          <button type="button" class="btn peq" id="e-prev" aria-label="Operación anterior"><svg><use href="#i-fli"/></svg></button>
+          <span class="mono c-dim" id="e-opn" style="min-width:3.5rem;text-align:center">#—</span>
+          <button type="button" class="btn peq" id="e-next" aria-label="Operación siguiente"><svg><use href="#i-fl"/></svg></button>
+        </div></div>
+      <svg id="arbol" viewBox="0 0 1300 380" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Árbol de decisión de la estrategia"></svg>
+      <p class="ruta" id="e-path" aria-live="polite"></p>
+    </section>
+    <aside class="pan reglap">
+      <div class="ph"><h3>La regla, en pasos</h3></div>
+      <ol id="e-pasos"></ol>
+      <div class="ph" style="margin:.2rem 0 0"><h3>Palabras clave</h3></div>
+      <div class="glos" id="e-glos"></div>
+    </aside>
+    <section class="pan preciop" aria-label="Gráfico de precio">
+      <div class="ph"><h3 id="e-preh">Precio · últimas velas</h3>
+        <span class="leyenda"><span><i style="background:var(--cinta)"></i>media lenta</span><span><i style="background:var(--caliza)"></i>oscilador</span><span>▲ compra · ▼ venta (pulsa para ver su ruta)</span></span></div>
+      <div class="cv" id="cv-price"><canvas role="img" aria-label="Velas diarias con media, oscilador y operaciones"></canvas><div class="tt"></div></div>
+    </section>
+  </div>
+</div></section>
+
+<!-- ================= E3 · PRUEBA INICIAL ================= -->
+<section class="vista" id="v-prueba" role="tabpanel" aria-labelledby="t-prueba"><div class="in">
+  <div class="vh"><div><p class="kk">E3 · Prueba inicial · Lo que necesitas para empezar</p><h2>Escribe tu idea. La traducimos.</h2>
+    <p class="sub en">Rellena los bloques como si se lo explicaras a alguien. A la derecha aparece <b>en vivo</b> lo que entendería el motor. Viene precargada con la estrategia del oro: cambia un número y mira cómo cambia todo.</p>
+    <p class="sub av">Formulario → <span class="mono">spec</span> JSON (contrato del motor TIS, versión 1) → pseudocódigo. Checklist de mínimos para correr la Fase 1 (IS/OOS) con costes del perfil de destino.</p></div>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap"><button type="button" class="btn" id="pi-demo">Restaurar la del oro</button><button type="button" class="btn" id="pi-vaciar">Empezar en blanco</button></div></div>
+  <div class="pi-grid">
+    <div id="pi-izq">
+      <form class="form" id="pi-form" autocomplete="off" onsubmit="return false">
+        <fieldset class="fs"><legend><small>01</small>Activo y datos</legend>
+          <p class="ayuda en">Qué operas, en qué gráfico y con qué histórico. La hora importa: TIS lo alinea todo a la <b>hora del servidor del bróker</b>.</p>
+          <p class="ayuda av">Paridad MT5: la vela D1 y la señal se calculan en hora de servidor (Darwinex GMT+3 con DST de EE. UU.).</p>
+          <div class="campos">
+            <div class="campo"><label for="f-nombre">Nombre de la idea</label><input type="text" id="f-nombre" data-k="nombre" placeholder="p. ej. Oro rebote"></div>
+            <div class="campo"><label for="f-simbolo">Activo (símbolo)</label><input type="text" id="f-simbolo" data-k="activo.simbolo" placeholder="p. ej. XAUUSD"></div>
+            <div class="campo"><label for="f-clase">Tipo de activo</label><select id="f-clase" data-k="activo.clase">
+              <option value="metal">Metal (oro, plata)</option><option value="indice">Índice</option><option value="forex">Divisa</option><option value="accion_etf">Acción / ETF</option><option value="cripto">Cripto</option><option value="energia">Energía</option></select></div>
+            <div class="campo"><label for="f-tf">Temporalidad</label><select id="f-tf" data-k="temporalidad">
+              <option value="M5">5 minutos</option><option value="M15">15 minutos</option><option value="H1">1 hora</option><option value="H4">4 horas</option><option value="D1">Diario</option><option value="W1">Semanal</option></select></div>
+            <div class="campo"><label for="f-dir">Dirección</label><select id="f-dir" data-k="direccion">
+              <option value="largo">Solo compras</option><option value="corto">Solo ventas en corto</option><option value="ambos">Compras y ventas</option></select></div>
+            <div class="campo"><label for="f-fuente">Fuente de datos</label><select id="f-fuente" data-k="datos.fuente">
+              <option value="darwinex_mt5">MT5 Darwinex</option><option value="csv_propio">CSV propio</option><option value="dukascopy">Dukascopy</option><option value="yahoo">Yahoo Finance</option></select></div>
+            <div class="campo ancho"><label for="f-zona">Zona horaria de las velas</label><select id="f-zona" data-k="datos.zona_horaria">
+              <option value="servidor_gmt3_usdst">Servidor del bróker (GMT+3, DST EE. UU.)</option><option value="utc">UTC</option><option value="nueva_york">Nueva York</option><option value="madrid">Madrid</option></select></div>
+            <div class="campo"><label for="f-desde">Datos desde</label><input type="date" id="f-desde" data-k="datos.desde"></div>
+            <div class="campo"><label for="f-hasta">Datos hasta</label><input type="date" id="f-hasta" data-k="datos.hasta"></div>
+          </div>
+        </fieldset>
+
+        <fieldset class="fs"><legend><small>02</small>Reglas</legend>
+          <p class="ayuda en">Cada bloque es una frase: <b>algo</b> · <b>comparado con</b> · <b>otra cosa</b>. Para entrar se tienen que cumplir <b>todos</b> los filtros y todas las condiciones de entrada. Para salir basta <b>una</b>.</p>
+          <p class="ayuda av">Entrada = AND(filtros) ∧ AND(entrada). Salida = OR(salida, stop, objetivo, tiempo). Evaluación al cierre de vela; ejecución según el campo de abajo.</p>
+          <div class="bl-t"><h4>Filtros <span>(contexto: cuándo se permite operar)</span></h4><button type="button" class="btn peq fant" data-add="filtros"><svg><use href="#i-mas"/></svg>Añadir filtro</button></div>
+          <div class="bloques" id="bl-filtros"></div>
+          <div class="bl-t"><h4>Entrada <span>(el disparo)</span></h4><button type="button" class="btn peq fant" data-add="entrada"><svg><use href="#i-mas"/></svg>Añadir condición</button></div>
+          <div class="bloques" id="bl-entrada"></div>
+          <div class="bl-t"><h4>Salida <span>(cuándo cerrar)</span></h4><button type="button" class="btn peq fant" data-add="salida"><svg><use href="#i-mas"/></svg>Añadir condición</button></div>
+          <div class="bloques" id="bl-salida"></div>
+          <div class="campos" style="margin-top:.6rem">
+            <div class="campo ancho"><label for="f-ejec">Cuándo se ejecuta la orden</label><select id="f-ejec" data-k="ejecucion.momento">
+              <option value="apertura_siguiente">Apertura de la vela siguiente</option><option value="cierre_misma_vela">Cierre de la misma vela</option></select></div>
+          </div>
+        </fieldset>
+
+        <fieldset class="fs"><legend><small>03</small>Gestión</legend>
+          <p class="ayuda en">Cuánto arriesgas y dónde te sales si va mal (o muy bien). Sin stop también vale, pero lo dirá la Fase 4.</p>
+          <p class="ayuda av">Stop/objetivo evaluados sobre bid/ask como el servidor MT5. Sizing por riesgo exige stop.</p>
+          <div class="campos">
+            <div class="campo"><label for="f-stop-t">Stop de pérdidas</label><select id="f-stop-t" data-k="gestion.stop.tipo"><option value="ninguno">Sin stop</option><option value="pct">% del precio</option><option value="atr">Múltiplo de ATR</option></select></div>
+            <div class="campo"><label for="f-stop-v">Valor del stop</label><input type="number" id="f-stop-v" data-k="gestion.stop.valor" step="0.1" min="0"></div>
+            <div class="campo"><label for="f-obj-t">Objetivo de beneficio</label><select id="f-obj-t" data-k="gestion.objetivo.tipo"><option value="ninguno">Sin objetivo</option><option value="pct">% del precio</option><option value="atr">Múltiplo de ATR</option></select></div>
+            <div class="campo"><label for="f-obj-v">Valor del objetivo</label><input type="number" id="f-obj-v" data-k="gestion.objetivo.valor" step="0.1" min="0"></div>
+            <div class="campo"><label for="f-tiempo">Salida por tiempo (velas)</label><input type="number" id="f-tiempo" data-k="gestion.salida_tiempo_velas" step="1" min="0" placeholder="vacío = sin límite"></div>
+            <div class="campo"><label for="f-siz-t">Tamaño de posición</label><select id="f-siz-t" data-k="sizing.tipo"><option value="pct_capital">% del capital (nocional)</option><option value="riesgo_pct">% de riesgo hasta el stop</option><option value="lotes_fijos">Lotes fijos</option></select></div>
+            <div class="campo"><label for="f-siz-v">Valor</label><input type="number" id="f-siz-v" data-k="sizing.valor" step="0.01" min="0"></div>
+          </div>
+        </fieldset>
+
+        <fieldset class="fs"><legend><small>04</small>Costes</legend>
+          <p class="ayuda en">Lo que se queda el bróker en cada operación. Precargados con los del <b>terminal real de Darwinex</b> para el oro. Si pones 0, el backtest te mentirá a favor.</p>
+          <p class="ayuda av">pb = puntos básicos (0,01 %) sobre el nocional. Spread total; comisión y deslizamiento por lado. Swap en % anual del nocional. La Fase 5 los multiplica ×2.</p>
+          <div class="campos">
+            <div class="campo"><label for="f-perfil">Perfil de costes</label><select id="f-perfil" data-k="costes.perfil"><option value="darwinex_mt5">Darwinex MT5 (leído del terminal)</option><option value="manual">Manual</option></select></div>
+            <div class="campo"><label for="f-spread">Spread (pb)</label><input type="number" id="f-spread" data-k="costes.spread_pb" step="0.01" min="0"></div>
+            <div class="campo"><label for="f-com">Comisión por lado (pb)</label><input type="number" id="f-com" data-k="costes.comision_pb_lado" step="0.01" min="0"></div>
+            <div class="campo"><label for="f-desl">Deslizamiento por lado (pb)</label><input type="number" id="f-desl" data-k="costes.deslizamiento_pb_lado" step="0.1" min="0"></div>
+            <div class="campo"><label for="f-swl">Swap compras (% anual)</label><input type="number" id="f-swl" data-k="costes.swap_largo_pct_anual" step="0.01"></div>
+            <div class="campo"><label for="f-sws">Swap ventas (% anual)</label><input type="number" id="f-sws" data-k="costes.swap_corto_pct_anual" step="0.01"></div>
+          </div>
+          <p class="campo pista-c" id="f-costes-fuente" style="margin:.6rem 0 0"></p>
+        </fieldset>
+
+        <fieldset class="fs"><legend><small>05</small>Corte diseño / prueba</legend>
+          <p class="ayuda en">Separas el histórico en dos: con la primera parte <b>diseñas</b>; la segunda la guardas bajo llave y solo la miras al final. Es la <b>prueba honesta</b>.</p>
+          <p class="ayuda av">Split IS/OOS por defecto 70/30 [calibrable]. El OOS no se toca durante el diseño. Criterios de Fase 1 sobre el OOS completo.</p>
+          <div class="campos">
+            <div class="campo"><label for="f-corte-t">Cómo cortar</label><select id="f-corte-t" data-k="corte.tipo"><option value="fecha">Por fecha</option><option value="pct">Por porcentaje</option></select></div>
+            <div class="campo"><label for="f-corte-f">Fecha de corte</label><input type="date" id="f-corte-f" data-k="corte.fecha"></div>
+            <div class="campo"><label for="f-corte-p">% para diseñar</label><input type="number" id="f-corte-p" data-k="corte.is_pct" step="1" min="10" max="95"></div>
+          </div>
+          <div class="ind-cortes" id="f-corte-vis" aria-hidden="true"></div>
+        </fieldset>
+      </form>
+      <div id="pi-res" class="pi-res" hidden></div>
+    </div>
+
+    <div class="pi-der">
+      <section class="pan" aria-label="Traducción en vivo">
+        <div class="ph"><h3><small>EN VIVO</small>Lo que entiende el motor</h3>
+          <div class="seg" role="group" aria-label="Formato"><button type="button" data-fmt="pseudo" aria-pressed="true">Pseudocódigo</button><button type="button" data-fmt="json" aria-pressed="false">spec JSON</button></div></div>
+        <pre class="codigo" id="pi-codigo" aria-live="polite" tabindex="0"></pre>
+        <div style="display:flex;gap:.5rem;margin-top:.6rem;flex-wrap:wrap">
+          <button type="button" class="btn peq" id="pi-copiar"><svg><use href="#i-copia"/></svg>Copiar</button>
+          <button type="button" class="btn peq" id="pi-bajar"><svg><use href="#i-desc"/></svg>Descargar spec.json</button>
+        </div>
+      </section>
+      <section class="pan" aria-label="Qué falta para correrla">
+        <div class="ph"><h3><small>CHECKLIST</small>¿Lista para correr?</h3><span class="nota" id="pi-cuenta"></span></div>
+        <ul class="lista-ok" id="pi-check"></ul>
+      </section>
+      <section class="correr">
+        <button type="button" class="btn prim" id="pi-correr"><svg><use href="#i-play"/></svg>Correr prueba inicial</button>
+        <div class="prog" aria-hidden="true"><i id="pi-prog"></i></div>
+        <p class="c-dim2" style="margin:0;font-size:.85rem" id="pi-nota-motor"></p>
+      </section>
+    </div>
+  </div>
+</div></section>
+
+<!-- ================= E4 · BACKTEST ================= -->
+<section class="vista" id="v-backtest" role="tabpanel" aria-labelledby="t-backtest"><div class="in">
+  <div class="vh"><div><p class="kk">E4 · Backtest</p><h2>Toda la historia</h2><p class="sub" id="b-head"></p></div></div>
+  <div class="bt-grid">
+    <section class="pan eqbig" aria-label="Curva de capital y caídas">
+      <div class="ph"><h3>Capital <span class="c-dim2" style="font-size:.9rem">(base 100)</span> y <span class="term" data-t="dd">caídas</span></h3>
+        <div style="display:flex;gap:.6rem;flex-wrap:wrap">
+          <div class="seg" role="group" aria-label="Periodo" id="b-range"></div>
+          <div class="seg" role="group" aria-label="Operaciones"><button type="button" id="b-ops" aria-pressed="true">Operaciones</button></div>
+        </div></div>
+      <div class="cv" id="cv-eq"><canvas role="img" aria-label="Curva de capital y drawdown"></canvas><div class="tt"></div></div>
+      <div class="leyenda" style="margin-top:.5rem"><span><i style="background:var(--cinta)"></i>capital</span><span><i style="background:var(--falla)"></i>caída desde el máximo</span><span><i style="background:var(--pasa);height:.5rem;width:.5rem;border-radius:50%"></i>operación ganadora</span><span><i style="background:var(--falla);height:.5rem;width:.5rem;border-radius:50%"></i>perdedora (pulsa para abrirla)</span></div>
+    </section>
+    <section class="pan" aria-label="Comparativa dentro y fuera de muestra">
+      <div class="ph"><h3>Diseño <span class="c-dim2">vs</span> <span class="term" data-t="oos">prueba honesta</span></h3></div>
+      <table class="cmp" id="b-cmp"></table>
+    </section>
+    <section class="pan annp" aria-label="Resultado por año">
+      <div class="ph"><h3>Año a año</h3><span class="nota" id="b-anios"></span></div>
+      <div class="cv" id="cv-anual"><canvas role="img" aria-label="Barras de resultado anual"></canvas><div class="tt"></div></div>
+    </section>
+  </div>
+</div></section>
+
+<!-- ================= E5 · OPERACIONES ================= -->
+<section class="vista" id="v-operaciones" role="tabpanel" aria-labelledby="t-operaciones"><div class="in" style="height:100%">
+  <div class="vh"><div><p class="kk">E5 · Operaciones</p><h2>Una a una</h2><p class="sub" id="o-head"></p></div></div>
+  <div class="op-grid">
+    <section class="pan tablap" aria-label="Lista de operaciones">
+      <div class="filtros"><div class="seg" role="group" aria-label="Filtro" id="o-filt"></div><span class="mono c-dim" id="o-count"></span></div>
+      <div class="tscroll" id="o-scroll">
+        <table class="ops" aria-label="Operaciones">
+          <thead><tr>
+            <th scope="col"><button type="button" data-s="n">#</button></th><th scope="col"><button type="button" data-s="fi">Entrada</button></th><th scope="col"><button type="button" data-s="fo">Salida</button></th>
+            <th scope="col"><button type="button" data-s="pi">Precio entr.</button></th><th scope="col"><button type="button" data-s="dias">Días</button></th><th scope="col"><button type="button" data-s="ret">Resultado</button></th></tr></thead>
+          <tbody id="o-body"></tbody>
+        </table>
+      </div>
+      <div class="c-dim2" style="font-size:.85rem;margin-top:.5rem">Pulsa la cabecera para ordenar · ↑ ↓ para recorrer · resultado con costes</div>
+    </section>
+    <section class="pan detp" id="o-det" aria-live="polite" aria-label="Ficha de la operación"></section>
+    <section class="pan barsp" aria-label="Resultado de cada operación">
+      <div class="ph"><h3>Cada operación, en orden</h3><span class="nota">pulsa una barra</span></div>
+      <div class="cv" id="cv-bars"><canvas role="img" aria-label="Barras con el resultado de cada operación"></canvas><div class="tt"></div></div>
+    </section>
+  </div>
+</div></section>
+
+<!-- ================= E6 · PROTOCOLO COMPLETO ================= -->
+<section class="vista" id="v-protocolo" role="tabpanel" aria-labelledby="t-protocolo"><div class="in">
+  <div class="vh"><div><p class="kk">E6 · Protocolo completo · Todas las pruebas TIS</p><h2>El veredicto</h2><p class="sub" id="p-head"></p></div></div>
+  <div class="pr-grid">
+    <div class="pr-lista">
+      <div class="vglobal" id="p-global"></div>
+      <div role="tablist" aria-label="Pruebas" aria-orientation="vertical" id="p-lista" style="display:flex;flex-direction:column;gap:.5rem"></div>
+    </div>
+    <section class="pan pr-det" id="p-det" role="tabpanel" aria-live="polite"></section>
+  </div>
+</div></section>
+
+  </div>
+</main>
+</div>
+
+<div class="pres-pie" aria-hidden="true"><span id="pp-pos">E0</span><span>← → avanzar · N nivel · Esc salir</span><span>MEGA CUEVA TESTER · TIS</span></div>
+<div id="tip" role="tooltip"></div>
+<div class="ovl" id="ayuda" role="dialog" aria-modal="true" aria-labelledby="ayuda-h">
+  <div class="dlg">
+    <h2 id="ayuda-h">Cómo se usa</h2>
+    <ul>
+      <li><b>Siete estaciones</b>, de lo general a lo concreto: E0 Las fases → E1 Resumen → E2 Estrategia → E3 Prueba inicial → E4 Backtest → E5 Operaciones → E6 Protocolo. Teclas <kbd>0</kbd>–<kbd>6</kbd> o <kbd>←</kbd> <kbd>→</kbd>.</li>
+      <li><b>Entender / Avanzado</b> (abajo a la izquierda o tecla <kbd>N</kbd>): lenguaje llano o cifras y criterios técnicos.</li>
+      <li>Las <span class="term" data-t="pf">palabras subrayadas con puntos</span> se explican al pasar el ratón o con <kbd>Tab</kbd>.</li>
+      <li><b>Prueba inicial</b>: edita los bloques y mira cómo cambia el pseudocódigo. «Correr prueba inicial» enseña la Fase 1; el motor real la calculará con tu especificación.</li>
+      <li><b>Cargar resultados (.json)</b>: abre un fichero del motor TIS (mismo formato que la demo). También puedes arrastrarlo a la ventana.</li>
+      <li><b>Presentar</b> (<kbd>P</kbd>): letra mayor; <kbd>→</kbd> o <kbd>Espacio</kbd> avanza (en E0 y E6 recorre primero cada fase); <kbd>Esc</kbd> sale.</li>
+    </ul>
+    <button type="button" class="btn prim" data-close>Entendido</button>
+  </div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const DEMO_DATOS = /*__DATOS__*/;
+</script>
+<script>
+/*__JS__*/
+</script>
+</body>
+</html>

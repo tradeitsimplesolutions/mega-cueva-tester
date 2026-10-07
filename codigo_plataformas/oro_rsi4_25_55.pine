@@ -1,0 +1,73 @@
+//@version=6
+// ============================================================================
+//  Oro RSI(4) 25/55 — Trade It Simple (demo MEGA CUEVA TESTER)
+//  Activo: XAUUSD · Marco: diario (D1) · Solo largos · Tamaño 100 % del capital
+//
+//  Reglas (las mismas que el motor Sentinel):
+//   1. Filtro de tendencia: el cierre está por ENCIMA de la media simple de 200.
+//   2. Entrada: el RSI(4) cierra por DEBAJO de 25 -> compra en la apertura siguiente.
+//   3. Salida: el RSI(4) cierra por ENCIMA de 55 -> venta en la apertura siguiente.
+//   Una sola posición a la vez, sin stop ni objetivo fijo.
+//
+//  RSI: ta.rsi usa la media de Wilder (RMA), igual que el motor Sentinel.
+//  Las diferencias con el backtest de referencia vienen del feed de datos de
+//  TradingView (no es el de Darwinex) y de los costes que configures.
+//
+//  Ejecución: la señal se calcula al cierre de la vela y la orden se llena en la
+//  APERTURA de la vela siguiente (process_orders_on_close = false).
+//
+//  Comisión y deslizamiento: Pine no deja que sean inputs del script. Cámbialos
+//  aquí abajo (commission_value / slippage) o en Ajustes -> Propiedades.
+//  Por defecto 0.03 % por lado = coste que asume Sentinel para el oro en Darwinex
+//  (comisión 0.01 pb + deslizamiento 3 pb; el spread en la apertura es ~0.13 pb).
+//  El SWAP de mantener el largo (en Darwinex, negativo) NO se puede modelar en Pine:
+//  el resultado de TradingView sale algo más optimista que el de Sentinel.
+// ============================================================================
+strategy("Oro RSI(4) 25/55 · TIS",
+     overlay                 = false,
+     initial_capital         = 100000,
+     currency                = currency.USD,
+     default_qty_type        = strategy.percent_of_equity,
+     default_qty_value       = 100,
+     pyramiding              = 0,
+     commission_type         = strategy.commission.percent,
+     commission_value        = 0.03,     // % por lado (edítalo)
+     slippage                = 0,        // ticks (edítalo)
+     process_orders_on_close = false,
+     calc_on_every_tick      = false,
+     margin_long             = 100)
+
+// ---------- Parámetros ----------
+rsiLen   = input.int(4,     "Periodo RSI",               minval = 2)
+nivelIn  = input.float(25., "RSI de entrada (compra si <)", step = 1)
+nivelOut = input.float(55., "RSI de salida (vende si >)",   step = 1)
+smaLen   = input.int(200,   "Media simple de tendencia", minval = 10)
+desde    = input.time(timestamp("1998-01-01"), "Operar desde")
+
+// ---------- Indicadores ----------
+rsiVal  = ta.rsi(close, rsiLen)      // Wilder
+smaVal  = ta.sma(close, smaLen)
+enFecha = time >= desde
+
+// ---------- Señales (al cierre de la vela) ----------
+enTendencia = close > smaVal
+senalCompra = enFecha and enTendencia and rsiVal < nivelIn and strategy.position_size == 0
+senalVenta  = strategy.position_size > 0 and rsiVal > nivelOut
+
+if senalCompra
+    strategy.entry("Largo", strategy.long, comment = "RSI<" + str.tostring(nivelIn))
+
+if senalVenta
+    strategy.close("Largo", comment = "RSI>" + str.tostring(nivelOut))
+
+// ---------- Gráficos ----------
+plot(rsiVal, "RSI(4)", color = color.new(#f5b301, 0), linewidth = 2)
+hline(nivelIn,  "Entrada 25", color = color.new(color.green, 0), linestyle = hline.style_dashed)
+hline(nivelOut, "Salida 55",  color = color.new(color.red, 0),   linestyle = hline.style_dashed)
+hline(50, "50", color = color.new(color.gray, 70), linestyle = hline.style_dotted)
+bgcolor(senalCompra ? color.new(color.green, 80) : na, title = "Señal de compra")
+bgcolor(senalVenta  ? color.new(color.red, 80)   : na, title = "Señal de venta")
+
+// Media de 200 dibujada sobre el precio
+plot(smaVal, "SMA 200", color = enTendencia ? color.new(color.teal, 0) : color.new(color.gray, 0),
+     linewidth = 2, force_overlay = true)

@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "nombre": "Oro RSI(4) 25/55",
+  "activo": {"simbolo": "XAUUSD", "clase": "metal"},
+  "temporalidad": "D1",
+  "direccion": "largo",
+  "datos": {"fuente": "darwinex_mt5", "desde": "1998-04-22", "hasta": "2026-10-02", "zona_horaria": "servidor_gmt3_usdst"},
+  "reglas": {
+    "filtros": [{"izq": {"tipo": "precio"}, "op": ">", "der": {"tipo": "sma", "periodo": 200}}],
+    "entrada": [{"izq": {"tipo": "rsi", "periodo": 4}, "op": "<", "der": {"tipo": "num", "valor": 25}}],
+    "salida":  [{"izq": {"tipo": "rsi", "periodo": 4}, "op": ">", "der": {"tipo": "num", "valor": 55}}]
+  },
+  "ejecucion": {"momento": "apertura_siguiente", "orden": "mercado"},
+  "gestion": {"stop": {"tipo": "ninguno", "valor": null}, "objetivo": {"tipo": "ninguno", "valor": null}, "salida_tiempo_velas": null},
+  "sizing": {"tipo": "pct_capital", "valor": 100},
+  "costes": {"perfil": "darwinex_mt5", "spread_pb": 1.03, "comision_pb_lado": 0.01, "deslizamiento_pb_lado": 3,
+             "swap_largo_pct_anual": -5.39, "swap_corto_pct_anual": 3.07},
+  "corte": {"tipo": "fecha", "fecha": "2018-03-08", "is_pct": 70, "fecha_efectiva": "2018-03-08"}
+}

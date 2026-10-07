@@ -1,0 +1,43 @@
+{
+  "nombre": "Oro RSI(4) 25/55",
+  "activo": "XAUUSD",
+  "temporalidad": "D1",
+  "direccion": "largo",
+  "parametros": {"rsi_n": 4, "entrada": 25, "salida": 55, "sma": 200},
+  "filtros": {
+    "op": "Y",
+    "bloques": [
+      {"indicador": "close", "comparador": ">", "contra": {"indicador": "sma", "n": "$sma"}}
+    ]
+  },
+  "largo": {
+    "entrada": {
+      "op": "Y",
+      "bloques": [
+        {"indicador": "rsi", "n": "$rsi_n", "comparador": "<", "valor": "$entrada"}
+      ]
+    },
+    "salida": {
+      "op": "O",
+      "bloques": [
+        {"indicador": "rsi", "n": "$rsi_n", "comparador": ">", "valor": "$salida"}
+      ]
+    }
+  },
+  "stop": null,
+  "objetivo": null,
+  "salida_tiempo": null,
+  "sizing": {"tipo": "nocional", "pct": 100},
+  "costes": {
+    "spread_pb": 0.134,
+    "comision_pb_lado": 0.01,
+    "deslizamiento_pb_lado": 3.0,
+    "swap_largo_pb_dia": -1.4368,
+    "swap_corto_pb_dia": 0.8013
+  },
+  "corte": {"tipo": "pct", "valor": 70},
+  "optimizar": {
+    "entrada": [15, 20, 25, 30, 35],
+    "salida": [45, 50, 55, 60, 65]
+  }
+}
