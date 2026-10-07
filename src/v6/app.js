@@ -17,7 +17,7 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;',
 const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const ts=s=>Date.parse(String(s).slice(0,10)+'T00:00:00Z');
 const store={get(k){try{return localStorage.getItem('tis5_'+k)}catch(e){return null}},set(k,v){try{localStorage.setItem('tis5_'+k,v)}catch(e){}}};
-const CMPS={'>':'>','<':'<','>=':'≥','<=':'≤','cruza_arriba':'cruza ↑','cruza_abajo':'cruza ↓'};
+const CMPS={'>':'>','<':'<','>=':'≥','<=':'≤','cruza_arriba':'cruza ↑','cruza_abajo':'cruza ↓','x_factor':'×'};
 const RM=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
 const yr=s=>String(s).slice(0,4);
 
@@ -593,7 +593,7 @@ const IND=[['precio','Cierre',0],['apertura','Apertura',0],['maximo','Máximo',0
 const OPS_SESION=new Set(IND.filter(x=>x[3]==='s').map(x=>x[0]));
 const INTRADIA=tf=>['M5','M15','H1','H4'].includes(tf);
 const ZSES={'America/New_York':'hora de Nueva York','Europe/London':'hora de Londres','Europe/Madrid':'hora de Madrid','Europe/Berlin':'hora de Fráncfort','Asia/Tokyo':'hora de Tokio','UTC':'UTC'};
-const CMP=[['>','mayor que'],['<','menor que'],['>=','mayor o igual que'],['<=','menor o igual que'],['cruza_arriba','cruza hacia arriba'],['cruza_abajo','cruza hacia abajo']];
+const CMP=[['>','mayor que'],['<','menor que'],['>=','mayor o igual que'],['<=','menor o igual que'],['cruza_arriba','cruza hacia arriba'],['cruza_abajo','cruza hacia abajo'],['x_factor','× múltiplo de']];
 const TFN={M5:'vela de 5 minutos',M15:'vela de 15 minutos',H1:'vela horaria',H4:'vela de 4 horas',D1:'vela diaria',W1:'vela semanal'};
 const ZN={servidor_gmt3_usdst:'hora servidor GMT+3, DST EE. UU.',utc:'UTC',nueva_york:'hora de Nueva York',madrid:'hora de Madrid'};
 const clone=o=>JSON.parse(JSON.stringify(o));
@@ -605,7 +605,7 @@ function opTxt(o){const t=opTxt0(o);return o&&o.desfase>0&&DESF_OK(o)?t+' de hac
 function opTxt0(o){if(!o)return '?';const p=o.periodo;if(o.tipo==='nivel')return o.nombre||'¿nivel?';if(/^(sesion_|vela_sesion)/.test(o.tipo)){const M={sesion_anterior_max:'máx. sesión anterior',sesion_anterior_min:'mín. sesión anterior',sesion_anterior_apertura:'apertura sesión anterior',sesion_anterior_cierre:'cierre sesión anterior',sesion_max:'máx. de la sesión',sesion_min:'mín. de la sesión',sesion_apertura:'apertura de la sesión',vela_sesion_max:'máx. de la vela k',vela_sesion_min:'mín. de la vela k',vela_sesion_apertura:'apertura de la vela k',vela_sesion_cierre:'cierre de la vela k',vela_sesion:'nº de vela de la sesión'};return(M[o.tipo]||o.tipo).replace(/ k$/,' '+(o.k??'?'))}switch(o.tipo){case 'precio':return 'cierre';case 'apertura':return 'apertura';case 'maximo':return 'máximo';case 'minimo':return 'mínimo';
   case 'sma':return `SMA(${p??'?'})`;case 'ema':return `EMA(${p??'?'})`;case 'rsi':return `RSI(${p??'?'})`;case 'atr':return `ATR(${p??'?'})`;case 'max_n':return `máx. ${p??'?'} velas`;case 'min_n':return `mín. ${p??'?'} velas`;
   case 'num':return o.valor==null||o.valor===''?'?':nf(+o.valor,(+o.valor)%1?2:0)}return '?'}
-function condTxt(c){return `${opTxt(c.izq)} ${CMPS[c.op]||c.op} ${opTxt(c.der)}`}
+function condTxt(c){if(c.op==='x_factor')return `${opTxt(c.izq)} × ${c.factor??'?'}`;return `${opTxt(c.izq)} ${CMPS[c.op]||c.op} ${opTxt(c.der)}`}
 function nivNombres(s){return((s||SPEC).niveles||[]).map(n=>n&&n.nombre).filter(Boolean)}
 function opValido(o,nom){if(!o)return false;const t=IND.find(x=>x[0]===o.tipo);if(!t)return false;if(o.desfase!=null&&!(Number.isInteger(+o.desfase)&&+o.desfase>=0))return false;if(t[2]===1)return o.periodo>0&&Number.isFinite(+o.periodo);if(t[2]===2)return o.valor!==''&&o.valor!=null&&Number.isFinite(+o.valor);
   if(t[2]===3)return o.k>0&&Number.isInteger(+o.k);if(t[2]===4)return !!o.nombre&&(nom||nivNombres()).includes(o.nombre);return true}
@@ -624,9 +624,12 @@ function editOp(obj,key,el,e){const p=el.dataset.p,o=obj[key]||{};
     if(t[2]===3)n.k=o.k||1;if(t[2]===4)n.nombre=nivNombres()[0]||'';obj[key]=n;return true}
   o[p]=p==='nombre'?el.value:el.value===''?null:+el.value;obj[key]=o;return false}
 function condList(g){return /^p\d+$/.test(g)?SPEC.reglas.pasos[+g.slice(1)].condiciones:SPEC.reglas[g]}
-function bloquesHTML(g,L,vacio){return L.length?L.map((c,i)=>`<div class="bloque" data-g="${g}" data-i="${i}"><span class="y">${i?'Y':'SI'}</span>${operandoHTML(c.izq,'izq')}
-    <select data-p="op" aria-label="Comparador">${CMP.map(([k,l])=>`<option value="${k}"${c.op===k?' selected':''}>${l}</option>`).join('')}</select>${operandoHTML(c.der,'der')}
-    <button type="button" class="quita" aria-label="Quitar este bloque" title="Quitar">✕</button></div>`).join(''):`<div class="vacio-b">${vacio}</div>`}
+function bloquesHTML(g,L,vacio){return L.length?L.map((c,i)=>{
+  const xf=c.op==='x_factor';
+  const derHTML=xf?`<input type="number" class="xf-val" data-p="x_factor_val" step="0.1" min="0.01" value="${c.factor??''}" placeholder="2" aria-label="Multiplicador" title="Escribe el multiplicador. Ej: ATR(14) × 4">`:operandoHTML(c.der,'der');
+  return `<div class="bloque" data-g="${g}" data-i="${i}"><span class="y">${i?'Y':'SI'}</span>${operandoHTML(c.izq,'izq')}
+    <select data-p="op" aria-label="Comparador">${CMP.map(([k,l])=>`<option value="${k}"${c.op===k?' selected':''}>${l}</option>`).join('')}</select>${derHTML}
+    <button type="button" class="quita" aria-label="Quitar este bloque" title="Quitar">✕</button></div>`}).join(''):`<div class="vacio-b">${vacio}</div>`}
 function normSpec(s){s=s||SPEC;if(!s.sesion||typeof s.sesion!=='object')s.sesion={zona_horaria:'America/New_York',inicio:'09:30',fin:'16:00',cerrar_al_final:false,max_operaciones_dia:null};
   if(s.sesion_on==null)s.sesion_on=false;if(!Array.isArray(s.niveles))s.niveles=[];if(!s.reglas)s.reglas={};['filtros','entrada','salida','pasos'].forEach(g=>{if(!Array.isArray(s.reglas[g]))s.reglas[g]=[]});
   s.reglas.pasos.forEach(p=>{if(!Array.isArray(p.condiciones))p.condiciones=[]});if(s.reglas.salida_modo!=='todas')s.reglas.salida_modo='cualquiera';if(!s.ejecucion)s.ejecucion={momento:'apertura_siguiente',orden:'mercado'};return s}
@@ -661,8 +664,10 @@ function renderBloques(){renderNiveles();renderCond()}
 function onBloque(e){const b=e.target.closest('.bloque');if(!b)return;const g=b.dataset.g,i=+b.dataset.i,L=condList(g),c=L[i];if(!c)return;
   if(e.type==='click'){if(e.target.closest('.quita')){L.splice(i,1);renderCond();cambioReglas()}return}
   const el=e.target,p=el.dataset.p;if(!p)return;
-  if(p==='op'){c.op=el.value}else{const lado=el.closest('.operando').dataset.lado;
-    if(editOp(c,lado,el,e)){renderCond();const nb=$(`.bloque[data-g="${g}"][data-i="${i}"] .operando[data-lado="${lado}"] select`);nb&&nb.focus()}}
+  if(p==='op'){c.op=el.value;if(el.value==='x_factor'&&!c.factor)c.factor=2;renderCond()}
+  else if(p==='x_factor_val'){c.factor=el.value===''?null:+el.value}
+  else{const lado=el.closest('.operando')?.dataset.lado;
+    if(lado&&editOp(c,lado,el,e)){renderCond();const nb=$(`.bloque[data-g="${g}"][data-i="${i}"] .operando[data-lado="${lado}"] select`);nb&&nb.focus()}}
   cambioReglas()}
 /* parámetros de la meseta: mismos nombres que el motor (adaptar_spec_app) */
 function candidatos(){const out=[],usados=new Set(),perKey={};const nuevo=b=>{let n=b,k=2;while(usados.has(n)){n=b+'_'+k;k++}usados.add(n);return n};
@@ -774,7 +779,7 @@ function checklist(){const s=SPEC,R=s.reglas,G=s.gestion,c=s.costes,out=[];const
   ok(isNaN(a)||isNaN(b)||b<=a?'falla':anios<5?'aviso':'pasa','Histórico',isNaN(anios)||b<=a?'Revisa las fechas':nf(anios,1)+' años'+(anios<5?' (pocos)':''));
   ok(s.datos.zona_horaria==='servidor_gmt3_usdst'?'pasa':'aviso','Hora del bróker',s.datos.zona_horaria==='servidor_gmt3_usdst'?'Servidor MT5':'Otra zona: otra vela');
   const P=R.pasos||[],todas=[...R.filtros,...R.entrada,...R.salida,...P.flatMap(x=>x.condiciones)];
-  const malas=todas.filter(x=>!opValido(x.izq)||!opValido(x.der)).length+(s.niveles||[]).filter(n=>!n.nombre||!opValido(n.valor)).length
+  const malas=todas.filter(x=>x.op==='x_factor'?(!opValido(x.izq)||!(x.factor>0)):(!opValido(x.izq)||!opValido(x.der))).length+(s.niveles||[]).filter(n=>!n.nombre||!opValido(n.valor)).length
     +P.filter(x=>!x.condiciones.length||(x.ventana&&!(x.ventana.velas>=1))).length;
   ok(R.entrada.length||P.length?'pasa':'falla','Entrada',P.length?P.length+' paso(s)'+(R.entrada.length?' + '+R.entrada.length+' cond.':'')+(R.filtros.length?' + '+R.filtros.length+' filtro(s)':''):R.entrada.length?R.entrada.length+' cond. + '+R.filtros.length+' filtro(s)':'Añade una condición');
   const intra=INTRADIA(s.temporalidad),sesOn=intra&&s.sesion_on,usa=usaSesion(s);
