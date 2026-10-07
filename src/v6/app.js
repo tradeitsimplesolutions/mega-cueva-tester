@@ -912,7 +912,19 @@ let corriendo=false,N4TXT='';
 const ETAPAS=['Cargando motor','Leyendo datos','Fase 1','Fase 2','Fase 3','Fase 4','Fase 5','Listo'];
 function pintarEtapa(txt,p){const bar=$('#pi-prog');if(p!=null)bar.style.width=Math.max(3,Math.min(100,p))+'%';if(txt)$('#pi-nota-motor').textContent=txt;
   const k=ETAPAS.findIndex(e=>String(txt||'').startsWith(e));if(k>=0)$$('#pi-etapas span').forEach((s,i)=>{s.className=i<k?'ya':i===k?'on':''})}
+/* Los datos cargados tienen que ser del activo y la temporalidad de la regla (2026-10-07: corría NAS100 sobre el oro). */
+const SIM_ALIAS={NDX:'NAS100',US100:'NAS100',USTEC:'NAS100',NASDAQ:'NAS100',NASDAQ100:'NAS100',NQ:'NAS100',NAS:'NAS100',GOLD:'XAUUSD',ORO:'XAUUSD',XAU:'XAUUSD'};
+const simNorm=x=>{const k=String(x||'').toUpperCase().replace(/[^A-Z0-9]/g,'');return SIM_ALIAS[k]||k};
+function datosCargados(){if(!CSV)return{s:'XAUUSD',tf:'D1',txt:'los de ejemplo del oro (XAUUSD diario)'};
+  if(CSV.nombre==='NDX_D1_ejemplo.csv')return{s:'NAS100',tf:'D1',txt:'los de ejemplo del Nasdaq (NDX diario)'};
+  if(CSV.nombre==='NAS100_M15_ejemplo.csv')return{s:'NAS100',tf:'M15',txt:'los de ejemplo del NAS100 en 15 min'};return null}
+function datosNoCuadran(spec){const d=datosCargados();if(!d)return null;const s=simNorm(spec.activo&&spec.activo.simbolo),tf=spec.temporalidad;
+  if(s===d.s&&tf===d.tf)return null;
+  const quiero=(spec.activo&&spec.activo.simbolo||'?')+' · '+(TFN[tf]||tf);
+  const sug=s==='NAS100'&&tf==='D1'?' o pulsa «usar datos de ejemplo del Nasdaq (NDX diario)»':s==='NAS100'&&tf==='M15'?' o pulsa «Cargar el ejemplo NAS100 de la Mega Cueva»':s==='XAUUSD'&&tf==='D1'?' o pulsa «quitar» para volver a los datos del oro':'';
+  return 'Tu regla es de '+quiero+', pero los datos cargados son '+d.txt+'. No la corro para no darte números de otro activo. Sube tu CSV de '+(spec.activo&&spec.activo.simbolo||'tu activo')+sug}
 async function correrPI(){const btn=$('#pi-correr');if(btn.disabled||corriendo)return;corriendo=true;btn.disabled=true;
+  {const nc=datosNoCuadran(specLimpio());if(nc){corriendo=false;btn.disabled=false;toast('Los datos no son de tu activo');mostrarResPI(null,new Error(nc));return}}
   $('#pi-etapas').innerHTML=ETAPAS.map(e=>`<span>${e}</span>`).join('');pintarEtapa('Preparando…',2);
   const M=window.MCT_MOTOR,f=motorFn();
   if(!f){for(let i=0;i<4;i++){pintarEtapa(ETAPAS[i+1]+'…',(i+1)*25);if(!RM)await new Promise(r=>setTimeout(r,220))}corriendo=false;btn.disabled=false;$('#pi-etapas').innerHTML='';mostrarResPI(null,new Error('Motor no disponible en esta copia'));return}
