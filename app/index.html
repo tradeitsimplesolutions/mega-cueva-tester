@@ -895,6 +895,20 @@ h2.sec-t{margin:0 0 .45rem}
 .salmodo select{font-size:max(13px,.85rem);padding:.25rem .4rem}
 #pi-ndx{flex-basis:100%;text-align:left}
 
+/* Fuente de datos (2026-10-07) */
+.fuente{display:grid;gap:.55rem;padding:.75rem .85rem;border:1px solid var(--line);border-radius:6px;margin-bottom:.7rem;background:color-mix(in srgb,var(--gold) 5%,transparent)}
+.fuente.mal{border-color:var(--bad,#e5484d);background:color-mix(in srgb,var(--bad,#e5484d) 9%,transparent)}
+.fuente.flash{outline:3px solid var(--gold);outline-offset:3px}
+.fuente-h{display:flex;align-items:center;justify-content:space-between;gap:.6rem;flex-wrap:wrap}
+.fuente-h h3{margin:0;font-family:var(--f-disp,inherit);letter-spacing:.06em;text-transform:uppercase;font-size:max(15px,1rem)}
+.fuente-sello{font:600 max(12px,.78rem) var(--f-mono,monospace);padding:.15rem .5rem;border-radius:4px;border:1px solid currentColor}
+.fuente-sello.ok{color:var(--ok,#30a46c)}.fuente-sello.ko{color:var(--bad,#e5484d)}.fuente-sello.tuyo{color:var(--warn,#f5a524)}
+.fuente-ej{display:flex;gap:.45rem;align-items:center;flex-wrap:wrap;font-size:max(13px,.85rem)}
+.btn.mini{padding:.3rem .6rem;font-size:max(12px,.78rem)}
+
+#pi-fuente #pi-ndx{flex-basis:auto;text-align:center}
+#pi-codigo{min-height:9rem}
+
 </style>
 </head>
 <body>
@@ -1229,12 +1243,19 @@ h2.sec-t{margin:0 0 .45rem}
       <ul class="chk" id="pi-check"></ul>
     </section>
     <section class="panel correr" aria-label="Correr la prueba">
-      <div class="csvrow" id="pi-csvz">
-        <button type="button" class="btn" id="pi-csv-b"><svg class="ic"><use href="#i-subir"/></svg> SUBIR CSV</button>
-        <span class="c-dim" id="pi-csv-n">Datos de ejemplo del oro (XAUUSD D1)</span>
-        <button type="button" class="link" id="pi-csv-x" hidden>quitar</button>
-        <button type="button" class="link" id="pi-ndx">usar datos de ejemplo del Nasdaq (NDX diario)</button>
-        <input type="file" id="pi-csv" accept=".csv,.txt,text/csv" class="sr" tabindex="-1" aria-hidden="true">
+      <div class="fuente" id="pi-fuente">
+        <div class="fuente-h"><h3>Fuente de datos</h3><span class="fuente-sello" id="pi-fuente-sello"></span></div>
+        <div class="csvrow" id="pi-csvz">
+          <button type="button" class="btn" id="pi-csv-b"><svg class="ic"><use href="#i-subir"/></svg> SUBIR MI CSV</button>
+          <span class="c-dim" id="pi-csv-n">Datos de ejemplo del oro (XAUUSD D1)</span>
+          <button type="button" class="link" id="pi-csv-x" hidden>quitar</button>
+          <input type="file" id="pi-csv" accept=".csv,.txt,text/csv" class="sr" tabindex="-1" aria-hidden="true">
+        </div>
+        <div class="fuente-ej"><span class="c-dim">o usa un ejemplo:</span>
+          <button type="button" class="btn mini" id="pi-ej-oro">ORO · DIARIO</button>
+          <button type="button" class="btn mini" id="pi-ndx">NASDAQ · DIARIO</button>
+          <button type="button" class="btn mini" id="pi-ej-nas">NAS100 · 15 MIN</button>
+        </div>
       </div>
       <p class="csvhelp">CSV de TradingView tal cual: <code>time,open,high,low,close,Volume</code> (time ISO con zona horaria o UNIX). Velas de 5/15 min u 1 hora: la hora ISO se convierte sola a la hora de la sesión. <button type="button" class="link" id="pi-csv-ayuda">Cómo exportarlo →</button></p>
       <button type="button" class="btn gold bigb" id="pi-correr">▶ CORRER PRUEBA INICIAL</button>
@@ -2448,6 +2469,7 @@ function checklist(){const s=SPEC,R=s.reglas,G=s.gestion,c=s.costes,out=[];const
   const cs=corteFechas(),it=ts(cs.ini);
   ok(isNaN(it)||it<=a||it>=b?'falla':cs.pctOOS<20?'aviso':'pasa','Corte diseño / prueba',isNaN(it)||it<=a||it>=b?'Fuera de los datos':nf(cs.pctOOS,0)+' % para la prueba');
   ok(SPEC.optimizar&&Object.keys(SPEC.optimizar).length===2?'pasa':'aviso','Meseta',SPEC.optimizar&&Object.keys(SPEC.optimizar).length===2?Object.keys(SPEC.optimizar).join(' × '):'Rejilla automática');
+  {const nc=datosNoCuadran(s),d=datosCargados();ok(nc?'falla':'pasa','Datos',nc?'No son de tu activo · <button type="button" class="link" data-ir-fuente>sube tus datos aquí →</button>':d?d.txt.replace(/^los /,''):esc(CSV&&CSV.nombre||'tu CSV'))}
   return out}
 function actualizarPI(inicial){const pre=$('#pi-codigo');
   if(piFmt==='pseudo'){const L=pseudo(),txt=L.map(l=>l.replace(/<[^>]+>/g,''));
@@ -2458,6 +2480,7 @@ function actualizarPI(inicial){const pre=$('#pi-codigo');
   const C=checklist(),nok=C.filter(x=>x.e!=='falla').length,mal=C.filter(x=>x.e==='falla').length;
   $('#pi-check').innerHTML=C.map(x=>`<li class="${x.e}"><span aria-hidden="true">${x.e==='pasa'?'✓':x.e==='falla'?'✗':'!'}</span><span><b>${esc(x.t)}</b><small title="${esc(x.d)}">${x.d}</small></span></li>`).join('');
   $('#pi-cuenta').textContent=nok+' de '+C.length+' listos';
+  {const sl=$('#pi-fuente-sello'),nc=datosNoCuadran(SPEC),d=datosCargados();if(sl){sl.className='fuente-sello '+(nc?'ko':d?'ok':'tuyo');sl.textContent=nc?'✕ no son de tu activo':d?'✓ cuadran con tu regla':'tu CSV: revisa que sea de '+(SPEC.activo.simbolo||'tu activo')}const fz=$('#pi-fuente');if(fz)fz.classList.toggle('mal',!!nc)}
   const btn=$('#pi-correr');if(!corriendo){btn.disabled=mal>0;btn.title=mal?'Completa lo marcado en rojo':'Corre las 5 fases con el motor TIS'}
   if(!corriendo)$('#pi-nota-motor').innerHTML=mal?`Faltan ${mal} punto(s) en rojo.`:motorFn()?'Motor TIS listo: calcula las 5 fases de tu regla.':'Sin motor: se enseñan los resultados de la demo.';
   const cs=corteFechas();$('#f-corte-vis').innerHTML=cs.pctOOS!=null&&cs.pctOOS>0&&cs.pctOOS<100?`<div class="is" style="width:${100-cs.pctOOS}%">DISEÑO ${yr(SPEC.datos.desde)}–${yr(cs.ini)}</div><div class="oos" style="width:${cs.pctOOS}%">PRUEBA ${nf(cs.pctOOS,0)} %</div>`:'';
@@ -2657,6 +2680,8 @@ function initPI(){try{const g=store.get('mct_spec2');if(g){const o=JSON.parse(g)
     const L=$$('#bl-'+g+' .bloque');L.length&&$('select',L[L.length-1]).focus()});
   $$('[data-fmt]').forEach(b=>b.onclick=()=>{piFmt=b.dataset.fmt;$$('[data-fmt]').forEach(x=>x.setAttribute('aria-pressed',x===b));piPrev=[];actualizarPI(true)});
   $('#pi-nas').onclick=()=>cargarNAS(false);$('#pi-ndx').onclick=()=>usarNDX(false);
+  $('#pi-ej-oro').onclick=()=>{quitarCSV();toast('Datos de ejemplo del oro (XAUUSD diario)')};$('#pi-ej-nas').onclick=()=>cargarNAS(true);
+  $('#pi-check').addEventListener('click',e=>{if(e.target.closest('[data-ir-fuente]')){const f=$('#pi-fuente');f.scrollIntoView({behavior:RM?'auto':'smooth',block:'center'});f.classList.add('flash');setTimeout(()=>f.classList.remove('flash'),1600)}});
   $('#pi-demo').onclick=()=>{SPEC=clone(DEMO_SPEC);if(CSV)quitarCSV();piPrev=[];rellenarForm();toast('Restaurada la especificación del oro')};
   $('#pi-vaciar').onclick=()=>{SPEC=clone(DEMO_SPEC);SPEC.nombre='';SPEC.activo.simbolo='';SPEC.reglas={filtros:[],entrada:[],salida:[]};SPEC.optimizar=null;SPEC.costes={perfil:'manual',spread_pb:0,comision_pb_lado:0,deslizamiento_pb_lado:0,swap_largo_pct_anual:0,swap_corto_pct_anual:0};piPrev=[];rellenarForm();$('#f-nombre').focus()};
   $('#pi-copiar').onclick=()=>copiarTexto($('#pi-codigo').innerText,$('#pi-codigo'));

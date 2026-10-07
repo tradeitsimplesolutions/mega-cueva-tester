@@ -344,12 +344,19 @@
       <ul class="chk" id="pi-check"></ul>
     </section>
     <section class="panel correr" aria-label="Correr la prueba">
-      <div class="csvrow" id="pi-csvz">
-        <button type="button" class="btn" id="pi-csv-b"><svg class="ic"><use href="#i-subir"/></svg> SUBIR CSV</button>
-        <span class="c-dim" id="pi-csv-n">Datos de ejemplo del oro (XAUUSD D1)</span>
-        <button type="button" class="link" id="pi-csv-x" hidden>quitar</button>
-        <button type="button" class="link" id="pi-ndx">usar datos de ejemplo del Nasdaq (NDX diario)</button>
-        <input type="file" id="pi-csv" accept=".csv,.txt,text/csv" class="sr" tabindex="-1" aria-hidden="true">
+      <div class="fuente" id="pi-fuente">
+        <div class="fuente-h"><h3>Fuente de datos</h3><span class="fuente-sello" id="pi-fuente-sello"></span></div>
+        <div class="csvrow" id="pi-csvz">
+          <button type="button" class="btn" id="pi-csv-b"><svg class="ic"><use href="#i-subir"/></svg> SUBIR MI CSV</button>
+          <span class="c-dim" id="pi-csv-n">Datos de ejemplo del oro (XAUUSD D1)</span>
+          <button type="button" class="link" id="pi-csv-x" hidden>quitar</button>
+          <input type="file" id="pi-csv" accept=".csv,.txt,text/csv" class="sr" tabindex="-1" aria-hidden="true">
+        </div>
+        <div class="fuente-ej"><span class="c-dim">o usa un ejemplo:</span>
+          <button type="button" class="btn mini" id="pi-ej-oro">ORO · DIARIO</button>
+          <button type="button" class="btn mini" id="pi-ndx">NASDAQ · DIARIO</button>
+          <button type="button" class="btn mini" id="pi-ej-nas">NAS100 · 15 MIN</button>
+        </div>
       </div>
       <p class="csvhelp">CSV de TradingView tal cual: <code>time,open,high,low,close,Volume</code> (time ISO con zona horaria o UNIX). Velas de 5/15 min u 1 hora: la hora ISO se convierte sola a la hora de la sesión. <button type="button" class="link" id="pi-csv-ayuda">Cómo exportarlo →</button></p>
       <button type="button" class="btn gold bigb" id="pi-correr">▶ CORRER PRUEBA INICIAL</button>

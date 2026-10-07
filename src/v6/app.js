@@ -796,6 +796,7 @@ function checklist(){const s=SPEC,R=s.reglas,G=s.gestion,c=s.costes,out=[];const
   const cs=corteFechas(),it=ts(cs.ini);
   ok(isNaN(it)||it<=a||it>=b?'falla':cs.pctOOS<20?'aviso':'pasa','Corte diseño / prueba',isNaN(it)||it<=a||it>=b?'Fuera de los datos':nf(cs.pctOOS,0)+' % para la prueba');
   ok(SPEC.optimizar&&Object.keys(SPEC.optimizar).length===2?'pasa':'aviso','Meseta',SPEC.optimizar&&Object.keys(SPEC.optimizar).length===2?Object.keys(SPEC.optimizar).join(' × '):'Rejilla automática');
+  {const nc=datosNoCuadran(s),d=datosCargados();ok(nc?'falla':'pasa','Datos',nc?'No son de tu activo · <button type="button" class="link" data-ir-fuente>sube tus datos aquí →</button>':d?d.txt.replace(/^los /,''):esc(CSV&&CSV.nombre||'tu CSV'))}
   return out}
 function actualizarPI(inicial){const pre=$('#pi-codigo');
   if(piFmt==='pseudo'){const L=pseudo(),txt=L.map(l=>l.replace(/<[^>]+>/g,''));
@@ -806,6 +807,7 @@ function actualizarPI(inicial){const pre=$('#pi-codigo');
   const C=checklist(),nok=C.filter(x=>x.e!=='falla').length,mal=C.filter(x=>x.e==='falla').length;
   $('#pi-check').innerHTML=C.map(x=>`<li class="${x.e}"><span aria-hidden="true">${x.e==='pasa'?'✓':x.e==='falla'?'✗':'!'}</span><span><b>${esc(x.t)}</b><small title="${esc(x.d)}">${x.d}</small></span></li>`).join('');
   $('#pi-cuenta').textContent=nok+' de '+C.length+' listos';
+  {const sl=$('#pi-fuente-sello'),nc=datosNoCuadran(SPEC),d=datosCargados();if(sl){sl.className='fuente-sello '+(nc?'ko':d?'ok':'tuyo');sl.textContent=nc?'✕ no son de tu activo':d?'✓ cuadran con tu regla':'tu CSV: revisa que sea de '+(SPEC.activo.simbolo||'tu activo')}const fz=$('#pi-fuente');if(fz)fz.classList.toggle('mal',!!nc)}
   const btn=$('#pi-correr');if(!corriendo){btn.disabled=mal>0;btn.title=mal?'Completa lo marcado en rojo':'Corre las 5 fases con el motor TIS'}
   if(!corriendo)$('#pi-nota-motor').innerHTML=mal?`Faltan ${mal} punto(s) en rojo.`:motorFn()?'Motor TIS listo: calcula las 5 fases de tu regla.':'Sin motor: se enseñan los resultados de la demo.';
   const cs=corteFechas();$('#f-corte-vis').innerHTML=cs.pctOOS!=null&&cs.pctOOS>0&&cs.pctOOS<100?`<div class="is" style="width:${100-cs.pctOOS}%">DISEÑO ${yr(SPEC.datos.desde)}–${yr(cs.ini)}</div><div class="oos" style="width:${cs.pctOOS}%">PRUEBA ${nf(cs.pctOOS,0)} %</div>`:'';
@@ -1005,6 +1007,8 @@ function initPI(){try{const g=store.get('mct_spec2');if(g){const o=JSON.parse(g)
     const L=$$('#bl-'+g+' .bloque');L.length&&$('select',L[L.length-1]).focus()});
   $$('[data-fmt]').forEach(b=>b.onclick=()=>{piFmt=b.dataset.fmt;$$('[data-fmt]').forEach(x=>x.setAttribute('aria-pressed',x===b));piPrev=[];actualizarPI(true)});
   $('#pi-nas').onclick=()=>cargarNAS(false);$('#pi-ndx').onclick=()=>usarNDX(false);
+  $('#pi-ej-oro').onclick=()=>{quitarCSV();toast('Datos de ejemplo del oro (XAUUSD diario)')};$('#pi-ej-nas').onclick=()=>cargarNAS(true);
+  $('#pi-check').addEventListener('click',e=>{if(e.target.closest('[data-ir-fuente]')){const f=$('#pi-fuente');f.scrollIntoView({behavior:RM?'auto':'smooth',block:'center'});f.classList.add('flash');setTimeout(()=>f.classList.remove('flash'),1600)}});
   $('#pi-demo').onclick=()=>{SPEC=clone(DEMO_SPEC);if(CSV)quitarCSV();piPrev=[];rellenarForm();toast('Restaurada la especificación del oro')};
   $('#pi-vaciar').onclick=()=>{SPEC=clone(DEMO_SPEC);SPEC.nombre='';SPEC.activo.simbolo='';SPEC.reglas={filtros:[],entrada:[],salida:[]};SPEC.optimizar=null;SPEC.costes={perfil:'manual',spread_pb:0,comision_pb_lado:0,deslizamiento_pb_lado:0,swap_largo_pct_anual:0,swap_corto_pct_anual:0};piPrev=[];rellenarForm();$('#f-nombre').focus()};
   $('#pi-copiar').onclick=()=>copiarTexto($('#pi-codigo').innerText,$('#pi-codigo'));
