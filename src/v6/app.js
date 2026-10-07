@@ -1438,6 +1438,7 @@ function initIdea(){const ta=$('#pi-idea-t'),out=$('#pi-idea-out');try{const g=s
    TU IDEA → IA (DeepSeek, desde el navegador con la clave del alumno)
    La clave NUNCA va en el código: la escribe el alumno y vive solo en su localStorage.
    ===================================================================== */
+const IA_LOCAL='http://127.0.0.1:8787';let iaLocal=null; /* IA local (herramientas/ia_local.py): si responde, se usa sin clave */
 const IA_URL='https://api.deepseek.com/chat/completions',IA_MODELO='deepseek-chat',IA_MAX_MS=30000,IA_KEY='tis5_deepseek_clave';
 const iaClave={get(){try{return localStorage.getItem(IA_KEY)||''}catch(e){return ''}},set(v){try{localStorage.setItem(IA_KEY,v)}catch(e){}},borra(){try{localStorage.removeItem(IA_KEY)}catch(e){}}};
 const IA_EJ_ORO={spec:{version:1,nombre:'Oro RSI(4) 25/55',activo:{simbolo:'XAUUSD',clase:'metal'},temporalidad:'D1',direccion:'largo',
@@ -1602,8 +1603,9 @@ function iaASpec(s,extra){const n=clone(SPEC);const num=v=>v==null||v===''||!Num
   if(CSV&&CSV.nombre==='NAS100_M15_ejemplo.csv'&&(n.activo.simbolo!=='NAS100'||n.temporalidad!=='M15'))extra.push('Tienes cargado el ejemplo NAS100 en 15 min: sube el CSV de '+n.activo.simbolo+' en '+n.temporalidad+' antes de correr.');
   if(!CSV&&(n.activo.simbolo!=='XAUUSD'||n.temporalidad!=='D1'))extra.push('Los datos de ejemplo son del oro en diario: sube el CSV de '+n.activo.simbolo+' en '+n.temporalidad+' antes de correr.');
   return n}
-async function iaLlamar(clave,msgs){const ac=new AbortController(),to=setTimeout(()=>ac.abort(),IA_MAX_MS);let r;
-  try{r=await fetch(IA_URL,{method:'POST',signal:ac.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+clave},
+async function iaLlamar(clave,msgs){const ac=new AbortController(),loc=!clave&&iaLocal,to=setTimeout(()=>ac.abort(),loc&&iaLocal.motor==='claude'?180000:IA_MAX_MS);let r;
+  const H={'Content-Type':'application/json'};if(!loc)H.Authorization='Bearer '+clave;
+  try{r=await fetch(loc?IA_LOCAL+'/v1/chat/completions':IA_URL,{method:'POST',signal:ac.signal,headers:H,
       body:JSON.stringify({model:IA_MODELO,messages:msgs,response_format:{type:'json_object'},temperature:0.1,max_tokens:2500,stream:false})})}
   catch(e){clearTimeout(to);throw new Error(e&&e.name==='AbortError'?'La IA tardó más de 30 segundos. Vuelve a intentarlo o usa las otras dos opciones.':'No hay conexión con DeepSeek. Revisa tu internet (o un bloqueador) y vuelve a intentarlo.')}
   let j=null;try{j=await r.json()}catch(e){}clearTimeout(to);
@@ -1638,13 +1640,15 @@ function iaPintar(out,res,extra){const r=res.r,sup=[...(r.supuestos||[]).map(Str
     <p class="csvhelp" style="margin:0">He rellenado el formulario de abajo. Confirma los supuestos en ámbar antes de correr la prueba: la IA traduce, no calcula resultados.</p>`;
   const L=$('#pi-ia-sup',out);if(L)L.addEventListener('change',e=>{const li=e.target.closest('li');if(li)li.classList.toggle('ok',e.target.checked);
     if($$('input',L).every(x=>x.checked))toast('Supuestos confirmados')})}
+async function iaDetectarLocal(){try{const ac=new AbortController(),t=setTimeout(()=>ac.abort(),900);const r=await fetch(IA_LOCAL+'/estado',{signal:ac.signal});clearTimeout(t);if(r.ok){const j=await r.json();iaLocal=j&&j.ok?j:null}}catch(e){iaLocal=null}return iaLocal}
 function initIA(){const k=$('#pi-ia-k'),est=$('#pi-ia-k-est'),btn=$('#pi-ia'),ta=$('#pi-idea-t'),out=$('#pi-idea-out');let ocupado=false;
-  const pinta=()=>{const v=iaClave.get();est.textContent=v?'Clave guardada.':'';$('#pi-ia-borrar').hidden=!v};
+  const pinta=()=>{const v=iaClave.get();est.textContent=v?'Clave guardada.':(iaLocal?'IA local conectada ('+(iaLocal.motor==='claude'?'Claude Code':'DeepSeek')+'): no hace falta clave.':'');$('#pi-ia-borrar').hidden=!v};
+  window.MCT_IA_PINTA=pinta;iaDetectarLocal().then(pinta);
   k.value=iaClave.get();pinta();
   k.addEventListener('input',()=>{const v=k.value.trim();if(v)iaClave.set(v);else iaClave.borra();pinta()});
   $('#pi-ia-borrar').onclick=()=>{iaClave.borra();k.value='';pinta();toast('Clave borrada de este navegador')};
   btn.onclick=async()=>{if(ocupado)return;const idea=ta.value.trim();if(idea.length<8){toast('Escribe primero tu idea (o pulsa «ver un ejemplo»)');ta.focus();return}
-    const clave=iaClave.get();if(!clave){iaSinClave(out);return}
+    const clave=iaClave.get();if(!clave&&!iaLocal)await iaDetectarLocal();if(!clave&&!iaLocal){iaSinClave(out);return}
     ocupado=true;btn.disabled=true;out.hidden=false;out.className='idea-out ia';
     out.innerHTML='<div class="ia-carga" role="status" aria-live="polite"><span class="ia-spin" aria-hidden="true"></span>La IA está leyendo tu idea…</div>';
     try{const res=await iaTraducir(idea,clave);const extra=[];const n=iaASpec(res.r.spec,extra);
