@@ -48,6 +48,31 @@ export default {
       const usados = env.CONTADOR ? parseInt((await env.CONTADOR.get("dia:" + dia)) || "0", 10) : 0;
       return json({ ok: true, motor: "gemini", modelo: env.MODELO || "gemini-3.5-flash", restantes_hoy: Math.max(0, topeDia - usados) }, 200, origen);
     }
+    if (req.method === "POST" && url.pathname === "/feedback") {
+      if (!env.GITHUB_TOKEN) return json({ error: "El buzón de feedback no está activado." }, 503, origen);
+      let f;
+      try { f = await req.json(); } catch { return json({ error: "JSON no válido" }, 400, origen); }
+      const texto = String(f.texto || "").trim().slice(0, 4000);
+      if (texto.length < 3) return json({ error: "Escribe tu comentario." }, 400, origen);
+      const ipf = req.headers.get("CF-Connecting-IP") || "?";
+      const lim = await contar(env, "fb:" + dia + ":" + ipf, parseInt(env.TOPE_FEEDBACK_IP || "5", 10));
+      if (!lim.ok) return json({ error: "Ya enviaste varios comentarios hoy. ¡Gracias!" }, 429, origen);
+      const email = String(f.email || "").trim().slice(0, 120);
+      const cuerpo = [texto, "", "---",
+        "Pantalla: " + String(f.vista || "?").slice(0, 60),
+        "Estrategia: " + String(f.estrategia || "?").slice(0, 120),
+        "Email: " + (email || "(no lo dejó)"),
+        "Navegador: " + String(req.headers.get("User-Agent") || "").slice(0, 160),
+        "Fecha: " + new Date().toISOString()].join("
+");
+      const gh = await fetch("https://api.github.com/repos/" + (env.REPO_FEEDBACK || "tradeitsimplesolutions/mega-cueva-tester") + "/issues", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + env.GITHUB_TOKEN, Accept: "application/vnd.github+json", "User-Agent": "mega-cueva-tester", "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "Feedback: " + texto.replace(/\s+/g, " ").slice(0, 70), body: cuerpo, labels: ["feedback"] }),
+      });
+      if (!gh.ok) return json({ error: "No se pudo guardar el comentario (" + gh.status + "). Inténtalo más tarde." }, 502, origen);
+      return json({ ok: true }, 200, origen);
+    }
     if (req.method !== "POST" || url.pathname !== "/v1/chat/completions") return json({ error: "ruta desconocida" }, 404, origen);
 
     let cuerpo;

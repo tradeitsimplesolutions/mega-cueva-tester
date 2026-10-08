@@ -49,6 +49,12 @@ def main():
         sys.exit(1)
     code, out = wr("secret", "put", "GEMINI_API_KEY", entrada=clave + "\n")
     print("Clave de Gemini guardada como secreto." if code == 0 else "Error con el secreto:\n" + out[-500:])
+    import getpass
+    print("\nPermiso de GitHub para el buzón de feedback (crear Issues en mega-cueva-tester).")
+    tok = getpass.getpass("Pégalo aquí y pulsa Enter (no se verá al escribir; Enter vacío = saltar): ").strip()
+    if tok:
+        code, out = wr("secret", "put", "GITHUB_TOKEN", entrada=tok + "\n")
+        print("Permiso de GitHub guardado como secreto." if code == 0 else "Error con el permiso:\n" + out[-500:])
     code, out = wr("deploy")
     m = re.search(r"https://[a-z0-9.-]+\.workers\.dev", out)
     if code != 0 or not m:

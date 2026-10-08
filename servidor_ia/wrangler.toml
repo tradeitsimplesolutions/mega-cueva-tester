@@ -6,6 +6,8 @@ compatibility_date = "2026-10-01"
 MODELO = "gemini-3.5-flash"
 TOPE_DIA = "1000"
 TOPE_IP_DIA = "30"
+TOPE_FEEDBACK_IP = "5"
+REPO_FEEDBACK = "tradeitsimplesolutions/mega-cueva-tester"
 
 # El id lo rellena desplegar.bat al crear el KV (wrangler kv namespace create CONTADOR)
 [[kv_namespaces]]
