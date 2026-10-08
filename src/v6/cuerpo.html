@@ -573,6 +573,18 @@
   </div>
 </div>
 <div class="toast" id="toast"></div>
+<button type="button" class="fb-btn" id="fb-abrir" hidden>¿Tienes feedback?</button>
+<div class="fb-modal" id="fb-modal" hidden role="dialog" aria-modal="true" aria-labelledby="fb-t">
+  <div class="fb-caja">
+    <div class="fb-h"><h3 id="fb-t">¿Tienes feedback?</h3><button type="button" class="link" id="fb-cerrar" aria-label="Cerrar">✕</button></div>
+    <p class="c-dim">Cuéntanos qué te ha gustado, qué no entiendes o qué falla. Lo leemos todo.</p>
+    <label for="fb-texto" class="sr">Tu comentario</label>
+    <textarea id="fb-texto" rows="5" maxlength="4000" placeholder="Escribe aquí tu comentario…"></textarea>
+    <label for="fb-email" class="fb-l">Tu email <span class="c-dim">(opcional, si quieres respuesta)</span></label>
+    <input type="email" id="fb-email" maxlength="120" placeholder="tu@email.com">
+    <div class="fb-acc"><button type="button" class="btn gold" id="fb-enviar">ENVIAR</button><span class="c-dim" id="fb-estado" aria-live="polite"></span></div>
+  </div>
+</div>
 <!--__MOTOR__-->
 <script>
 /*__DATOS__*/

@@ -1009,3 +1009,13 @@ pre.codigo.bx-pseudo,pre.codigo.bx-msg{white-space:pre-wrap;word-break:break-wor
 body.basic .toast{left:50%;max-width:calc(100vw - 32px)}
 
 .ritmo{margin:.6rem 0 0;padding:.5rem .7rem;border-left:3px solid var(--warn,#f5a524);background:color-mix(in srgb,var(--warn,#f5a524) 8%,transparent);font-size:max(13px,.86rem);line-height:1.45}
+
+/* Buzón de feedback (2026-10-08) */
+.fb-btn{position:fixed;right:16px;bottom:calc(46px + env(safe-area-inset-bottom,0px));z-index:60;font:600 max(13px,.82rem) var(--f-mono,monospace);padding:.55rem .9rem;border-radius:999px;border:1px solid var(--gold);background:var(--bg,#111);color:var(--gold);cursor:pointer;box-shadow:0 4px 18px rgba(0,0,0,.35)}
+.fb-btn:hover,.fb-btn:focus-visible{background:var(--gold);color:var(--bg,#111)}
+.fb-modal{position:fixed;inset:0;z-index:80;display:grid;place-items:center;padding:16px;background:rgba(0,0,0,.55)}
+.fb-caja{width:min(520px,100%);display:grid;gap:.6rem;padding:1.1rem;border-radius:8px;border:1px solid var(--line);background:var(--panel,var(--bg,#151515))}
+.fb-h{display:flex;justify-content:space-between;align-items:center}.fb-h h3{margin:0}
+.fb-caja textarea,.fb-caja input{width:100%;box-sizing:border-box;font:inherit;padding:.55rem .65rem;border-radius:6px;border:1px solid var(--line);background:transparent;color:inherit}
+.fb-l{font-size:max(13px,.85rem)}.fb-acc{display:flex;gap:.8rem;align-items:center;flex-wrap:wrap}
+@media (max-width:760px){.fb-btn{bottom:calc(16px + env(safe-area-inset-bottom,0px))}}

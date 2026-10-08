@@ -12,4 +12,4 @@ REPO_FEEDBACK = "tradeitsimplesolutions/mega-cueva-tester"
 # El id lo rellena desplegar.bat al crear el KV (wrangler kv namespace create CONTADOR)
 [[kv_namespaces]]
 binding = "CONTADOR"
-id = "PENDIENTE"
+id = "c6ce309e4eb44fc482b76ce3c735934f"

@@ -1817,7 +1817,18 @@ function initIA(){const k=$('#pi-ia-k'),est=$('#pi-ia-k-est'),btn=$('#pi-ia'),ta
     finally{ocupado=false;btn.disabled=false}}}
 
 /* ---------- arranque ---------- */
+function initFeedback(){const b=$('#fb-abrir'),m=$('#fb-modal');if(!b||!m||!IA_REMOTA)return;b.hidden=false;
+  const cerrar=()=>{m.hidden=true;b.focus()};
+  b.onclick=()=>{m.hidden=false;$('#fb-estado').textContent='';$('#fb-texto').focus()};
+  $('#fb-cerrar').onclick=cerrar;m.addEventListener('click',e=>{if(e.target===m)cerrar()});m.addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagation();cerrar()}});
+  $('#fb-enviar').onclick=async()=>{const t=$('#fb-texto').value.trim(),est=$('#fb-estado'),bt=$('#fb-enviar');if(t.length<3){est.textContent='Escribe tu comentario.';return}
+    bt.disabled=true;est.textContent='Enviando…';
+    try{const r=await fetch(IA_REMOTA+'/feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({texto:t,email:$('#fb-email').value.trim(),vista:(nivel==='basic'?'basic':VIEWS[cur]||'?'),estrategia:(typeof NOMBRE!=='undefined'?NOMBRE:'')})});
+      const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||('Error '+r.status));
+      $('#fb-texto').value='';est.textContent='';cerrar();toast('¡Gracias! Hemos recibido tu comentario')}
+    catch(e){est.textContent=e.message||'No se pudo enviar. Inténtalo más tarde.'}finally{bt.disabled=false}}}
 function init(){const nivel0=nivelInicial();
+  try{initFeedback()}catch(e){}
   if(!ES_DEMO){$('#ctx-chip').hidden=true;$('#ctx-tuya').hidden=false;$('#b-demo').hidden=false;$('#b-demo').onclick=()=>{try{sessionStorage.removeItem('mct_res');sessionStorage.removeItem('mct_spec_res')}catch(e){}location.reload()}}
   fitNombre();$('#ctx-sub').textContent=(SIMB?SIMB+' · ':'')+yr(D.desde)+'–'+yr(D.hasta)+' · '+T.length+' op.';pintarHchips();
   $('#foot-dat').textContent=(SIMB||'Tus datos')+' '+fd(D.desde)+' → '+fd(D.hasta);
