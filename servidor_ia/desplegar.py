@@ -19,19 +19,43 @@ ENV = Path(r"C:\Users\trade\casa\.env")
 NPX = "npx.cmd" if sys.platform.startswith("win") else "npx"
 
 
+import os
+ENTORNO = dict(os.environ)
+
+
 def wr(*args, entrada=None, capturar=True):
     r = subprocess.run([NPX, "--yes", "wrangler", *args], cwd=AQUI, input=entrada, text=True,
-                       capture_output=capturar, encoding="utf-8")
+                       capture_output=capturar, encoding="utf-8", env=ENTORNO)
     return r.returncode, (r.stdout or "") + (r.stderr or "")
 
 
 def main():
     code, out = wr("whoami")
     if "not authenticated" in out.lower() or code != 0:
-        print("Este ordenador todavía no está conectado a Cloudflare.")
-        print("Primero haz doble clic en 1_CONECTAR_CLOUDFLARE.bat, pulsa «Allow» en el navegador y vuelve aquí.")
-        sys.exit(1)
-    print("Conectado a Cloudflare.")
+        import getpass, urllib.request
+        print("Permiso de Cloudflare (plantilla «Edit Cloudflare Workers»).")
+        tok = getpass.getpass("Pégalo aquí con clic derecho y pulsa Enter (no se verá): ").strip()
+        if not tok:
+            print("Sin permiso de Cloudflare no puedo seguir.")
+            sys.exit(1)
+        def api(ruta):
+            req = urllib.request.Request("https://api.cloudflare.com/client/v4" + ruta, headers={"Authorization": "Bearer " + tok})
+            with urllib.request.urlopen(req, timeout=30) as r:
+                return json.loads(r.read())
+        try:
+            ok = api("/user/tokens/verify").get("success")
+            cuentas = api("/accounts").get("result", [])
+        except Exception as e:
+            print("Cloudflare no acepta ese permiso: " + str(e)[:200])
+            sys.exit(1)
+        if not ok or not cuentas:
+            print("El permiso no es válido o no ve ninguna cuenta.")
+            sys.exit(1)
+        ENTORNO["CLOUDFLARE_API_TOKEN"] = tok
+        ENTORNO["CLOUDFLARE_ACCOUNT_ID"] = cuentas[0]["id"]
+        print("Conectado a Cloudflare: " + cuentas[0].get("name", ""))
+    else:
+        print("Conectado a Cloudflare.")
     toml = (AQUI / "wrangler.toml").read_text(encoding="utf-8")
     if 'id = "PENDIENTE"' in toml:
         code, out = wr("kv", "namespace", "create", "CONTADOR")
