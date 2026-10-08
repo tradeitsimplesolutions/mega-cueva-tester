@@ -1724,7 +1724,6 @@ function init(){
     else if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();avanzar(-1)}
     else if(/^[0-8]$/.test(e.key))go(+e.key);
     else if(e.key==='m'||e.key==='M')setRail(!document.body.classList.contains('rail-min'));
-    else if(e.key==='n'||e.key==='N')setNivel(nivel==='entender'?'avanzado':'entender');
     else if(e.key==='p'||e.key==='P')setPres(!document.body.classList.contains('pres'));
     else if(e.key==='?'||e.key==='h'||e.key==='H')openDlg('help');
     else if(e.key==='Home')go(0)});

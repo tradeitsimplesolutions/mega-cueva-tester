@@ -46,10 +46,6 @@
     <button class="tab" role="tab" id="t-validacion" aria-controls="v-validacion" data-v="validacion"><span class="tn">7</span><span class="tx"><b>Validación</b><small>Las 5 pruebas, una a una</small></span></button>
     <button class="tab" role="tab" id="t-protocolo" aria-controls="v-protocolo" data-v="protocolo"><span class="tn">8</span><span class="tx"><b>Protocolo completo</b><small>El sello final</small></span></button>
   </nav>
-  <div class="rail-pie">
-    <p class="rail-t" id="nivel-lb">Nivel de detalle</p>
-    <div class="seg nivel" role="group" aria-labelledby="nivel-lb" id="nivel"><button type="button" data-n="entender" aria-pressed="true" title="La app explicada (tecla N)">ENTENDER</button><button type="button" data-n="avanzado" aria-pressed="false" title="Terminal del oro completa (tecla N)">AVANZADO</button></div>
-  </div>
 </aside>
 
 <header class="top">
@@ -462,12 +458,11 @@
 
 <footer class="foot">
   <span><b>Backtest simulado</b> · <span id="foot-dat">XAUUSD diario 1998–2026</span> · costes Darwinex · no es recomendación de inversión</span>
-  <span class="keys-n">0-8 vista · M menú · N nivel · P presentar · ? ayuda</span>
+  <span class="keys-n">0-8 vista · M menú · P presentar · ? ayuda</span>
   <span class="keys-p">← → avanzar · Esc salir</span>
   <span class="progress" id="prog" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
 </footer>
 </div>
-<div id="avz"><iframe title="Nivel avanzado: terminal del oro" loading="eager"></iframe></div>
 
 <div id="tip" role="tooltip"></div>
 <div class="ovl" id="velas-dlg" role="dialog" aria-modal="true" aria-labelledby="velas-h">
@@ -505,7 +500,7 @@
       <li><b>Prueba inicial</b>: escribe tu idea en lenguaje natural, pásasela a tu agente 03 o tradúcela aquí, sube tu CSV (opcional) y pulsa <b>Correr prueba inicial</b>.</li>
       <li>Las <span class="term" data-t="pf">palabras subrayadas</span> tienen explicación al pasar el ratón.</li>
       <li>En <b>Operaciones</b>, «Ver en velas» abre cualquier operación con su entrada y salida.</li>
-      <li><kbd>P</kbd> modo presentación · <kbd>N</kbd> nivel · <kbd>Esc</kbd> salir.</li>
+      <li><kbd>P</kbd> modo presentación · <kbd>Esc</kbd> salir.</li>
     </ul>
     <button class="btn" data-close>ENTENDIDO</button>
   </div>
