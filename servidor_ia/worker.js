@@ -63,8 +63,7 @@ export default {
         "Estrategia: " + String(f.estrategia || "?").slice(0, 120),
         "Email: " + (email || "(no lo dejó)"),
         "Navegador: " + String(req.headers.get("User-Agent") || "").slice(0, 160),
-        "Fecha: " + new Date().toISOString()].join("
-");
+        "Fecha: " + new Date().toISOString()].join("\n");
       const gh = await fetch("https://api.github.com/repos/" + (env.REPO_FEEDBACK || "tradeitsimplesolutions/mega-cueva-tester") + "/issues", {
         method: "POST",
         headers: { Authorization: "Bearer " + env.GITHUB_TOKEN, Accept: "application/vnd.github+json", "User-Agent": "mega-cueva-tester", "Content-Type": "application/json" },
