@@ -5,3 +5,5 @@ __pycache__/
 node_modules/
 .env
 *.env
+.dev.vars
+servidor_ia/.wrangler/

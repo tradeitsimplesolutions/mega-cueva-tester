@@ -48,7 +48,7 @@
   </nav>
   <div class="rail-pie">
     <p class="rail-t" id="nivel-lb">Nivel de detalle</p>
-    <div class="seg nivel" role="group" aria-labelledby="nivel-lb" id="nivel"><button type="button" data-n="entender" aria-pressed="true" title="La app explicada (tecla N)">ENTENDER</button><button type="button" data-n="avanzado" aria-pressed="false" title="Terminal del oro completa (tecla N)">AVANZADO</button></div>
+    <div class="seg nivel" role="group" aria-labelledby="nivel-lb" id="nivel"><button type="button" data-n="basic" aria-pressed="false" title="La prueba en 3 pasos (tecla N)">BASIC</button><button type="button" data-n="completo" aria-pressed="true" title="Todo el recorrido (tecla N)">COMPLETO</button></div>
   </div>
 </aside>
 
@@ -462,12 +462,67 @@
 
 <footer class="foot">
   <span><b>Backtest simulado</b> · <span id="foot-dat">XAUUSD diario 1998–2026</span> · costes Darwinex · no es recomendación de inversión</span>
-  <span class="keys-n">0-8 vista · M menú · N nivel · P presentar · ? ayuda</span>
+  <span class="keys-n">0-8 vista · M menú · N basic/completo · P presentar · ? ayuda</span>
   <span class="keys-p">← → avanzar · Esc salir</span>
   <span class="progress" id="prog" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
 </footer>
 </div>
 <div id="avz"><iframe title="Nivel avanzado: terminal del oro" loading="eager"></iframe></div>
+
+<!-- ============ BASIC: la prueba en 3 pasos (vista por defecto de los asistentes) ============ -->
+<div id="basic" class="bx">
+  <header class="bx-top">
+    <div class="brand"><b>MEGA CUEVA<i>·</i>TESTER</b><span><em>TIS</em> · Trade It Simple</span></div>
+    <button type="button" class="link bx-mesa" id="bx-mesa">Primero monta tu mesa con los 4 agentes →</button>
+    <div class="seg nivel bx-nivel" role="group" aria-label="Nivel de detalle"><button type="button" data-n="basic" aria-pressed="true" title="La prueba en 3 pasos (tecla N)">BASIC</button><button type="button" data-n="completo" aria-pressed="false" title="Todo el recorrido (tecla N)">COMPLETO</button></div>
+  </header>
+  <div class="bx-main">
+    <div class="bx-hero">
+      <h1>Prueba tu idea <span>en 3 pasos</span></h1>
+      <p class="lead">Escríbela como se la contarías a alguien. El tester la traduce, la prueba con costes reales y te dice si aprueba.</p>
+    </div>
+    <ol class="bx-pasos">
+      <li class="panel bx-paso" id="bx-p1">
+        <div class="bx-ph"><span class="bx-n" aria-hidden="true">1</span><h2><label for="bx-idea">Escribe tu idea</label></h2></div>
+        <textarea id="bx-idea" spellcheck="true" placeholder="Ej.: Compro oro en diario cuando el RSI de 4 baja de 25 y el precio está por encima de la media de 200. Vendo cuando el RSI sube de 55."></textarea>
+        <div class="idea-b">
+          <button type="button" class="btn gold" id="bx-ia">TRADUCIR CON IA</button>
+          <button type="button" class="btn" id="bx-trad">TRADUCIR AQUÍ</button>
+          <button type="button" class="btn" id="bx-a03">PÁSASELA A TU AGENTE 03</button>
+          <button type="button" class="link" id="bx-ej">ver un ejemplo</button>
+        </div>
+        <div class="bx-out" id="bx-out" aria-live="polite"></div>
+      </li>
+      <li class="panel bx-paso" id="bx-p2">
+        <div class="bx-ph"><span class="bx-n" aria-hidden="true">2</span><h2>Elige tus datos</h2></div>
+        <div class="bx-csv" id="bx-csvz">
+          <button type="button" class="btn" id="bx-csv-b"><svg class="ic"><use href="#i-subir"/></svg> SUBIR MI CSV</button>
+          <span class="c-dim">o arrástralo aquí</span>
+          <input type="file" id="bx-csv" accept=".csv,.txt,text/csv" class="sr" tabindex="-1" aria-hidden="true">
+        </div>
+        <p class="bx-h">O usa un ejemplo</p>
+        <div class="bx-ejs" id="bx-ejs" role="group" aria-label="Datos de ejemplo">
+          <button type="button" class="bx-ej" data-ej="oro" aria-pressed="false"><b>Oro</b><small>diario</small></button>
+          <button type="button" class="bx-ej" data-ej="ndx" aria-pressed="false"><b>Nasdaq</b><small>diario</small></button>
+          <button type="button" class="bx-ej" data-ej="nas" aria-pressed="false"><b>NAS100</b><small>15 minutos</small></button>
+        </div>
+        <div class="bx-dat" id="bx-dat" aria-live="polite"><span id="bx-dat-t"></span><span class="fuente-sello" id="bx-sello" hidden></span><span class="bx-mal" id="bx-mal" hidden></span></div>
+        <button type="button" class="link bx-ayuda" id="bx-csv-ayuda">Cómo sacar tu CSV de TradingView →</button>
+      </li>
+      <li class="panel bx-paso" id="bx-p3">
+        <div class="bx-ph"><span class="bx-n" aria-hidden="true">3</span><h2>Corre la prueba</h2></div>
+        <div class="bx-run">
+          <button type="button" class="btn gold bigb" id="bx-correr">▶ CORRER LA PRUEBA</button>
+          <p class="bx-movil" id="bx-movil" hidden><b>Para correr la prueba, ábrelo en el ordenador.</b> En el móvil el cálculo es demasiado pesado. <button type="button" class="link" id="bx-movil-si">probar igualmente</button></p>
+          <div class="prog" aria-hidden="true"><i id="bx-prog"></i></div>
+          <p class="bx-nota" id="bx-nota" aria-live="polite"></p>
+        </div>
+        <div class="bx-res" id="bx-res"></div>
+      </li>
+    </ol>
+  </div>
+  <footer class="bx-pie"><b>Backtest simulado</b> · costes Darwinex · no es recomendación de inversión</footer>
+</div>
 
 <div id="tip" role="tooltip"></div>
 <div class="ovl" id="velas-dlg" role="dialog" aria-modal="true" aria-labelledby="velas-h">
@@ -505,7 +560,8 @@
       <li><b>Prueba inicial</b>: escribe tu idea en lenguaje natural, pásasela a tu agente 03 o tradúcela aquí, sube tu CSV (opcional) y pulsa <b>Correr prueba inicial</b>.</li>
       <li>Las <span class="term" data-t="pf">palabras subrayadas</span> tienen explicación al pasar el ratón.</li>
       <li>En <b>Operaciones</b>, «Ver en velas» abre cualquier operación con su entrada y salida.</li>
-      <li><kbd>P</kbd> modo presentación · <kbd>N</kbd> nivel · <kbd>Esc</kbd> salir.</li>
+      <li><b>BASIC</b> es la prueba en 3 pasos en una sola pantalla; <b>COMPLETO</b>, todo el recorrido. Se cambia abajo a la izquierda o con la tecla <kbd>N</kbd>.</li>
+      <li><kbd>P</kbd> modo presentación · <kbd>Esc</kbd> salir.</li>
     </ul>
     <button class="btn" data-close>ENTENDIDO</button>
   </div>

@@ -51,7 +51,7 @@ def main():
             .replace("<!--__MOTOR__-->", motor_js)
             .replace("/*__DATOS__*/", seguro(js_datos))
             .replace("/*__CSV__*/", seguro(js_csv))
-            .replace("/*__JS__*/", (SRC / "app.js").read_text(encoding="utf-8")))
+            .replace("/*__JS__*/", ((SRC / "ia_remota.js").read_text(encoding="utf-8") if (SRC / "ia_remota.js").exists() else "") + (SRC / "app.js").read_text(encoding="utf-8")))
     out = RAIZ / "app" / "index.html"
     out.write_text(html, encoding="utf-8")
     print(f"{out} · {len(html)/1e6:.2f} MB · datos {datos.name} · motor {'sí' if motor_js else 'no'}")

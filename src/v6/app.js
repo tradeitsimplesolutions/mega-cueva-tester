@@ -1125,12 +1125,139 @@ function cargarResultados(json){const err=validarRes(json);if(err){toast('No se 
   location.reload();return true}
 window.cargarResultados=cargarResultados;
 
-/* ---------- nivel ENTENDER / AVANZADO ---------- */
-let nivel='entender';
-function setNivel(n){nivel=n;$$('#nivel button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.n===n));
+/* ---------- nivel BASIC / COMPLETO (+ AVANZADO oculto: ?avanzado, #avanzado o Mayús+A, solo para Mariel) ---------- */
+let nivel='completo';
+function setNivel(n){if(n==='entender')n='completo';if(!['basic','completo','avanzado'].includes(n))n='basic';const prev=nivel;nivel=n;
+  $$('.nivel button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.n===n));
+  document.body.classList.toggle('basic',n==='basic');
+  if(n!=='avanzado')store.set('nivel',n);
   if(n==='avanzado'){const fr=$('#avz iframe');if(!fr.getAttribute('src'))fr.setAttribute('src','avanzado.html');fijarHdr();hideTip()}
   document.body.classList.toggle('avz',n==='avanzado');
-  if(n==='entender')requestAnimationFrame(renderAll)}
+  if(n==='basic'){hideTip();mesaActiva(false);bxEntrar();try{history.replaceState(null,'','#basic')}catch(e){}window.scrollTo(0,0)}
+  else{if(prev==='basic'){mesaActiva(VIEWS[cur]==='mesa');try{history.replaceState(null,'','#'+VIEWS[cur])}catch(e){}}
+    if(n==='completo')requestAnimationFrame(()=>{fijarHdr();renderAll();renderTree()})}}
+/* nivel al abrir: ?avanzado/#avanzado → AVANZADO · #vista → COMPLETO · si no, lo último elegido (BASIC por defecto) */
+function nivelInicial(){const u=location.search+location.hash,h=location.hash.slice(1);if(/avanzado/i.test(u))return 'avanzado';
+  if(h==='basic')return 'basic';if(VIEWS.includes(h))return 'completo';const g=store.get('nivel');return g==='completo'?'completo':'basic'}
+
+/* ---------- BASIC: la prueba en 3 pasos ----------
+   Reutiliza TODO: traductor (#pi-trad), IA (#pi-ia), agente 03/04, datos (quitarCSV/usarNDX/cargarNAS/leerCSV),
+   sello (datosNoCuadran/datosCargados), lista (checklist) y motor (correrPI). El estado (SPEC, CSV, D) es el mismo que en COMPLETO:
+   lo que se hace aquí se ve allí y al revés. Lo que pinta COMPLETO se observa (MutationObserver) para no tocar sus funciones. */
+const bxMovil=()=>window.matchMedia('(max-width:759px)').matches;
+let bxModo='',bxForzar=false,bxEnCurso=false,bxErr='';
+const bxGet=()=>{try{return JSON.parse(store.get('bx_idea')||'null')||{}}catch(e){return{}}};
+const bxHecha=()=>!!bxGet().ok||!ES_DEMO;
+const bxStale=()=>!ES_DEMO&&!!SPEC_RES&&JSON.stringify(specLimpio())!==JSON.stringify(SPEC_RES);
+/* pseudocódigo sin costes, corte, meseta ni tamaño (en BASIC no se tocan) */
+const bxPlano=()=>pseudo().filter(l=>!/^<span class="kw">(COSTES|CORTE|MESETA)</.test(l)&&!/tamaño:/.test(l)).map(l=>l.replace(/\s*<span class="(cm|ojo)"># [^<]*(GMT|UTC|hora|bróker|Nueva York|Madrid)[^<]*<\/span>/g,''));
+function bxTradHTML(av,no,ok){return (ok?`<p class="bx-h">Así la entiende el tester</p><pre class="codigo bx-pseudo" tabindex="0">${bxPlano().join('\n')}</pre>`:
+    '<p class="bx-err"><b>No he podido traducirla.</b> Empieza con «Compro cuando…» y di cuándo sales, o pásasela a tu agente 03.</p>')+
+  ((av=av.filter(t=>!/^Activo .*sube su CSV/.test(t))).length?`<p class="bx-h">Supuestos · revísalos</p><ul class="bx-sup">${av.map(t=>`<li>${esc(t)}</li>`).join('')}</ul>`:'')+
+  (no.length?`<p class="bx-h">No lo he podido usar</p><ul class="bx-no">${no.map(t=>`<li>${esc(t)}</li>`).join('')}</ul>`:'')}
+const bxAlt='<p class="bx-alt">Sin IA también puedes <button type="button" class="link" data-bx="trad">traducirla aquí</button> o <button type="button" class="link" data-bx="a03">pasársela a tu agente 03</button>.</p>';
+/* lee lo que dejó la traducción (aquí, IA o piezas del 04), se haga en BASIC o en COMPLETO, y lo guarda */
+function bxLeer(){const o=$('#pi-idea-out');if(!o||o.hidden)return;
+  if(o.classList.contains('trad')&&$('.res',o)){const it=c=>$$('.res li.'+c+' span:last-child',o).map(x=>x.textContent);
+    store.set('bx_idea',JSON.stringify({ok:/He rellenado/.test(o.textContent),av:it('av'),no:it('no')}))}
+  else if(o.classList.contains('ia')&&$('.ia-pseudo',o))store.set('bx_idea',JSON.stringify({ok:true,av:$$('.ia-sup label',o).map(x=>x.textContent),no:$$('.ia-no li',o).map(x=>x.textContent)}))}
+function bxLeer04(){const L=$$('#pi-pegar-r li');if(!L.length)return;const it=c=>L.filter(li=>li.classList.contains(c)).map(li=>li.lastElementChild.textContent);
+  if(it('ok').length)store.set('bx_idea',JSON.stringify({ok:true,av:it('av'),no:it('no')}))}
+function bxIdea(){const o=$('#pi-idea-out'),bx=$('#bx-out');if(!o||!bx)return;
+  $('#bx-ia').disabled=$('#pi-ia').disabled;
+  if(bxModo==='a03'){
+    if(!$('#bx-a03-msg',bx))bx.innerHTML=`<p class="bx-h">Mensaje para tu agente 03 Reglas</p><pre class="codigo bx-msg" id="bx-a03-msg" tabindex="0"></pre>
+      <div class="idea-b"><button type="button" class="btn gold" id="bx-a03-cp"><svg class="ic"><use href="#i-copiar"/></svg> COPIAR EL MENSAJE</button></div>
+      <ol class="bx-lista"><li>Pégalo en el chat de tu mesa (VS Code).</li><li>Tu agente 04 te devuelve las piezas.</li><li>Pégalas aquí debajo.</li></ol>
+      <label class="bx-h" for="bx-pegar">Lo que te devolvió tu agente 04</label><textarea id="bx-pegar" class="bx-pegar" spellcheck="false" placeholder="ENTRADA: …&#10;SALIDA: …&#10;STOP: …"></textarea>
+      <div class="idea-b"><button type="button" class="btn" id="bx-pegar-b">USAR ESTAS PIEZAS</button></div>`;
+    $('#bx-a03-msg',bx).textContent=mensaje03($('#pi-idea-t').value);return}
+  if(bxModo==='ia'&&!o.hidden){
+    if($('.ia-carga',o)){bx.innerHTML='<div class="ia-carga" role="status"><span class="ia-spin" aria-hidden="true"></span>La IA está leyendo tu idea…</div>';return}
+    if(/Falta tu clave/.test(o.textContent)){if(!$('#bx-k',bx))bx.innerHTML=`<p class="bx-h">Falta tu clave de DeepSeek</p>
+      <p class="bx-txt">Créala en <a href="https://platform.deepseek.com/api_keys" target="_blank" rel="noopener">platform.deepseek.com</a> (cada traducción cuesta céntimos) y pégala aquí. Se guarda solo en este navegador.</p>
+      <div class="bx-clave"><input type="password" id="bx-k" autocomplete="off" spellcheck="false" placeholder="sk-…" aria-label="Tu clave de DeepSeek"><button type="button" class="btn gold" id="bx-k-ok">TRADUCIR CON IA</button></div>${bxAlt}`;return}
+    if($('.ia-err',o)){bx.innerHTML=`<p class="bx-err">${$('.ia-err',o).innerHTML}</p>${bxAlt}`;return}}
+  const g=bxGet();bx.innerHTML=g.ok||(g.no&&g.no.length)?bxTradHTML(g.av||[],g.no||[],!!g.ok):''}
+function bxDatos(){const d=datosCargados(),nc=datosNoCuadran(SPEC),hecha=bxHecha();
+  const k=!CSV?'oro':CSV.nombre==='NDX_D1_ejemplo.csv'?'ndx':CSV.nombre==='NAS100_M15_ejemplo.csv'?'nas':'csv';
+  $$('#bx-ejs [data-ej]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.ej===k)));
+  const sl=$('#bx-sello');sl.hidden=!hecha;sl.className='fuente-sello '+(nc?'ko':d?'ok':'tuyo');
+  sl.textContent=nc?'✕ no cuadran con tu idea':d?'✓ cuadran con tu idea':'! revisa que sean de '+(SPEC.activo.simbolo||'tu activo');
+  const que=k==='csv'?`<b>${esc(CSV.nombre)}</b> · ${nf(CSV.n,0)} velas`:'<b>'+esc(d.txt.replace(/^los de /,'').replace(/^./,c=>c.toUpperCase()))+'</b>';
+  const ql=(SPEC.activo.simbolo||'tu activo')+' · '+(TFN[SPEC.temporalidad]||SPEC.temporalidad||'').replace(/^vela /,'');
+  $('#bx-dat-t').innerHTML='Cargados: '+que;const ml=$('#bx-mal');ml.hidden=!(hecha&&nc);ml.textContent=hecha&&nc?'Tu idea es de '+ql+': elige sus datos o sube tu CSV.':'';
+  $('#bx-p2').classList.toggle('hecho',hecha&&!nc)}
+function bxResHTML(){const N=[['¿Gana más de lo que pierde?',nf(OOS.pf,2),OOS.pf>=1.3,`Por cada 1 USD que pierde, gana ${nf(OOS.pf,2)}. Pide 1,30 o más.`],
+    ['¿Hay operaciones suficientes?',String(OOS.n),OOS.n>=30,`${OOS.n} operaciones en la prueba honesta. Pide 30 o más para no fiarse de la suerte.`],
+    ['¿Se aguanta la peor racha?',pct(-OOS.maxdd,1),OOS.maxdd<.2,`Llegó a caer un ${pct(OOS.maxdd,1,false)} desde su máximo. Pide menos del 20 %.`],
+    ['¿Gana sin su mejor operación?',nf(OOS.pf_sin_mejor,2),OOS.pf_sin_mejor>1,`Quitando la mejor, gana ${nf(OOS.pf_sin_mejor,2)} por cada 1 que pierde. Pide más de 1.`]];
+  const x4=N.filter(n=>n[2]).length,ap=x4===4,exp=CU.expectancy_usd!=null?CU.expectancy_usd:T.reduce((a,t)=>a+t.ret,0)/T.length*CAP;
+  const quien=SIMB?(SIMB+(SPEC_RES&&SPEC_RES.temporalidad?' · '+(TFN[SPEC_RES.temporalidad]||'').replace(/^vela /,''):'')+' · '):'';
+  return `<div class="bx-ver">${sello(ap,x4+'/4 · '+(ap?'APRUEBA':'NO APRUEBA'),true)}<p>${esc(quien)}${yr(D.desde)}–${yr(D.hasta)}<br><span class="c-dim">${ap?'Pasa los 4 números de la mesa.':'Le falla'+(4-x4>1?'n '+(4-x4)+' números':' 1 número')+' de la mesa.'}</span></p></div>
+    ${bxStale()?'<p class="bx-viejo">Este resultado es de tu idea anterior. Vuelve a correrla.</p>':''}
+    <p class="bx-cap">Medido en la <b>prueba honesta</b>: los años que la regla no vio al diseñarse, con costes.</p>
+    <ul class="bx-n4" id="bx-n4">${N.map(n=>`<li class="${n[2]?'si':'no'}"><span class="bx-ic" aria-label="${n[2]?'cumple':'no cumple'}">${n[2]?'✓':'✕'}</span><div><b>${n[0]}</b><small>${esc(n[3])}</small></div><strong>${n[1]}</strong></li>`).join('')}</ul>
+    <div class="cv bx-eq" id="cv-bx"><canvas role="img" aria-label="Curva de capital de una cuenta de 100.000 USD"></canvas><div class="tt"></div></div>
+    <p class="bx-cap">En todo el histórico (${yr(D.desde)}–${yr(D.hasta)}), con una cuenta de <b>100.000 USD</b>:</p>
+    <dl class="bx-3"><div><dt>Gana por operación</dt><dd class="${exp>0?'pos':'neg'}">${usd(exp,0,true)}</dd><small>de media</small></div>
+      <div><dt>Peor caída</dt><dd class="neg">${pct(-FULL.maxdd,1)}</dd><small>${usd(-FULL.maxdd*CAP)}</small></div>
+      <div><dt>Operaciones</dt><dd>${nf(FULL.n!=null?FULL.n:T.length,0)}</dd><small>diseño + prueba</small></div></dl>
+    <div class="bx-acc"><button type="button" class="btn gold" id="bx-copiar"><svg class="ic"><use href="#i-copiar"/></svg> COPIAR RESULTADO PARA MI AGENTE 04</button><button type="button" class="link" id="bx-completo">Ver el análisis completo →</button></div>`}
+function bxVacioHTML(){return `<p class="bx-h">Aquí verás si aprueba</p><ul class="bx-n4 vacio">${['¿Gana más de lo que pierde?','¿Hay operaciones suficientes?','¿Se aguanta la peor racha?','¿Gana sin su mejor operación?'].map(q=>`<li><span class="bx-ic" aria-hidden="true">·</span><div><b>${q}</b></div><strong>—</strong></li>`).join('')}</ul>
+  <p class="bx-cap">Los 4 números que mira tu agente 04, con costes reales, y la curva de una cuenta de 100.000 USD.</p>`}
+function bxPaso3(){const btn=$('#bx-correr'),hecha=bxHecha(),C=checklist().filter(x=>x.e==='falla'&&x.t!=='Datos'),nc=datosNoCuadran(SPEC),movil=bxMovil()&&!bxForzar;
+  $('#bx-movil').hidden=!movil;btn.hidden=movil;$('#bx-nota').hidden=movil;$('#bx-prog').parentNode.hidden=movil;
+  if(!corriendo){btn.disabled=!hecha||C.length>0||!!nc;btn.textContent=!ES_DEMO&&!bxStale()?'▶ CORRER DE NUEVO':'▶ CORRER LA PRUEBA';
+    $('#bx-nota').innerHTML=bxErr?bxErr:!hecha?'Primero escribe tu idea y tradúcela (paso 1).':C.length?'Falta: '+C.map(x=>esc(x.t.toLowerCase())+' ('+x.d.replace(/<[^>]+>/g,'')+')').join(' · '):nc?'Elige datos de tu activo (paso 2).':'Lista para correr. La primera vez tarda unos segundos.'}
+  $('#bx-p1').classList.toggle('hecho',hecha&&!C.length);$('#bx-p3').classList.toggle('hecho',!ES_DEMO&&!bxStale())}
+function bxSync(idea){if(idea!==false)bxIdea();bxDatos();bxPaso3()}
+function bxEntrar(){const t=$('#bx-idea'),pt=$('#pi-idea-t');if(t&&pt&&t.value!==pt.value)t.value=pt.value;bxSync();
+  requestAnimationFrame(()=>{const c=charts['cv-bx'];c&&c.render()})}
+async function bxDato(k){if(corriendo)return;const dat=$('#bx-dat');bxErr='';
+  if(k==='oro'){quitarCSV();toast('Datos de ejemplo del oro (XAUUSD diario)')}
+  else if(k==='ndx'){$('#bx-dat-t').textContent='Cargando el Nasdaq…';await usarNDX(false)}
+  else if(k==='nas'){$('#bx-dat-t').textContent='Cargando el NAS100 en 15 minutos…';await cargarNAS(true)}
+  bxSync(false)}
+async function bxCorrer(){if(corriendo)return;bxErr='';
+  if(datosNoCuadran(specLimpio())){toast('Los datos no son de tu idea: elígelos en el paso 2');bxSync(false);$('#bx-p2').classList.add('flash');setTimeout(()=>$('#bx-p2').classList.remove('flash'),1600);return}
+  actualizarPI(true);if($('#pi-correr').disabled){bxSync(false);return}
+  try{history.replaceState(null,'','#basic')}catch(e){}
+  bxEnCurso=true;const b=$('#bx-correr');b.disabled=true;b.textContent='CORRIENDO…';$('#bx-nota').textContent='Preparando…';
+  await correrPI();
+  if(!corriendo){bxEnCurso=false;if(/No se pudo/.test($('#pi-nota-motor').textContent))bxErr=$('#pi-nota-motor').innerHTML;$('#bx-prog').style.width='0';bxSync(false)}}
+function initBasic(){const ta=$('#bx-idea'),pt=$('#pi-idea-t');ta.value=pt.value;
+  ta.addEventListener('input',()=>{pt.value=ta.value;store.set('idea',ta.value)});
+  const vacia=()=>{if(ta.value.trim().length<8){toast('Escribe primero tu idea (o pulsa «ver un ejemplo»)');ta.focus();return true}pt.value=ta.value;return false};
+  $('#bx-ej').onclick=()=>{ta.value=EJ_IDEA;pt.value=EJ_IDEA;store.set('idea',EJ_IDEA);ta.focus()};
+  $('#bx-trad').onclick=()=>{if(vacia())return;bxModo='';bxErr='';$('#pi-trad').click();bxLeer();bxSync()};
+  $('#bx-ia').onclick=()=>{if(vacia())return;bxModo='ia';bxErr='';$('#pi-ia').click()};
+  $('#bx-a03').onclick=()=>{if(vacia())return;bxModo='a03';$('#pi-a03').click();bxIdea()};
+  $('#bx-out').addEventListener('click',e=>{const a=e.target.closest('[data-bx]');if(a){$('#bx-'+a.dataset.bx).click();return}
+    if(e.target.closest('#bx-a03-cp')){copiarTexto(mensaje03(ta.value),$('#bx-a03-msg'));return}
+    if(e.target.closest('#bx-k-ok')){const v=($('#bx-k').value||'').trim();if(!v){toast('Pega tu clave');$('#bx-k').focus();return}const k=$('#pi-ia-k');k.value=v;k.dispatchEvent(new Event('input'));$('#bx-ia').click();return}
+    if(e.target.closest('#bx-pegar-b')){const t=$('#bx-pegar').value.trim();if(!t){toast('Pega primero lo que te dio tu agente 04');return}
+      $('#pi-pegar-t').value=t;$('#pi-pegar-b').click();bxLeer04();if(bxHecha())bxModo='';bxErr='';bxSync()}});
+  $('#bx-csv-b').onclick=()=>$('#bx-csv').click();$('#bx-csv').onchange=e=>{const x=e.target.files[0];if(x)leerCSV(x);e.target.value=''};
+  const z=$('#bx-p2');['dragover','dragenter'].forEach(t=>z.addEventListener(t,e=>{e.preventDefault();z.classList.add('sobre')}));['dragleave','drop'].forEach(t=>z.addEventListener(t,()=>z.classList.remove('sobre')));
+  z.addEventListener('drop',e=>{e.preventDefault();const x=e.dataTransfer.files[0];if(x)leerCSV(x)});
+  $$('#bx-ejs [data-ej]').forEach(b=>b.onclick=()=>bxDato(b.dataset.ej));
+  $('#bx-csv-ayuda').onclick=()=>openDlg('csv-dlg');
+  $('#bx-correr').onclick=bxCorrer;$('#bx-movil-si').onclick=()=>{bxForzar=true;bxPaso3()};
+  $('#bx-mesa').onclick=()=>go('mesa');
+  $('#bx-res').innerHTML=ES_DEMO?bxVacioHTML():bxResHTML();
+  if(!ES_DEMO){const c=chart('cv-bx',drawEq);c.compact=true;$('#bx-copiar').onclick=()=>{numeros4();copiarTexto(N4TXT,$('#bx-n4'))};$('#bx-completo').onclick=()=>go('resumen')}
+  /* lo que pinta COMPLETO se refleja aquí */
+  const mo=(sel,fn,opt)=>{const el=$(sel);if(el)new MutationObserver(()=>{if(nivel==='basic')fn()}).observe(el,opt||{childList:true,subtree:true,characterData:true})};
+  {const o=$('#pi-idea-out');new MutationObserver(()=>{bxLeer();if(nivel==='basic')bxIdea()}).observe(o,{childList:true,subtree:true,attributes:true,attributeFilter:['hidden','class']})}
+  new MutationObserver(bxLeer04).observe($('#pi-pegar-r'),{childList:true});
+  mo('#pi-check',()=>bxSync());mo('#pi-csv-n',()=>bxSync(false));
+  mo('#pi-nota-motor',()=>{if(bxEnCurso&&corriendo)$('#bx-nota').innerHTML=$('#pi-nota-motor').innerHTML});
+  mo('#pi-prog',()=>{if(bxEnCurso)$('#bx-prog').style.width=$('#pi-prog').style.width},{attributes:true,attributeFilter:['style']});
+  /* el motor (Pyodide) empieza a cargar al primer gesto en BASIC, solo en ordenador */
+  const pre=()=>{if(!bxMovil()&&window.MCT_MOTOR&&typeof window.MCT_MOTOR.iniciar==='function')window.MCT_MOTOR.iniciar().catch(()=>{})};
+  $('#basic').addEventListener('pointerdown',pre,{once:true});$('#basic').addEventListener('focusin',pre,{once:true});
+  window.addEventListener('resize',()=>{if(nivel==='basic')bxPaso3()})}
 function nombresCortos(n){const W=String(n).split(/\s+/).filter(Boolean),out=[W.join(' ')],STOP=/^(Y|E|O|EN|LA|EL|DE|DEL|A|AL|LOS|LAS|CON|POR|PARA|·|-|–)$/;
   for(let k=W.length-1;k>=1;k--){const w=W.slice(0,k);while(w.length>1&&STOP.test(w[w.length-1]))w.pop();const t=w.join(' ');if(!out.includes(t))out.push(t)}return out}
 function fitNombre(){const b=$('#ctx-nom');if(!b)return;const full=NOMBRE.toUpperCase();b.title=NOMBRE;if(!b.offsetWidth){b.textContent=full;return}
@@ -1147,7 +1274,7 @@ function avanzar(d){const pres=document.body.classList.contains('pres'),v=VIEWS[
 
 /* ---------- navegación ---------- */
 const VIEWS=['mesa','fases','resumen','estrategia','prueba','backtest','operaciones','validacion','protocolo'];let cur=0;
-function go(v){const i=typeof v==='number'?v:VIEWS.indexOf(v);if(i<0||i>=VIEWS.length)return;cur=i;hideTip();if(nivel==='avanzado')setNivel('entender');
+function go(v){const i=typeof v==='number'?v:VIEWS.indexOf(v);if(i<0||i>=VIEWS.length)return;cur=i;hideTip();if(nivel!=='completo')setNivel('completo');
   VIEWS.forEach((n,k)=>{$('#v-'+n).classList.toggle('on',k===i);const t=$('#t-'+n);t.setAttribute('aria-selected',k===i);t.tabIndex=k===i?0:-1});
   $$('#prog i').forEach((d,k)=>d.classList.toggle('on',k===i));
   try{history.replaceState(null,'','#'+VIEWS[i])}catch(e){}
@@ -1340,9 +1467,9 @@ const OPS_NL=[
  [/\b(?:cruza|cruzan|corta|cortan)\s+(?:hacia\s+)?(?:arriba|al\s+alza|por\s+encima)(?:\s+(?:de|a|del))?\b/,'cruza_arriba'],
  [/\b(?:cruza|cruzan|corta|cortan)\s+(?:hacia\s+)?(?:abajo|a\s+la\s+baja|por\s+debajo)(?:\s+(?:de|a|del))?\b/,'cruza_abajo'],
  [/>=|≥|\bmayor\s+o\s+igual\s+(?:que|a)\b/,'>='],[/<=|≤|\bmenor\s+o\s+igual\s+(?:que|a)\b/,'<='],
- [/(?:\b(?:esta|estan|cierra|cierran|queda|quedan|sigue|se\s+mantiene)\s+)?(?:por\s+)?encima\s+(?:de|del)\b|\bsobre\b|\bsube(?:n)?\s+(?:de|por\s+encima\s+de|a\s+mas\s+de|sobre)\b|\bsupera(?:n)?\b|\bmayor\s+(?:que|a|de)\b|\bpasa\s+de\b|\bmas\s+de\b|\brompe(?:n)?\b(?=\s+(?:el\s+|la\s+)?(?:maximo|resistencia))|>/,'>'],
- [/(?:\b(?:esta|estan|cierra|cierran|queda|quedan|sigue|se\s+mantiene)\s+)?(?:por\s+)?debajo\s+(?:de|del)\b|\bbaja(?:n)?\s+(?:de|a\s+menos\s+de|por\s+debajo\s+de)\b|\bcae(?:n)?\s+(?:de|a\s+menos\s+de|por\s+debajo\s+de)\b|\bperfora(?:n)?\b|\bmenor\s+(?:que|a|de)\b|\bmenos\s+de\b|\brompe(?:n)?\b(?=\s+(?:el\s+|la\s+)?(?:minimo|soporte))|\bbajo\b|</,'<']];
-function opNL(s){s=s.replace(/\b(cuando|si|que|el|la|los|las|lo|su|sus|del|de|al|a|actual|valor|nivel|indicador|esta|estan|ya|un|una|precio\s+de)\b/g,' ').replace(/[()]/g,' ').replace(/\s+/g,' ').trim();let m;
+ [/(?:\b(?:esta|estan|cierra|cierran|queda|quedan|sigue|se\s+mantiene)\s+)?(?:por\s+)?encima\s+(?:de|del)\b|\bsobre\b|\b(?:sube|suba)(?:n)?\s+(?:de|por\s+encima\s+de|a\s+mas\s+de|sobre)\b|\bsupera(?:n)?\b|\bmayor\s+(?:que|a|de)\b|\bpasa\s+de\b|\bmas\s+de\b|\brompe(?:n)?\b(?=\s+(?:el\s+|la\s+)?(?:maximo|resistencia))|>/,'>'],
+ [/(?:\b(?:esta|estan|cierra|cierran|queda|quedan|sigue|se\s+mantiene)\s+)?(?:por\s+)?debajo\s+(?:de|del)\b|\b(?:baja|baje)(?:n)?\s+(?:de|a\s+menos\s+de|por\s+debajo\s+de)\b|\b(?:cae|caiga)(?:n)?\s+(?:de|a\s+menos\s+de|por\s+debajo\s+de)\b|\bperfora(?:n)?\b|\bmenor\s+(?:que|a|de)\b|\bmenos\s+de\b|\brompe(?:n)?\b(?=\s+(?:el\s+|la\s+)?(?:minimo|soporte))|\bbajo\b|</,'<']];
+function opNL(s){s=s.replace(/\b(solo|solamente|cuando|si|que|el|la|los|las|lo|su|sus|del|de|al|a|actual|valor|nivel|indicador|esta|estan|ya|un|una|precio\s+de)\b/g,' ').replace(/[()]/g,' ').replace(/\s+/g,' ').trim();let m;
   if((m=s.match(/\brsi\s*(\d+)?/)))return{tipo:'rsi',periodo:m[1]?+m[1]:null};
   if((m=s.match(/\b(?:ema|mme|media\s+(?:movil\s+)?exponencial)\s*(?:ultim[oa]s\s+)?(\d+)?/)))return{tipo:'ema',periodo:m[1]?+m[1]:null};
   if((m=s.match(/\b(?:sma|mm|media(?:\s+movil)?(?:\s+simple)?|promedio)\s*(?:ultim[oa]s\s+)?(\d+)?/)))return{tipo:'sma',periodo:m[1]?+m[1]:null};
@@ -1459,7 +1586,9 @@ function initIdea(){const ta=$('#pi-idea-t'),out=$('#pi-idea-out');try{const g=s
    TU IDEA → IA (DeepSeek, desde el navegador con la clave del alumno)
    La clave NUNCA va en el código: la escribe el alumno y vive solo en su localStorage.
    ===================================================================== */
-const IA_LOCAL='http://127.0.0.1:8787';let iaLocal=null; /* IA local (herramientas/ia_local.py): si responde, se usa sin clave */
+const IA_LOCAL='http://127.0.0.1:8787';let iaLocal=null;
+/* Servidor de IA de la Mega Cueva (Cloudflare Worker + Gemini, con tope diario). Vacío = desactivado. */
+const IA_REMOTA=window.MCT_IA_REMOTA||''; /* IA local (herramientas/ia_local.py): si responde, se usa sin clave */
 const IA_URL='https://api.deepseek.com/chat/completions',IA_MODELO='deepseek-chat',IA_MAX_MS=30000,IA_KEY='tis5_deepseek_clave';
 const iaClave={get(){try{return localStorage.getItem(IA_KEY)||''}catch(e){return ''}},set(v){try{localStorage.setItem(IA_KEY,v)}catch(e){}},borra(){try{localStorage.removeItem(IA_KEY)}catch(e){}}};
 const IA_EJ_ORO={spec:{version:1,nombre:'Oro RSI(4) 25/55',activo:{simbolo:'XAUUSD',clase:'metal'},temporalidad:'D1',direccion:'largo',
@@ -1626,10 +1755,12 @@ function iaASpec(s,extra){const n=clone(SPEC);const num=v=>v==null||v===''||!Num
   return n}
 async function iaLlamar(clave,msgs){const ac=new AbortController(),loc=!clave&&iaLocal,to=setTimeout(()=>ac.abort(),loc&&iaLocal.motor==='claude'?180000:IA_MAX_MS);let r;
   const H={'Content-Type':'application/json'};if(!loc)H.Authorization='Bearer '+clave;
-  try{r=await fetch(loc?IA_LOCAL+'/v1/chat/completions':IA_URL,{method:'POST',signal:ac.signal,headers:H,
+  try{r=await fetch(loc?iaLocal.url+'/v1/chat/completions':IA_URL,{method:'POST',signal:ac.signal,headers:H,
       body:JSON.stringify({model:IA_MODELO,messages:msgs,response_format:{type:'json_object'},temperature:0.1,max_tokens:2500,stream:false})})}
   catch(e){clearTimeout(to);throw new Error(e&&e.name==='AbortError'?'La IA tardó más de 30 segundos. Vuelve a intentarlo o usa las otras dos opciones.':'No hay conexión con DeepSeek. Revisa tu internet (o un bloqueador) y vuelve a intentarlo.')}
   let j=null;try{j=await r.json()}catch(e){}clearTimeout(to);
+  if(!r.ok&&loc&&j&&typeof j.error==='string')throw new Error(j.error);
+  if(!r.ok&&loc&&iaLocal.url!==IA_LOCAL)throw new Error(r.status===429?'La IA de la Mega Cueva está saturada ahora mismo. Espera unos segundos o usa «Traducir aquí».':'La IA de la Mega Cueva no respondió ('+r.status+'). Usa «Traducir aquí» o tu agente 03.');
   if(!r.ok){const M={400:'DeepSeek no aceptó la petición (400).',401:'La clave no es válida (401). Cópiala otra vez desde platform.deepseek.com/api_keys.',402:'Tu cuenta de DeepSeek no tiene saldo (402). Recarga unos céntimos en platform.deepseek.com.',
       422:'DeepSeek no aceptó los parámetros (422).',429:'Demasiadas peticiones seguidas (429). Espera unos segundos y vuelve a intentarlo.'};
     throw new Error(M[r.status]||(r.status>=500?'DeepSeek está saturado o caído ('+r.status+'). Prueba en un minuto.':'Error de DeepSeek ('+r.status+').'))}
@@ -1661,9 +1792,10 @@ function iaPintar(out,res,extra){const r=res.r,sup=[...(r.supuestos||[]).map(Str
     <p class="csvhelp" style="margin:0">He rellenado el formulario de abajo. Confirma los supuestos en ámbar antes de correr la prueba: la IA traduce, no calcula resultados.</p>`;
   const L=$('#pi-ia-sup',out);if(L)L.addEventListener('change',e=>{const li=e.target.closest('li');if(li)li.classList.toggle('ok',e.target.checked);
     if($$('input',L).every(x=>x.checked))toast('Supuestos confirmados')})}
-async function iaDetectarLocal(){try{const ac=new AbortController(),t=setTimeout(()=>ac.abort(),900);const r=await fetch(IA_LOCAL+'/estado',{signal:ac.signal});clearTimeout(t);if(r.ok){const j=await r.json();iaLocal=j&&j.ok?j:null}}catch(e){iaLocal=null}return iaLocal}
+async function iaProbar(base,ms){try{const ac=new AbortController(),t=setTimeout(()=>ac.abort(),ms);const r=await fetch(base+'/estado',{signal:ac.signal});clearTimeout(t);if(r.ok){const j=await r.json();if(j&&j.ok)return Object.assign(j,{url:base})}}catch(e){}return null}
+async function iaDetectarLocal(){iaLocal=await iaProbar(IA_LOCAL,900);if(!iaLocal&&IA_REMOTA)iaLocal=await iaProbar(IA_REMOTA,4000);return iaLocal}
 function initIA(){const k=$('#pi-ia-k'),est=$('#pi-ia-k-est'),btn=$('#pi-ia'),ta=$('#pi-idea-t'),out=$('#pi-idea-out');let ocupado=false;
-  const pinta=()=>{const v=iaClave.get();est.textContent=v?'Clave guardada.':(iaLocal?'IA local conectada ('+(iaLocal.motor==='claude'?'Claude Code':'DeepSeek')+'): no hace falta clave.':'');$('#pi-ia-borrar').hidden=!v};
+  const pinta=()=>{const v=iaClave.get();est.textContent=v?'Clave guardada.':(iaLocal?(iaLocal.url===IA_LOCAL?'IA local conectada ('+(iaLocal.motor==='claude'?'Claude Code':'DeepSeek')+')':'IA de la Mega Cueva conectada (Gemini)')+': no hace falta clave.':'');$('#pi-ia-borrar').hidden=!v};
   window.MCT_IA_PINTA=pinta;iaDetectarLocal().then(pinta);
   k.value=iaClave.get();pinta();
   k.addEventListener('input',()=>{const v=k.value.trim();if(v)iaClave.set(v);else iaClave.borra();pinta()});
@@ -1681,7 +1813,7 @@ function initIA(){const k=$('#pi-ia-k'),est=$('#pi-ia-k-est'),btn=$('#pi-ia'),ta
     finally{ocupado=false;btn.disabled=false}}}
 
 /* ---------- arranque ---------- */
-function init(){
+function init(){const nivel0=nivelInicial();
   if(!ES_DEMO){$('#ctx-chip').hidden=true;$('#ctx-tuya').hidden=false;$('#b-demo').hidden=false;$('#b-demo').onclick=()=>{try{sessionStorage.removeItem('mct_res');sessionStorage.removeItem('mct_spec_res')}catch(e){}location.reload()}}
   fitNombre();$('#ctx-sub').textContent=(SIMB?SIMB+' · ':'')+yr(D.desde)+'–'+yr(D.hasta)+' · '+T.length+' op.';pintarHchips();
   $('#foot-dat').textContent=(SIMB||'Tus datos')+' '+fd(D.desde)+' → '+fd(D.hasta);
@@ -1724,11 +1856,12 @@ function init(){
     else if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();avanzar(-1)}
     else if(/^[0-8]$/.test(e.key))go(+e.key);
     else if(e.key==='m'||e.key==='M')setRail(!document.body.classList.contains('rail-min'));
-    else if(e.key==='n'||e.key==='N')setNivel(nivel==='entender'?'avanzado':'entender');
+    else if(e.key==='n'||e.key==='N')setNivel(nivel==='basic'?'completo':'basic');
+    else if(e.key==='A'&&e.shiftKey)setNivel(nivel==='avanzado'?'completo':'avanzado');
     else if(e.key==='p'||e.key==='P')setPres(!document.body.classList.contains('pres'));
     else if(e.key==='?'||e.key==='h'||e.key==='H')openDlg('help');
     else if(e.key==='Home')go(0)});
-  $$('#nivel button').forEach(b=>b.onclick=()=>setNivel(b.dataset.n));
+  $$('.nivel button').forEach(b=>b.onclick=()=>setNivel(b.dataset.n));
   renderFases();initPI();initIdea();initIA();initMesa();renderProtocolo();
   $('#b-rail').onclick=()=>setRail(!document.body.classList.contains('rail-min'));$$('.tab').forEach(t=>{const b=$('b',t);if(b)t.title=b.textContent});setRail(store.get('rail')==='1',true);
   window.addEventListener('resize',fijarHdr);fijarHdr();
@@ -1736,6 +1869,7 @@ function init(){
   let tras=null;try{tras=sessionStorage.getItem('mct_tras');sessionStorage.removeItem('mct_tras')}catch(e){}
   const h=(location.hash||'').slice(1);
   if(tras==='prueba'){go('prueba');mostrarResPI(true,null)}else go(VIEWS.includes(h)?h:0);
+  initBasic();setNivel(nivel0);
 }
 function syncFilt(){$$('#o-filt button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.f===opState.filter))}
 (document.fonts&&document.fonts.ready?document.fonts.ready:Promise.resolve()).then(()=>{renderAll();renderTree();fitNombre()});
