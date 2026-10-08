@@ -1019,6 +1019,8 @@ pre.codigo.bx-pseudo,pre.codigo.bx-msg{white-space:pre-wrap;word-break:break-wor
 .bx-dat .bx-mal{flex-basis:100%}
 body.basic .toast{left:50%;max-width:calc(100vw - 32px)}
 
+.ritmo{margin:.6rem 0 0;padding:.5rem .7rem;border-left:3px solid var(--warn,#f5a524);background:color-mix(in srgb,var(--warn,#f5a524) 8%,transparent);font-size:max(13px,.86rem);line-height:1.45}
+
 </style>
 </head>
 <body>
@@ -2734,15 +2736,18 @@ function aplicarAgente04(txt){const out=[],L=txt.split(/\r?\n/).map(l=>l.trim())
   $('#pi-pegar-r').innerHTML=out.map(o=>`<li class="${o.e}"><span>${o.e==='ok'?'✓':o.e==='no'?'✕':'!'}</span><span>${esc(o.t)}</span></li>`).join('');
   const n=out.filter(o=>o.e==='ok').length,k=out.filter(o=>o.e==='no').length;toast(n+' piezas aplicadas'+(k?' · '+k+' sin entender (en rojo)':''))}
 /* ---------- los 4 números de la mesa (fase 04): fuera de muestra y con costes ---------- */
+function ritmo(){const n=+FULL.n,a=+FULL.anios;if(!(n>0&&a>0))return null;const r=n/a,m=30/r*12;
+  return{r,m,txt:'Ritmo: ~'+nf(r,r<10?1:0)+' operaciones al año → 30 operaciones en vivo tardarían ~'+(m<24?nf(m,0)+' meses':nf(m/12,1)+' años'),
+    consejo:r>=60?'Un forward de 30 operaciones en demo es razonable.':r>=12?'Para un forward, fija una ventana de tiempo (3–6 meses), no un número de operaciones.':'Esperar 30 operaciones en vivo son años: en demo comprueba solo la ejecución 1–3 meses.'}}
 function numeros4(){const N4=[['Factor de beneficio',nf(OOS.pf,2),'≥ 1,3',OOS.pf>=1.3],['Operaciones',String(OOS.n),'≥ 30',OOS.n>=30],['Caída máxima',pct(OOS.maxdd,1,false),'< 20 %',OOS.maxdd<.2],['Factor de beneficio sin la mejor operación',nf(OOS.pf_sin_mejor,2),'> 1',OOS.pf_sin_mejor>1]];
   const x4=N4.filter(n=>n[3]).length,ap=x4===4;
   N4TXT=['MEGA CUEVA TESTER · resultado para mi agente 04 VALIDADOR','Estrategia: '+NOMBRE+(SIMB?' · '+SIMB:''),
     'Datos: '+fd(D.desde)+' → '+fd(D.hasta)+' · fuera de muestra desde '+fd(SPLIT)+' · con costes','',
     'Los 4 números (FUERA de muestra, con costes):',...N4.map((n,i)=>`${i+1}. ${n[0]}: ${n[1]} (pide ${n[2]}) ${n[3]?'✓':'✕'}`),'',
-    `VEREDICTO: ${x4}/4 · ${ap?'APRUEBA':'NO APRUEBA'}`,`Protocolo completo TIS (5 fases): ${nPass}/5`].join('\n');
+    `VEREDICTO: ${x4}/4 · ${ap?'APRUEBA':'NO APRUEBA'}`,`Protocolo completo TIS (5 fases): ${nPass}/5`,...(ritmo()?['',ritmo().txt,ritmo().consejo,'Un 4/4 abre la fase 05: no es «listo para cuenta real».']:[])].join('\n');
   return `<section class="panel"><div class="ph"><h3>Los 4 números · <em>fuera de muestra, con costes</em></h3><button type="button" class="btn gold" id="pi-copiar4"><svg class="ic"><use href="#i-copiar"/></svg> COPIAR RESULTADO PARA MI AGENTE 04</button></div>
     <div class="n4">${N4.map((n,i)=>`<div class="nn ${n[3]?'si':'no'}"><span>${i+1} · ${n[0]}</span><b>${n[1]}</b><small>${n[3]?'✓':'✕'} pide ${n[2]}</small></div>`).join('')}
-    <div class="ver">${sello(ap,'VEREDICTO '+x4+'/4 · '+(ap?'APRUEBA':'NO APRUEBA'))}<span class="nota">Fase 04 de tu mesa. El protocolo completo TIS añade 4 pruebas más: aquí ${nPass}/5.</span></div></div></section>`}
+    <div class="ver">${sello(ap,'VEREDICTO '+x4+'/4 · '+(ap?'APRUEBA':'NO APRUEBA'))}<span class="nota">Fase 04 de tu mesa. El protocolo completo TIS añade 4 pruebas más: aquí ${nPass}/5.</span></div>${ritmo()?`<p class="ritmo"><b>${esc(ritmo().txt)}.</b> ${esc(ritmo().consejo)}</p>`:''}</div></section>`}
 
 /* ---------- motor (window.MCT_MOTOR) ---------- */
 function motorFn(){const M=window.MCT_MOTOR;if(M&&typeof M.correr==='function')return (s,c)=>M.correr(s,c);if(typeof M==='function')return M;return null}
@@ -3041,6 +3046,7 @@ function bxResHTML(){const N=[['¿Gana más de lo que pierde?',nf(OOS.pf,2),OOS.
     <dl class="bx-3"><div><dt>Gana por operación</dt><dd class="${exp>0?'pos':'neg'}">${usd(exp,0,true)}</dd><small>de media</small></div>
       <div><dt>Peor caída</dt><dd class="neg">${pct(-FULL.maxdd,1)}</dd><small>${usd(-FULL.maxdd*CAP)}</small></div>
       <div><dt>Operaciones</dt><dd>${nf(FULL.n!=null?FULL.n:T.length,0)}</dd><small>diseño + prueba</small></div></dl>
+    ${ritmo()?`<p class="ritmo"><b>${esc(ritmo().txt)}.</b> ${esc(ritmo().consejo)}</p>`:''}
     <div class="bx-acc"><button type="button" class="btn gold" id="bx-copiar"><svg class="ic"><use href="#i-copiar"/></svg> COPIAR RESULTADO PARA MI AGENTE 04</button><button type="button" class="link" id="bx-completo">Ver el análisis completo →</button></div>`}
 function bxVacioHTML(){return `<p class="bx-h">Aquí verás si aprueba</p><ul class="bx-n4 vacio">${['¿Gana más de lo que pierde?','¿Hay operaciones suficientes?','¿Se aguanta la peor racha?','¿Gana sin su mejor operación?'].map(q=>`<li><span class="bx-ic" aria-hidden="true">·</span><div><b>${q}</b></div><strong>—</strong></li>`).join('')}</ul>
   <p class="bx-cap">Los 4 números que mira tu agente 04, con costes reales, y la curva de una cuenta de 100.000 USD.</p>`}

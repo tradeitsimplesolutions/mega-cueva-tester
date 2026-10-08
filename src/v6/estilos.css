@@ -1007,3 +1007,5 @@ pre.codigo.bx-pseudo,pre.codigo.bx-msg{white-space:pre-wrap;word-break:break-wor
 .bx-dat{flex-direction:row;flex-wrap:wrap;align-items:center;gap:.4rem .7rem}
 .bx-dat .bx-mal{flex-basis:100%}
 body.basic .toast{left:50%;max-width:calc(100vw - 32px)}
+
+.ritmo{margin:.6rem 0 0;padding:.5rem .7rem;border-left:3px solid var(--warn,#f5a524);background:color-mix(in srgb,var(--warn,#f5a524) 8%,transparent);font-size:max(13px,.86rem);line-height:1.45}
