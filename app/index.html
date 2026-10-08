@@ -1476,7 +1476,6 @@ body.basic .toast{left:50%;max-width:calc(100vw - 32px)}
   <span class="progress" id="prog" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
 </footer>
 </div>
-<div id="avz"><iframe title="Nivel avanzado: terminal del oro" loading="eager"></iframe></div>
 
 <!-- ============ BASIC: la prueba en 3 pasos (vista por defecto de los asistentes) ============ -->
 <div id="basic" class="bx">
@@ -2964,9 +2963,9 @@ function cargarResultados(json){const err=validarRes(json);if(err){toast('No se 
   location.reload();return true}
 window.cargarResultados=cargarResultados;
 
-/* ---------- nivel BASIC / COMPLETO (+ AVANZADO oculto: ?avanzado, #avanzado o Mayús+A, solo para Mariel) ---------- */
+/* ---------- nivel BASIC / COMPLETO (AVANZADO retirado del repo público: la terminal vive en sentinel/reportes/oro_rsi4) ---------- */
 let nivel='completo';
-function setNivel(n){if(n==='entender')n='completo';if(!['basic','completo','avanzado'].includes(n))n='basic';const prev=nivel;nivel=n;
+function setNivel(n){if(n==='entender')n='completo';if(!['basic','completo'].includes(n))n='basic';const prev=nivel;nivel=n;
   $$('.nivel button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.n===n));
   document.body.classList.toggle('basic',n==='basic');
   if(n!=='avanzado')store.set('nivel',n);
@@ -2976,7 +2975,7 @@ function setNivel(n){if(n==='entender')n='completo';if(!['basic','completo','ava
   else{if(prev==='basic'){mesaActiva(VIEWS[cur]==='mesa');try{history.replaceState(null,'','#'+VIEWS[cur])}catch(e){}}
     if(n==='completo')requestAnimationFrame(()=>{fijarHdr();renderAll();renderTree()})}}
 /* nivel al abrir: ?avanzado/#avanzado → AVANZADO · #vista → COMPLETO · si no, lo último elegido (BASIC por defecto) */
-function nivelInicial(){const u=location.search+location.hash,h=location.hash.slice(1);if(/avanzado/i.test(u))return 'avanzado';
+function nivelInicial(){const u=location.search+location.hash,h=location.hash.slice(1);
   if(h==='basic')return 'basic';if(VIEWS.includes(h))return 'completo';const g=store.get('nivel');return g==='completo'?'completo':'basic'}
 
 /* ---------- BASIC: la prueba en 3 pasos ----------
@@ -3696,7 +3695,6 @@ function init(){const nivel0=nivelInicial();
     else if(/^[0-8]$/.test(e.key))go(+e.key);
     else if(e.key==='m'||e.key==='M')setRail(!document.body.classList.contains('rail-min'));
     else if(e.key==='n'||e.key==='N')setNivel(nivel==='basic'?'completo':'basic');
-    else if(e.key==='A'&&e.shiftKey)setNivel(nivel==='avanzado'?'completo':'avanzado');
     else if(e.key==='p'||e.key==='P')setPres(!document.body.classList.contains('pres'));
     else if(e.key==='?'||e.key==='h'||e.key==='H')openDlg('help');
     else if(e.key==='Home')go(0)});
