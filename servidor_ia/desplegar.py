@@ -28,8 +28,10 @@ def wr(*args, entrada=None, capturar=True):
 def main():
     code, out = wr("whoami")
     if "not authenticated" in out.lower() or code != 0:
-        print("Abriendo el navegador para autorizar Cloudflare…")
-        subprocess.run([NPX, "--yes", "wrangler", "login"], cwd=AQUI)
+        print("Este ordenador todavía no está conectado a Cloudflare.")
+        print("Primero haz doble clic en 1_CONECTAR_CLOUDFLARE.bat, pulsa «Allow» en el navegador y vuelve aquí.")
+        sys.exit(1)
+    print("Conectado a Cloudflare.")
     toml = (AQUI / "wrangler.toml").read_text(encoding="utf-8")
     if 'id = "PENDIENTE"' in toml:
         code, out = wr("kv", "namespace", "create", "CONTADOR")

@@ -7,3 +7,4 @@ node_modules/
 *.env
 .dev.vars
 servidor_ia/.wrangler/
+servidor_ia/__pycache__/
