@@ -352,10 +352,8 @@
           <button type="button" class="link" id="pi-csv-x" hidden>quitar</button>
           <input type="file" id="pi-csv" accept=".csv,.txt,text/csv" class="sr" tabindex="-1" aria-hidden="true">
         </div>
-        <div class="fuente-ej"><span class="c-dim">o usa un ejemplo:</span>
-          <button type="button" class="btn mini" id="pi-ej-oro">ORO · DIARIO</button>
-          <button type="button" class="btn mini" id="pi-ndx">NASDAQ · DIARIO</button>
-          <button type="button" class="btn mini" id="pi-ej-nas">NAS100 · 15 MIN</button>
+        <div class="fuente-ej"><span class="c-dim">o usa la librería de datos:</span>
+          <span class="lib-btns" id="pi-lib" role="group" aria-label="Librería de datos"></span>
         </div>
       </div>
       <p class="csvhelp">CSV de TradingView tal cual: <code>time,open,high,low,close,Volume</code> (time ISO con zona horaria o UNIX). Velas de 5/15 min u 1 hora: la hora ISO se convierte sola a la hora de la sesión. <button type="button" class="link" id="pi-csv-ayuda">Cómo exportarlo →</button></p>
@@ -500,11 +498,7 @@
           <input type="file" id="bx-csv" accept=".csv,.txt,text/csv" class="sr" tabindex="-1" aria-hidden="true">
         </div>
         <p class="bx-h">O usa un ejemplo</p>
-        <div class="bx-ejs" id="bx-ejs" role="group" aria-label="Datos de ejemplo">
-          <button type="button" class="bx-ej" data-ej="oro" aria-pressed="false"><b>Oro</b><small>diario</small></button>
-          <button type="button" class="bx-ej" data-ej="ndx" aria-pressed="false"><b>Nasdaq</b><small>diario</small></button>
-          <button type="button" class="bx-ej" data-ej="nas" aria-pressed="false"><b>NAS100</b><small>15 minutos</small></button>
-        </div>
+        <div class="bx-ejs" id="bx-ejs" role="group" aria-label="Librería de datos"></div>
         <div class="bx-dat" id="bx-dat" aria-live="polite"><span id="bx-dat-t"></span><span class="fuente-sello" id="bx-sello" hidden></span><span class="bx-mal" id="bx-mal" hidden></span></div>
         <button type="button" class="link bx-ayuda" id="bx-csv-ayuda">Cómo sacar tu CSV de TradingView →</button>
       </li>

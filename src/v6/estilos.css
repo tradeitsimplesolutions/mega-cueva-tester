@@ -895,7 +895,8 @@ h2.sec-t{margin:0 0 .45rem}
 .fuente-ej{display:flex;gap:.45rem;align-items:center;flex-wrap:wrap;font-size:max(13px,.85rem)}
 .btn.mini{padding:.3rem .6rem;font-size:max(12px,.78rem)}
 
-#pi-fuente #pi-ndx{flex-basis:auto;text-align:center}
+.lib-btns{display:flex;gap:.4rem;flex-wrap:wrap}
+#pi-fuente .lib-btns .btn{flex-basis:auto;text-align:center}
 
 /* ---------- BASIC: la prueba en 3 pasos (vista por defecto de los asistentes) ---------- */
 #basic{display:none}
@@ -946,6 +947,7 @@ body.basic #basic{display:flex;flex-direction:column;gap:1.1rem;min-height:100vh
 .bx-ej{display:flex;flex-direction:column;align-items:flex-start;gap:.1rem;padding:.65rem .75rem;border:1px solid var(--line2);border-radius:var(--rad);background:rgba(var(--cy-rgb),.04);color:var(--txt);cursor:pointer;text-align:left;min-width:0;transition:background .15s,border-color .15s}
 .bx-ej b{font-family:var(--f-disp);font-weight:800;font-size:1.3rem;line-height:1.05;letter-spacing:.02em;color:var(--ink);text-transform:var(--up-head)}
 .bx-ej small{font-size:max(13px,.84rem);color:var(--dim)}
+.bx-ej .bx-ej-r{font-size:max(11px,.72rem);opacity:.75;font-variant-numeric:tabular-nums}
 .bx-ej:hover{background:rgba(var(--cy-rgb),.12)}
 .bx-ej[aria-pressed="true"]{border-color:var(--cy);background:rgba(var(--cy-rgb),.14);box-shadow:inset 0 -3px 0 var(--cy)}
 .bx-dat{margin:0;font-size:max(14px,.92rem);color:var(--dim);display:flex;flex-direction:column;gap:.35rem}
@@ -998,6 +1000,7 @@ body.basic #basic{display:flex;flex-direction:column;gap:1.1rem;min-height:100vh
   .bx-paso{padding:.95rem .9rem 1rem}
   .bx-ph h2{font-size:1.5rem} .bx-n{width:2.6rem;height:2.6rem;font-size:1.6rem}
   .bx-paso .idea-b .btn{flex:1 1 100%;justify-content:center}
+  .bx-ejs{grid-template-columns:repeat(2,minmax(0,1fr))}
   .bx-ej{padding:.55rem .55rem} .bx-ej b{font-size:1.1rem}
   .bx-3 dd{font-size:1.25rem}
   .bx-n4 strong{font-size:1.4rem}

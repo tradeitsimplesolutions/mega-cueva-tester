@@ -34,7 +34,9 @@ const SIMB=ES_DEMO?'XAUUSD':((SPEC_RES&&SPEC_RES.activo&&SPEC_RES.activo.simbolo
 const PC={F1:'var(--f1)',F2:'var(--f2)',F3:'var(--f3)',F4:'var(--f4)',F5:'var(--f5)',PAR:'var(--fmt)'};
 
 /* velas completas: lista de objetos {t,o,h,l,c,rsi,sma} (o columnas) → lista normalizada */
-const VF=(()=>{let v=D.velas_full;if(v&&!Array.isArray(v)&&v.t)v=v.t.map((t,i)=>({t,o:v.o[i],h:v.h[i],l:v.l[i],c:v.c[i],rsi:v.rsi?v.rsi[i]:null,sma:v.sma?v.sma[i]:null}));
+/* velas_full llega como array de velas o por columnas ({t:[],o:[],…}, que es como se guarda: ocupa la mitad). */
+const VF=(()=>{let v=D.velas_full;
+  if(v&&!Array.isArray(v)&&v.t){const K=Object.keys(v).filter(k=>k!=='t');v=v.t.map((t,i)=>{const o={t};K.forEach(k=>o[k]=v[k]?v[k][i]:null);return o})}
   if(!Array.isArray(v)||!v.length)v=D.velas||[];return v})();
 const vfIdx={};VF.forEach((v,i)=>vfIdx[v.t]=i);
 const vfAt=s=>{if(vfIdx[s]!=null)return vfIdx[s];const t=ts(s);let lo=0,hi=VF.length-1;while(lo<hi){const m=(lo+hi)>>1;if(ts(VF[m].t)<t)lo=m+1;else hi=m}return lo};
@@ -584,6 +586,9 @@ const COSTES_NDX={perfil:'darwinex_mt5',spread_pb:0.326,comision_pb_lado:0.01,de
 PERFILES.NDX={costes:COSTES_NDX,fuente:'Perfil darwinex_mt5 de Sentinel para el Nasdaq 100 (NDX): spread 0,326 pb, comisión 0,01 pb/lado, deslizamiento 3 pb/lado, swap compras −5,55 %/año.'};
 PERFILES.NAS100=PERFILES.NDX;
 if(NAS)PERFILES.NAS100={costes:NAS.costes,fuente:'Perfil darwinex_mt5 de Sentinel para el Nasdaq (NDX → NAS100): spread 0,326 pb, comisión 0,01 pb/lado, deslizamiento 3 pb/lado, swap compras −5,55 %/año.'};
+/* SPY: CFD del ETF del S&P 500 (grupo etfs del perfil). La comisión de los ETF es 1 pb/lado, no 0,01 como en los índices. */
+const COSTES_SPY={perfil:'darwinex_mt5',spread_pb:0.315,comision_pb_lado:1,deslizamiento_pb_lado:3,swap_largo_pct_anual:-5.58,swap_corto_pct_anual:2.13};
+PERFILES.SPY={costes:COSTES_SPY,fuente:'Perfil darwinex_mt5 de Sentinel para el SPY (CFD del ETF del S&P 500): spread 0,315 pb, comisión 1 pb/lado, deslizamiento 3 pb/lado, swap compras −5,58 %/año. El dividendo del ETF no está en el precio.'};
 function perfilDe(sym){return PERFILES[String(sym||'').toUpperCase()]||{costes:DEMO_SPEC.costes,fuente:'No hay perfil Darwinex de '+(sym||'este activo')+' en el tester: son los costes del oro. Revísalos.'}}
 const IND=[['precio','Cierre',0],['apertura','Apertura',0],['maximo','Máximo',0],['minimo','Mínimo',0],['sma','SMA',1],['ema','EMA',1],['rsi','RSI',1],['atr','ATR',1],['max_n','Máx. N velas',1],['min_n','Mín. N velas',1],['num','Número',2],
   ['sesion_anterior_max','Máx. sesión anterior',0,'s'],['sesion_anterior_min','Mín. sesión anterior',0,'s'],['sesion_anterior_apertura','Apertura sesión anterior',0,'s'],['sesion_anterior_cierre','Cierre sesión anterior',0,'s'],
@@ -920,13 +925,18 @@ function pintarEtapa(txt,p){const bar=$('#pi-prog');if(p!=null)bar.style.width=M
 /* Los datos cargados tienen que ser del activo y la temporalidad de la regla (2026-10-07: corría NAS100 sobre el oro). */
 const SIM_ALIAS={NDX:'NAS100',US100:'NAS100',USTEC:'NAS100',NASDAQ:'NAS100',NASDAQ100:'NAS100',NQ:'NAS100',NAS:'NAS100',GOLD:'XAUUSD',ORO:'XAUUSD',XAU:'XAUUSD'};
 const simNorm=x=>{const k=String(x||'').toUpperCase().replace(/[^A-Z0-9]/g,'');return SIM_ALIAS[k]||k};
-function datosCargados(){if(!CSV)return{s:'XAUUSD',tf:'D1',txt:'los de ejemplo del oro (XAUUSD diario)'};
-  if(CSV.nombre==='NDX_D1_ejemplo.csv')return{s:'NAS100',tf:'D1',txt:'los de ejemplo del Nasdaq (NDX diario)'};
-  if(CSV.nombre==='NAS100_M15_ejemplo.csv')return{s:'NAS100',tf:'M15',txt:'los de ejemplo del NAS100 en 15 min'};return null}
+/* Librería de datos: la monta herramientas/montar_v6.py (const LIBRERIA, un CSV comprimido por juego de datos). */
+const LIB=(typeof LIBRERIA!=='undefined'&&Array.isArray(LIBRERIA))?LIBRERIA:[];
+const libId=id=>LIB.find(x=>x.id===id)||null;
+const libFich=n=>LIB.find(x=>x.fichero===n)||null;
+const libPara=(sim,tf)=>LIB.find(x=>simNorm(x.sim)===simNorm(sim)&&x.tf===tf)||null;
+const libEtiq=e=>e.b_t+' · '+e.b_s;
+function datosCargados(){const e=CSV?libFich(CSV.nombre):libId('oro_d1');if(!e)return null;
+  return{s:simNorm(e.sim),tf:e.tf,txt:e.txt,lib:e}}
 function datosNoCuadran(spec){const d=datosCargados();if(!d)return null;const s=simNorm(spec.activo&&spec.activo.simbolo),tf=spec.temporalidad;
   if(s===d.s&&tf===d.tf)return null;
   const quiero=(spec.activo&&spec.activo.simbolo||'?')+' · '+(TFN[tf]||tf);
-  const sug=s==='NAS100'&&tf==='D1'?' o pulsa «usar datos de ejemplo del Nasdaq (NDX diario)»':s==='NAS100'&&tf==='M15'?' o pulsa «Cargar el ejemplo NAS100 de la Mega Cueva»':s==='XAUUSD'&&tf==='D1'?' o pulsa «quitar» para volver a los datos del oro':'';
+  const m=libPara(s,tf),sug=m?' o pulsa «'+libEtiq(m)+'» en la librería de datos':'';
   return 'Tu regla es de '+quiero+', pero los datos cargados son '+d.txt+'. No la corro para no darte números de otro activo. Sube tu CSV de '+(spec.activo&&spec.activo.simbolo||'tu activo')+sug}
 async function correrPI(){const btn=$('#pi-correr');if(btn.disabled||corriendo)return;corriendo=true;btn.disabled=true;
   {const nc=datosNoCuadran(specLimpio());if(nc){corriendo=false;btn.disabled=false;toast('Los datos no son de tu activo');mostrarResPI(null,new Error(nc));return}}
@@ -970,15 +980,29 @@ function fechasCSV(txt){const F=[],n=txt.length,RE=/(\d{4})[.\-/](\d{2})[.\-/](\
     i=j+1}return F}
 async function gunzipB64(b64){if(typeof DecompressionStream==='undefined')throw new Error('este navegador no descomprime (usa Chrome, Edge o Firefox recientes)');
   const a=atob(b64),bin=new Uint8Array(a.length);for(let i=0;i<a.length;i++)bin[i]=a.charCodeAt(i);return await new Response(new Blob([bin]).stream().pipeThrough(new DecompressionStream('gzip'))).text()}
-let NDX_CACHE=null;
-async function usarNDX(silencio){const b=$('#pi-ndx');if(typeof CSV_NDX_GZ==='undefined'||!CSV_NDX_GZ){toast('Esta copia no trae los datos del NDX');return}if(b.disabled)return;
-  b.disabled=true;$('#pi-csv-n').textContent='Cargando el Nasdaq (NDX diario)…';await new Promise(r=>requestAnimationFrame(()=>setTimeout(r,0)));
-  try{if(!NDX_CACHE){const txt=await gunzipB64(CSV_NDX_GZ);NDX_CACHE={txt,F:fechasCSV(txt)}}const{txt,F}=NDX_CACHE;CSV={nombre:'NDX_D1_ejemplo.csv',texto:txt,n:F.length};csvFechas=F;
-    if(silencio!==true){SPEC.datos={fuente:'darwinex_mt5',desde:F[0],hasta:F[F.length-1],zona_horaria:'servidor_gmt3_usdst'};if(!['NDX','NAS100'].includes(SPEC.activo.simbolo))SPEC.activo={simbolo:'NDX',clase:'indice'};
-      SPEC.temporalidad='D1';SPEC.costes=clone(COSTES_NDX);if(SPEC.corte.tipo!=='auto'){SPEC.corte.tipo='auto'}}
-    $('#pi-csv-n').innerHTML='<b class="c-ink">Nasdaq 100 (NDX) diario · Darwinex</b> · '+nf(F.length,0)+' velas · '+fd(F[0])+' → '+fd(F[F.length-1]);$('#pi-csv-x').hidden=false;
-    if(silencio===true)actualizarPI(true);else{rellenarForm();toast('Datos del Nasdaq (NDX diario) y costes del perfil NDX puestos; tus reglas no cambian')}}
-  catch(e){toast('No se pudieron abrir los datos del NDX: '+e.message)}finally{b.disabled=false}}
+/* ---------- librería de datos: un solo cargador para todos los juegos ---------- */
+const LIB_CACHE={};   /* el CSV descomprimido y sus fechas, por id: la 2.ª vez es inmediata */
+function pintarLib(){
+  const z=$('#pi-lib');if(z)z.innerHTML=LIB.map(e=>`<button type="button" class="btn mini" data-lib="${e.id}" title="${esc(e.nombre+' · '+nf(e.velas,0)+' velas · '+e.desde+' → '+e.hasta)}">${esc(libEtiq(e))}</button>`).join('');
+  const x=$('#bx-ejs');if(x)x.innerHTML=LIB.map(e=>`<button type="button" class="bx-ej" data-ej="${e.id}" aria-pressed="false"><b>${esc(e.b_t)}</b><small>${esc(e.b_s)}</small><small class="bx-ej-r">${esc(yr(e.desde)+'–'+yr(e.hasta))}</small></button>`).join('');
+  $$('#pi-lib [data-lib]').forEach(b=>b.onclick=()=>usarLib(b.dataset.lib,false));
+  $$('#bx-ejs [data-ej]').forEach(b=>b.onclick=()=>bxDato(b.dataset.ej))}
+async function usarLib(id,silencio){const e=libId(id);if(!e){toast('Esta copia no trae esos datos');return}
+  if(id==='oro_d1'){quitarCSV();                                /* el oro es el juego por defecto: va entero en CSV_EJEMPLO */
+    if(silencio!==true){if(simNorm(SPEC.activo.simbolo)!=='XAUUSD'){SPEC.activo={simbolo:'XAUUSD',clase:e.clase};SPEC.temporalidad=e.tf;SPEC.costes=clone(perfilDe('XAUUSD').costes);rellenarForm()}
+      toast('Datos de ejemplo del oro (XAUUSD diario)')}
+    return}
+  const b=$('[data-lib="'+id+'"]');if(b&&b.disabled)return;if(b)b.disabled=true;
+  $('#pi-csv-n').textContent='Cargando '+e.nombre+'…';await new Promise(r=>requestAnimationFrame(()=>setTimeout(r,0)));
+  try{if(!LIB_CACHE[id]){if(!e.gz)throw new Error('esta copia no trae ese CSV');const txt=await gunzipB64(e.gz);LIB_CACHE[id]={txt,F:fechasCSV(txt)}}
+    const{txt,F}=LIB_CACHE[id];CSV={nombre:e.fichero,texto:txt,n:F.length};csvFechas=F;
+    if(silencio!==true){SPEC.datos={fuente:'darwinex_mt5',desde:F[0],hasta:F[F.length-1],zona_horaria:e.zona};
+      if(simNorm(SPEC.activo.simbolo)!==simNorm(e.sim))SPEC.activo={simbolo:e.sim,clase:e.clase};
+      SPEC.temporalidad=e.tf;SPEC.costes=clone(perfilDe(e.sim).costes);if(SPEC.corte.tipo!=='auto')SPEC.corte.tipo='auto'}
+    $('#pi-csv-n').innerHTML='<b class="c-ink">'+esc(e.nombre)+'</b> · '+nf(F.length,0)+' velas · '+fd(F[0])+' → '+fd(F[F.length-1]);$('#pi-csv-x').hidden=false;
+    if(silencio===true)actualizarPI(true);else{rellenarForm();toast('Datos de '+libEtiq(e)+' y los costes de su perfil puestos; tus reglas no cambian')}}
+  catch(err){toast('No se pudieron abrir esos datos: '+err.message);if(!CSV)$('#pi-csv-n').textContent='Datos de ejemplo del oro (XAUUSD D1)'}
+  finally{if(b)b.disabled=false}}
 let NAS_CACHE=null; /* el CSV descomprimido y sus fechas: la 2.ª carga es inmediata */
 async function cargarNAS(soloDatos){const b=$('#pi-nas');if(!NAS||typeof CSV_NAS_GZ==='undefined'||!CSV_NAS_GZ){toast('Esta copia no trae el ejemplo NAS100');return}if(b.disabled)return;
   const T00=performance.now(),bt=b.textContent;b.disabled=true;b.textContent='CARGANDO EJEMPLO…';$('#pi-csv-n').textContent='Cargando el ejemplo NAS100…';
@@ -1009,8 +1033,7 @@ function initPI(){try{const g=store.get('mct_spec2');if(g){const o=JSON.parse(g)
   $$('[data-add]').forEach(b=>b.onclick=()=>{const g=b.dataset.add;SPEC.reglas[g].push(g==='filtros'?{izq:{tipo:'precio'},op:'>',der:{tipo:'sma',periodo:50}}:{izq:{tipo:'rsi',periodo:14},op:g==='entrada'?'<':'>',der:{tipo:'num',valor:g==='entrada'?30:70}});renderBloques();cambioReglas();
     const L=$$('#bl-'+g+' .bloque');L.length&&$('select',L[L.length-1]).focus()});
   $$('[data-fmt]').forEach(b=>b.onclick=()=>{piFmt=b.dataset.fmt;$$('[data-fmt]').forEach(x=>x.setAttribute('aria-pressed',x===b));piPrev=[];actualizarPI(true)});
-  $('#pi-nas').onclick=()=>cargarNAS(false);$('#pi-ndx').onclick=()=>usarNDX(false);
-  $('#pi-ej-oro').onclick=()=>{quitarCSV();toast('Datos de ejemplo del oro (XAUUSD diario)')};$('#pi-ej-nas').onclick=()=>cargarNAS(true);
+  $('#pi-nas').onclick=()=>cargarNAS(false);pintarLib();
   $('#pi-check').addEventListener('click',e=>{if(e.target.closest('[data-ir-fuente]')){const f=$('#pi-fuente');f.scrollIntoView({behavior:RM?'auto':'smooth',block:'center'});f.classList.add('flash');setTimeout(()=>f.classList.remove('flash'),1600)}});
   $('#pi-demo').onclick=()=>{SPEC=clone(DEMO_SPEC);if(CSV)quitarCSV();piPrev=[];rellenarForm();toast('Restaurada la especificación del oro')};
   $('#pi-vaciar').onclick=()=>{SPEC=clone(DEMO_SPEC);SPEC.nombre='';SPEC.activo.simbolo='';SPEC.reglas={filtros:[],entrada:[],salida:[]};SPEC.optimizar=null;SPEC.costes={perfil:'manual',spread_pb:0,comision_pb_lado:0,deslizamiento_pb_lado:0,swap_largo_pct_anual:0,swap_corto_pct_anual:0};piPrev=[];rellenarForm();$('#f-nombre').focus()};
@@ -1024,7 +1047,9 @@ function initPI(){try{const g=store.get('mct_spec2');if(g){const o=JSON.parse(g)
   $('#pi-pegar-ej').onclick=()=>{$('#pi-pegar-t').value=EJ_04};
   $('#pi-csv-ayuda').onclick=()=>openDlg('csv-dlg');
   rellenarForm();if(NAS&&SPEC.nombre===NAS.nombre&&SPEC.datos.fuente==='csv_propio'&&!CSV)cargarNAS(true);
-  else if(!CSV&&['NDX','NAS100'].includes(SPEC.activo.simbolo)&&SPEC.temporalidad==='D1'&&SPEC.datos.fuente==='darwinex_mt5'&&SPEC.datos.desde==='2008-08-06')usarNDX(true)}
+  else if(!CSV&&SPEC.datos.fuente==='darwinex_mt5'){   /* volvió una spec guardada que ya usaba un juego de la librería */
+    const e=LIB.find(x=>x.gz&&x.tf===SPEC.temporalidad&&simNorm(x.sim)===simNorm(SPEC.activo.simbolo)&&SPEC.datos.desde===x.desde);
+    if(e)usarLib(e.id,true)}}
 
 /* ---------- PROTOCOLO COMPLETO ---------- */
 const PR_ORDEN=['F1','F2','F3','F4','F5','PAR'];let prSel=0;
@@ -1123,8 +1148,19 @@ function validarRes(j){if(!j||typeof j!=='object')return 'La respuesta del motor
   if(!Array.isArray(j.eq)||!j.eq.length)return 'eq debe ser una lista.';
   if(!Array.isArray(j.trades)||!j.trades.length)return 'Tu regla no ha hecho ninguna operación con estos datos.';return null}
 /** cargarResultados(json): pinta TODA la app con un resultado del motor (se guarda en sessionStorage y se recarga). */
+/* El resultado viaja por sessionStorage (≈5 MB de tope) y se pinta al recargar. En intradía, velas_full con una vela
+   por objeto se come todo el hueco (5,7 MB con el Nasdaq en 1 hora: la prueba moría con «sin respuesta del motor»,
+   2026-10-13). Por columnas es el MISMO dato —lo lee VF— y baja a la mitad. Si aun así no cabe, se guarda sin las
+   velas del gráfico: los números y la curva de capital son los mismos, el gráfico de velas usa la muestra (D.velas). */
+function porColumnas(json){const v=json.velas_full;if(!Array.isArray(v)||!v.length)return json;
+  const col={};Object.keys(v[0]).forEach(k=>col[k]=v.map(x=>x[k]===undefined?null:x[k]));
+  return Object.assign({},json,{velas_full:col})}
 function cargarResultados(json){const err=validarRes(json);if(err){toast('No se puede pintar: '+err);return false}
-  try{sessionStorage.setItem('mct_res',JSON.stringify(json))}catch(e){toast('El navegador no deja guardar el resultado para pintarlo');return false}
+  const guardar=o=>{try{sessionStorage.setItem('mct_res',JSON.stringify(o));return true}catch(e){return false}};
+  if(!guardar(porColumnas(json))){
+    const sin=Object.assign({},json);delete sin.velas_full;
+    if(!guardar(sin)){toast('El navegador no deja guardar el resultado para pintarlo');return false}
+    toast('Resultado muy grande: el gráfico de velas se pinta con la muestra, los números son los mismos')}
   location.reload();return true}
 window.cargarResultados=cargarResultados;
 
@@ -1144,7 +1180,7 @@ function nivelInicial(){const u=location.search+location.hash,h=location.hash.sl
   if(h==='basic')return 'basic';if(VIEWS.includes(h))return 'completo';const g=store.get('nivel');return g==='completo'?'completo':'basic'}
 
 /* ---------- BASIC: la prueba en 3 pasos ----------
-   Reutiliza TODO: traductor (#pi-trad), IA (#pi-ia), agente 03/04, datos (quitarCSV/usarNDX/cargarNAS/leerCSV),
+   Reutiliza TODO: traductor (#pi-trad), IA (#pi-ia), agente 03/04, datos (usarLib/quitarCSV/cargarNAS/leerCSV),
    sello (datosNoCuadran/datosCargados), lista (checklist) y motor (correrPI). El estado (SPEC, CSV, D) es el mismo que en COMPLETO:
    lo que se hace aquí se ve allí y al revés. Lo que pinta COMPLETO se observa (MutationObserver) para no tocar sus funciones. */
 const bxMovil=()=>window.matchMedia('(max-width:759px)').matches;
@@ -1183,7 +1219,7 @@ function bxIdea(){const o=$('#pi-idea-out'),bx=$('#bx-out');if(!o||!bx)return;
     if($('.ia-err',o)){bx.innerHTML=`<p class="bx-err">${$('.ia-err',o).innerHTML}</p>${bxAlt}`;return}}
   const g=bxGet();bx.innerHTML=g.ok||(g.no&&g.no.length)?bxTradHTML(g.av||[],g.no||[],!!g.ok):''}
 function bxDatos(){const d=datosCargados(),nc=datosNoCuadran(SPEC),hecha=bxHecha();
-  const k=!CSV?'oro':CSV.nombre==='NDX_D1_ejemplo.csv'?'ndx':CSV.nombre==='NAS100_M15_ejemplo.csv'?'nas':'csv';
+  const k=!CSV?'oro_d1':(libFich(CSV.nombre)||{}).id||'csv';
   $$('#bx-ejs [data-ej]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.ej===k)));
   const sl=$('#bx-sello');sl.hidden=!hecha;sl.className='fuente-sello '+(nc?'ko':d?'ok':'tuyo');
   sl.textContent=nc?'✕ no cuadran con tu idea':d?'✓ cuadran con tu idea':'! revisa que sean de '+(SPEC.activo.simbolo||'tu activo');
@@ -1218,10 +1254,8 @@ function bxPaso3(){const btn=$('#bx-correr'),hecha=bxHecha(),C=checklist().filte
 function bxSync(idea){if(idea!==false)bxIdea();bxDatos();bxPaso3()}
 function bxEntrar(){const t=$('#bx-idea'),pt=$('#pi-idea-t');if(t&&pt&&t.value!==pt.value)t.value=pt.value;bxSync();
   requestAnimationFrame(()=>{const c=charts['cv-bx'];c&&c.render()})}
-async function bxDato(k){if(corriendo)return;const dat=$('#bx-dat');bxErr='';
-  if(k==='oro'){quitarCSV();toast('Datos de ejemplo del oro (XAUUSD diario)')}
-  else if(k==='ndx'){$('#bx-dat-t').textContent='Cargando el Nasdaq…';await usarNDX(false)}
-  else if(k==='nas'){$('#bx-dat-t').textContent='Cargando el NAS100 en 15 minutos…';await cargarNAS(true)}
+async function bxDato(k){if(corriendo)return;bxErr='';const e=libId(k);
+  if(e){if(e.gz)$('#bx-dat-t').textContent='Cargando '+e.b_t+' ('+e.b_s+')…';await usarLib(k,false)}
   bxSync(false)}
 async function bxCorrer(){if(corriendo)return;bxErr='';
   if(datosNoCuadran(specLimpio())){toast('Los datos no son de tu idea: elígelos en el paso 2');bxSync(false);$('#bx-p2').classList.add('flash');setTimeout(()=>$('#bx-p2').classList.remove('flash'),1600);return}
@@ -1754,8 +1788,10 @@ function iaASpec(s,extra){const n=clone(SPEC);const num=v=>v==null||v===''||!Num
   const K=s.corte||{};n.corte=K.tipo==='pct'&&num(K.is_pct)?{tipo:'pct',fecha:SPEC.corte.fecha||DEMO_SPEC.corte.fecha,is_pct:Math.min(90,Math.max(50,+K.is_pct))}:
     K.tipo==='fecha'&&/^\d{4}-\d{2}-\d{2}$/.test(K.fecha||'')?{tipo:'fecha',fecha:K.fecha,is_pct:70}:{tipo:'auto',fecha:DEMO_SPEC.corte.fecha,is_pct:70};
   n.optimizar=null;
-  if(CSV&&CSV.nombre==='NAS100_M15_ejemplo.csv'&&(n.activo.simbolo!=='NAS100'||n.temporalidad!=='M15'))extra.push('Tienes cargado el ejemplo NAS100 en 15 min: sube el CSV de '+n.activo.simbolo+' en '+n.temporalidad+' antes de correr.');
-  if(!CSV&&(n.activo.simbolo!=='XAUUSD'||n.temporalidad!=='D1'))extra.push('Los datos de ejemplo son del oro en diario: sube el CSV de '+n.activo.simbolo+' en '+n.temporalidad+' antes de correr.');
+  {const e=CSV?libFich(CSV.nombre):null;   /* los datos de la librería que haya puestos tienen que ser de la idea traducida */
+   if(e&&(simNorm(n.activo.simbolo)!==simNorm(e.sim)||n.temporalidad!==e.tf))
+     extra.push('Tienes cargados los datos de '+libEtiq(e)+': elige los de '+n.activo.simbolo+' en la librería o sube tu CSV de '+n.activo.simbolo+' en '+n.temporalidad+' antes de correr.');}
+  if(!CSV&&(n.activo.simbolo!=='XAUUSD'||n.temporalidad!=='D1'))extra.push('Los datos de ejemplo son del oro en diario: elige otros en la librería o sube el CSV de '+n.activo.simbolo+' en '+n.temporalidad+' antes de correr.');
   return n}
 async function iaLlamar(clave,msgs){const ac=new AbortController(),loc=!clave&&iaLocal,to=setTimeout(()=>ac.abort(),loc&&iaLocal.motor==='claude'?180000:IA_MAX_MS);let r;
   const H={'Content-Type':'application/json'};if(!loc)H.Authorization='Bearer '+clave;

@@ -111,6 +111,29 @@ y pinta lo que devuelva con `cargarResultados`. Si no existe, enseña la Fase 1 
   comprimido (gzip + base64, ~0,7 MB en vez de 2 MB) y la app lo descomprime al pulsar con `DecompressionStream('gzip')`.
   Resultado esperado con el motor: 224 operaciones (150 IS / 74 OOS), PF 0,77 / 0,64, 0/5 fases. Es el ejemplo didáctico, no una estrategia ganadora.
 
+### Librería de datos (botones «o usa la librería de datos» / paso 2 del BASIC)
+La lista vive en `herramientas/montar_v6.py` (`LIBRERIA`): una fila por juego de datos con su fichero, activo, temporalidad y
+etiqueta. El montaje incrusta cada CSV comprimido (gzip + base64) y genera `const LIBRERIA` con los metadatos; la app pinta los
+botones y los carga con un único `usarLib(id)`, que pone también los costes del perfil Darwinex de ese activo. Para añadir un
+juego nuevo basta con dejar el CSV en `datos/` y añadir su fila.
+
+| Botón | Fichero | Velas | Periodo |
+|---|---|---|---|
+| Oro · diario | `datos/XAUUSD_D1_ejemplo.csv` | 7.518 | 1998 → 2026 |
+| Nasdaq · diario | `datos/paquete_ndx_spy/NDX_D1.csv` | 4.639 | 2008 → 2026 |
+| Nasdaq · 1 hora | `datos/paquete_ndx_spy/NDX_H1.csv` | 54.708 | 2017 → jul-2026 |
+| S&P 500 · diario · SPY | `datos/paquete_ndx_spy/SPY_D1.csv` | 4.209 | 2010 → 2026 |
+| S&P 500 · 1 hora · SPY | `datos/paquete_ndx_spy/SPY_H1.csv` | 29.068 | 2010 → jul-2026 |
+| NAS100 · 15 minutos | `datos/NAS100_M15_ejemplo.csv` | 32.098 | 2021 → 2026 |
+
+Todos salen de los históricos de Darwinex de Sentinel (`herramientas/exportar_paquete_ndx_spy.py`, solo lee). Los de 1 hora van
+con la fecha ISO en hora de Nueva York; los diarios, con la fecha de la vela del servidor. El SPY es el CFD del ETF: el dividendo
+no está en el precio. Detalle y costes en `datos/paquete_ndx_spy/LEEME.md`.
+
+El resultado de una prueba viaja por `sessionStorage` (tope ≈5 MB) y se pinta al recargar, así que `velas_full` se guarda **por
+columnas** ({t:[],o:[]…}, el mismo dato que lee `VF`): con el Nasdaq en 1 hora el array de objetos ocupaba 5,7 MB y la prueba
+moría con «sin respuesta del motor». Si aun así no cupiera, se guarda sin las velas del gráfico (los números no cambian).
+
 ## Limitaciones
 - No calcula nada por sí sola: sin el motor, la prueba inicial enseña los resultados de la demo.
 - La lectura del informe del Strategy Tester es orientativa. Busca el nº de operaciones, el beneficio neto y el
