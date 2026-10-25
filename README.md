@@ -4,7 +4,8 @@ Lead magnet de **Trade It Simple** para el evento Mega Cueva. Es una web que ens
 método TIS para validar una estrategia: las 5 fases, la paridad con MT5 y una prueba inicial guiada.
 Tiene dos niveles, **BASIC** (la prueba en 3 pasos en una sola pantalla; es lo que ven al abrir) y **COMPLETO**
 (todo el recorrido), que se cambian arriba en BASIC, abajo a la izquierda en COMPLETO o con la tecla `N`. Se recuerda en el navegador.
-La terminal del oro (**AVANZADO**, `app/avanzado.html`) no tiene botón: se abre con `?avanzado` o `#avanzado` en la URL, o con `Mayús+A`.
+(AVANZADO, la terminal del oro, se retiró del repo público: `setNivel` ya no acepta ese nivel y
+`app/avanzado.html` no existe aquí; vive en `sentinel/reportes/oro_rsi4`.)
 Capturas y comprobaciones de BASIC: `python herramientas/capturas_basic.py` → `capturas/basic/`.
 
 Trae cargada una demo real: **Oro RSI(4) 25/55** (XAUUSD diario, 1998–2026, tamaño 100 %).
@@ -14,7 +15,7 @@ Sus cifras salen de `sentinel/reportes/oro_rsi4/datos_terminal_v2.json` y aquí 
 Doble clic en `app/index.html`. Es un solo fichero con los datos de la demo dentro. Necesita internet
 solo para las fuentes de Google; sin internet funciona igual, con fuentes de sistema.
 
-Teclas: `0`–`6` para las estaciones · `←` `→` · `P` para presentar · `N` BASIC/COMPLETO · `?` para la ayuda · `Esc` para salir.
+Teclas: `0`–`8` para las estaciones · `←` `→` · `P` para presentar · `N` BASIC/COMPLETO · `?` para la ayuda · `Esc` para salir.
 
 ## Estaciones
 E0 Las fases (qué es validar, 3 trampas, galería interactiva de fases) · E1 Resumen · E2 Estrategia

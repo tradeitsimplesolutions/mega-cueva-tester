@@ -33,6 +33,7 @@
   var MOTOR_PY = /*__MOTOR_PY__*/'';
   var PY_ARRANQUE = "import sys\nsys.path.insert(0, '.')\nimport motor_tester as mt";
   var PY_CORRER = 'mt.ejecutar_spec_app(MCT_CSV, MCT_SPEC, MCT_PROG)';
+  var PY_PERFIL = 'mt.perfil_activo_json(MCT_CSV)';
 
   var ERR_RED = 'No se pudo cargar el motor. La primera vez hace falta conexión a internet ' +
     '(se descargan unos 15 MB de cdn.jsdelivr.net: Python, numpy y pandas). Comprueba la conexión y vuelve a intentarlo.';
@@ -78,6 +79,15 @@
   var promesaInicio = null, worker = null, pyMain = null, modo = null, listo = false;
   var pendientes = {}, siguienteId = 1, cola = Promise.resolve();
 
+  function romperPendientes(err) {
+    for (var id in pendientes) {
+      if (Object.prototype.hasOwnProperty.call(pendientes, id)) {
+        try { pendientes[id].ko(err); } catch (e) { /* nada */ }
+      }
+    }
+    pendientes = {};
+  }
+
   function avisar(etapa, pct) {
     try { if (typeof M.progreso === 'function') M.progreso(etapa, Math.round(pct)); } catch (e) { /* la UI no rompe el motor */ }
   }
@@ -105,7 +115,16 @@
         }
       };
       worker.onerror = function (e) {
-        if (!arrancado) { e.preventDefault && e.preventDefault(); ko(new Error(e.message || 'worker')); }
+        e.preventDefault && e.preventDefault();
+        if (!arrancado) { ko(new Error(e.message || 'worker')); return; }
+        // el worker murió DESPUÉS de arrancar (p. ej. sin memoria con un CSV grande): si no se rechazan
+        // las tareas pendientes, su promesa no se resuelve nunca y deja la cola («cola») colgada para
+        // siempre, rompiendo también cualquier prueba posterior.
+        var err = new Error('El motor dejó de responder (' + (e.message || 'error del worker') +
+          '). Vuelve a intentarlo: se reiniciará solo.');
+        romperPendientes(err);
+        try { worker.terminate(); } catch (e2) { /* nada */ }
+        worker = null; listo = false; modo = null; promesaInicio = null;
       };
       worker.postMessage({ tipo: 'iniciar', url: PYODIDE_URL, codigo: MOTOR_PY, arranque: PY_ARRANQUE });
     });
@@ -160,12 +179,13 @@
   };
   M.precargar = function () { M.iniciar().catch(function () { /* se reintenta al correr */ }); };
 
-  function correrUna(specTxt, csvTxt) {
+  function correrUna(specTxt, csvTxt, codigo) {
+    codigo = codigo || PY_CORRER;
     if (modo === 'worker') {
-      return new Promise(function (ok) {
+      return new Promise(function (ok, ko) {
         var id = siguienteId++;
-        pendientes[id] = { ok: ok, prog: avisar };
-        worker.postMessage({ tipo: 'correr', id: id, csv: csvTxt, spec: specTxt, correr: PY_CORRER });
+        pendientes[id] = { ok: ok, ko: ko, prog: avisar };
+        worker.postMessage({ tipo: 'correr', id: id, csv: csvTxt, spec: specTxt, correr: codigo });
       });
     }
     return new Promise(function (ok) {
@@ -174,7 +194,7 @@
           pyMain.globals.set('MCT_CSV', csvTxt);
           pyMain.globals.set('MCT_SPEC', specTxt);
           pyMain.globals.set('MCT_PROG', function (etapa, pct) { avisar(etapa, pct); });
-          ok(pyMain.runPython(PY_CORRER));
+          ok(pyMain.runPython(codigo));
         } catch (e) {
           ok(JSON.stringify({ error: 'Error interno del motor: ' + String((e && e.message) || e), tipo: 'ErrorInterno' }));
         }
@@ -202,6 +222,24 @@
           res.tiempos.modo = modo;
         }
         return res;
+      } catch (e) {
+        return { error: 'Error inesperado: ' + String((e && e.message) || e), tipo: 'ErrorInterno' };
+      }
+    });
+    cola = tarea.catch(function () { /* la cola sigue */ });
+    return tarea;
+  };
+
+  M.perfilActivo = function (csv) {
+    var tarea = cola.then(async function () {
+      try {
+        if (csv && typeof csv === 'object' && typeof csv.text === 'function') csv = await csv.text();
+        if (typeof csv !== 'string' || !csv.trim()) return { error: 'Falta el CSV: sube un fichero con tus velas (fecha, apertura, máximo, mínimo, cierre).', tipo: 'ErrorDatos' };
+        if (!listo) {
+          try { await M.iniciar(); } catch (e) { return { error: e.message, tipo: 'ErrorCarga' }; }
+        }
+        var txt = await correrUna(null, csv, PY_PERFIL);
+        try { return JSON.parse(txt); } catch (e) { return { error: 'El motor devolvió una respuesta que no se puede leer.', tipo: 'ErrorInterno' }; }
       } catch (e) {
         return { error: 'Error inesperado: ' + String((e && e.message) || e), tipo: 'ErrorInterno' };
       }

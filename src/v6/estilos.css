@@ -507,6 +507,25 @@ body.pres .tab small{display:none}
 :root[data-theme="blanco"] .ovl{background:rgba(20,30,45,.35)}
 .ovl.on{display:flex}
 .dlg{background:var(--pan2);border:1px solid var(--line2);border-radius:calc(var(--rad) + 2px);padding:1.2rem 1.4rem;max-width:42rem;width:92vw}
+.m1-dlg{max-width:54rem;max-height:88vh;overflow:auto;display:flex;flex-direction:column;gap:.7rem}
+.m1-dlg .bx-ejs{display:grid;grid-template-columns:repeat(auto-fill,minmax(8.5rem,1fr));gap:.5rem}
+.m1-ficha{display:grid;grid-template-columns:repeat(auto-fill,minmax(13rem,1fr));gap:.6rem;margin:.6rem 0}
+.m1-ficha .m1-fila{background:var(--pan);border:1px solid var(--line);border-radius:var(--rad);padding:.55rem .7rem}
+.m1-ficha .m1-fila span{display:block;font-family:var(--f-head);text-transform:var(--up-head);letter-spacing:.06em;font-size:.72rem;color:var(--dim)}
+.m1-ficha .m1-fila b{font-size:1.15rem}
+.m1-facil .m1-card{background:var(--pan);border:1px solid var(--line);border-radius:var(--rad);padding:.8rem 1rem;margin-bottom:.6rem}
+.m1-facil .m1-card h4{margin:0 0 .3rem;font-family:var(--f-head);letter-spacing:.04em;text-transform:var(--up-head)}
+.m1-familias{background:rgba(var(--gold-rgb),.08);border:1px solid var(--gold);border-radius:var(--rad);padding:.8rem 1rem}
+@media print{
+  body *{visibility:hidden}
+  #mision1-dlg,#mision1-dlg *{visibility:visible}
+  #mision1-dlg{position:absolute;inset:0;display:block!important;overflow:visible;background:#fff!important}
+  #mision1-dlg *{background:#fff!important;color:#111!important;border-color:#ccc!important;box-shadow:none!important;text-shadow:none!important}
+  #mision1-dlg .dlg{max-width:100%;width:100%;padding:0}
+  #mision1-dlg .m1-fila,#mision1-dlg .m1-card{border:1px solid #ccc!important;background:#fafafa!important}
+  #mision1-dlg .m1-familias{border:1px solid #111!important;background:#fafafa!important}
+  #m1-csvz,#m1-ejs,.bx-h,#m1-analizar,#m1-movil,#m1-progwrap,#m1-vista,#m1-imprimir,#mision1-dlg [data-close],#m1-csv-b{display:none!important}
+}
 .dlg h2{margin:0 0 .7rem;font-family:var(--f-head);letter-spacing:.1em;color:var(--cy)}
 .dlg ul{margin:0 0 1rem;padding-left:1.2rem} .dlg li{margin:.35rem 0}
 .dlg kbd{font-family:var(--f-mono);border:1px solid var(--line2);border-radius:3px;padding:0 .35rem;color:var(--cy2)}
@@ -909,6 +928,34 @@ body.basic #basic{display:flex;flex-direction:column;gap:1.1rem;min-height:100vh
 .bx-top .seg.nivel{display:inline-flex;width:auto}
 .bx-top .seg.nivel button{min-width:6.6rem;padding:.45rem .8rem}
 .bx-main{display:flex;flex-direction:column;gap:1rem;flex:1}
+.m1-banner{width:100%;justify-content:center;text-align:center;font-size:max(14px,.92rem);padding:.55rem 1rem;letter-spacing:.06em}
+
+/* ---------- LANDING / MISIONES: portada con los 3 caminos ---------- */
+#landing,#misiones{display:none}
+body.landing .app,body.landing #avz{display:none}
+body.landing #landing{display:flex}
+body.misiones .app,body.misiones #avz{display:none}
+body.misiones #misiones{display:flex}
+#landing,#misiones{min-height:100vh;align-items:center;justify-content:center;padding:2.4rem 1.2rem;overflow:auto}
+/* el fondo de líneas (--contornos) es una sola imagen de ancho fijo pegada a la derecha: en pantallas anchas
+   dejaba media portada en negro (poco se nota en BASIC/COMPLETO, llenos de paneles; aquí sí). Centrada y sin
+   tope de ancho, siempre cubre el hueco entero sea cual sea la pantalla. */
+:root[data-theme="cueva"] body.landing,:root[data-theme="cueva"] body.misiones{background-position:center 15%;background-size:140vw auto}
+.landing-in{max-width:58rem;width:100%;display:flex;flex-direction:column;align-items:center;gap:1.3rem;text-align:center}
+.landing-brand{justify-content:center;padding:0}
+.landing-h1{font-family:var(--f-head);text-transform:var(--up-head);letter-spacing:.04em;font-size:max(26px,2rem);margin:0}
+.landing-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(14rem,1fr));gap:1rem;width:100%;margin-top:.4rem}
+.landing-card{display:flex;flex-direction:column;align-items:flex-start;gap:.5rem;text-align:left;padding:1.5rem 1.3rem;
+  background:var(--pan2);border:1px solid var(--line2);border-radius:calc(var(--rad) + 2px);cursor:pointer;
+  transition:border-color .15s,transform .15s;font:inherit;color:inherit}
+.landing-card:hover{border-color:var(--gold);transform:translateY(-2px)}
+.landing-card .landing-ic{font-size:2rem;line-height:1}
+.landing-card b{font-family:var(--f-head);letter-spacing:.04em;text-transform:var(--up-head);font-size:1.02rem}
+.landing-card small{color:var(--dim);line-height:1.45;font-size:.88rem}
+.landing-pronto{cursor:default;opacity:.5}
+.landing-pronto:hover{border-color:var(--line2);transform:none}
+.landing-atras{align-self:flex-start}
+.brand-inicio{font-family:var(--f-body);font-weight:600;letter-spacing:0;font-size:max(13px,.85rem)}
 .bx-hero h1{margin:0;font-family:var(--f-disp);font-weight:800;font-size:clamp(2.1rem,3vw,3.1rem);line-height:1;letter-spacing:.005em;color:var(--ink);text-transform:var(--up-head)}
 .bx-hero h1 span{color:var(--cy)}
 .bx-hero .lead{margin-top:.45rem}

@@ -590,6 +590,8 @@ if(NAS)PERFILES.NAS100={costes:NAS.costes,fuente:'Perfil darwinex_mt5 de Sentine
 const COSTES_SPY={perfil:'darwinex_mt5',spread_pb:0.315,comision_pb_lado:1,deslizamiento_pb_lado:3,swap_largo_pct_anual:-5.58,swap_corto_pct_anual:2.13};
 PERFILES.SPY={costes:COSTES_SPY,fuente:'Perfil darwinex_mt5 de Sentinel para el SPY (CFD del ETF del S&P 500): spread 0,315 pb, comisión 1 pb/lado, deslizamiento 3 pb/lado, swap compras −5,58 %/año. El dividendo del ETF no está en el precio.'};
 function perfilDe(sym){return PERFILES[String(sym||'').toUpperCase()]||{costes:DEMO_SPEC.costes,fuente:'No hay perfil Darwinex de '+(sym||'este activo')+' en el tester: son los costes del oro. Revísalos.'}}
+/* true si la app está a punto de usar los costes del oro (perfilDe cae al genérico) para un activo que SÍ se dijo. */
+function sinPerfilCostes(){return !!(SPEC.activo&&SPEC.activo.simbolo)&&SPEC.costes.perfil==='darwinex_mt5'&&!PERFILES[String(SPEC.activo.simbolo).toUpperCase()]}
 const IND=[['precio','Cierre',0],['apertura','Apertura',0],['maximo','Máximo',0],['minimo','Mínimo',0],['sma','SMA',1],['ema','EMA',1],['rsi','RSI',1],['atr','ATR',1],['max_n','Máx. N velas',1],['min_n','Mín. N velas',1],['num','Número',2],
   ['sesion_anterior_max','Máx. sesión anterior',0,'s'],['sesion_anterior_min','Mín. sesión anterior',0,'s'],['sesion_anterior_apertura','Apertura sesión anterior',0,'s'],['sesion_anterior_cierre','Cierre sesión anterior',0,'s'],
   ['sesion_max','Máx. de la sesión (hasta ahora)',0,'s'],['sesion_min','Mín. de la sesión (hasta ahora)',0,'s'],['sesion_apertura','Apertura de la sesión',0,'s'],
@@ -985,8 +987,10 @@ const LIB_CACHE={};   /* el CSV descomprimido y sus fechas, por id: la 2.ª vez 
 function pintarLib(){
   const z=$('#pi-lib');if(z)z.innerHTML=LIB.map(e=>`<button type="button" class="btn mini" data-lib="${e.id}" title="${esc(e.nombre+' · '+nf(e.velas,0)+' velas · '+e.desde+' → '+e.hasta)}">${esc(libEtiq(e))}</button>`).join('');
   const x=$('#bx-ejs');if(x)x.innerHTML=LIB.map(e=>`<button type="button" class="bx-ej" data-ej="${e.id}" aria-pressed="false"><b>${esc(e.b_t)}</b><small>${esc(e.b_s)}</small><small class="bx-ej-r">${esc(yr(e.desde)+'–'+yr(e.hasta))}</small></button>`).join('');
+  const m=$('#m1-ejs');if(m)m.innerHTML=LIB.map(e=>`<button type="button" class="bx-ej" data-ej="${e.id}" aria-pressed="false"><b>${esc(e.b_t)}</b><small>${esc(e.b_s)}</small><small class="bx-ej-r">${esc(yr(e.desde)+'–'+yr(e.hasta))}</small></button>`).join('');
   $$('#pi-lib [data-lib]').forEach(b=>b.onclick=()=>usarLib(b.dataset.lib,false));
-  $$('#bx-ejs [data-ej]').forEach(b=>b.onclick=()=>bxDato(b.dataset.ej))}
+  $$('#bx-ejs [data-ej]').forEach(b=>b.onclick=()=>bxDato(b.dataset.ej));
+  $$('#m1-ejs [data-ej]').forEach(b=>b.onclick=()=>m1Dato(b.dataset.ej))}
 async function usarLib(id,silencio){const e=libId(id);if(!e){toast('Esta copia no trae esos datos');return}
   if(id==='oro_d1'){quitarCSV();                                /* el oro es el juego por defecto: va entero en CSV_EJEMPLO */
     if(silencio!==true){if(simNorm(SPEC.activo.simbolo)!=='XAUUSD'){SPEC.activo={simbolo:'XAUUSD',clase:e.clase};SPEC.temporalidad=e.tf;SPEC.costes=clone(perfilDe('XAUUSD').costes);rellenarForm()}
@@ -1013,11 +1017,11 @@ async function cargarNAS(soloDatos){const b=$('#pi-nas');if(!NAS||typeof CSV_NAS
     SPEC=n;piPrev=[];$('#pi-csv-n').innerHTML='<b class="c-ink">Ejemplo NAS100 · 15 min</b> · '+nf(F.length,0)+' velas · '+fd(F[0])+' → '+fd(F[F.length-1]);$('#pi-csv-x').hidden=false;{const T3=performance.now();rellenarForm();window.MCT_T_NAS.form=Math.round(performance.now()-T3)}
     $('#pi-izq').scrollTop=0;toast('Ejemplo NAS100 cargado: la regla de la ficha de tu mesa, tal cual')}
   catch(e){toast('No se pudo abrir el ejemplo NAS100: '+e.message);if(!CSV)$('#pi-csv-n').textContent='Datos de ejemplo del oro (XAUUSD D1)'}finally{b.disabled=false;b.textContent=bt;if(window.MCT_T_NAS&&window.MCT_T_NAS.datos!=null)window.MCT_T_NAS.total=Math.round(performance.now()-T00)}}
-function leerCSV(file){const r=new FileReader();r.onload=()=>{const txt=String(r.result||'');
+function leerCSV(file,listo){const r=new FileReader();r.onload=()=>{const txt=String(r.result||'');
     const F=fechasCSV(txt);
     if(F.length<300){toast('Ese CSV tiene '+F.length+' velas con fecha legible; el motor pide al menos 300.');return}
     CSV={nombre:file.name,texto:txt,n:F.length};csvFechas=F;SPEC.datos.fuente='csv_propio';SPEC.datos.desde=F[0];SPEC.datos.hasta=F[F.length-1];
-    $('#pi-csv-n').innerHTML='<b class="c-ink">'+esc(file.name)+'</b> · '+nf(F.length,0)+' velas · '+fd(F[0])+' → '+fd(F[F.length-1]);$('#pi-csv-x').hidden=false;rellenarForm();toast('CSV cargado: '+nf(F.length,0)+' velas')};
+    $('#pi-csv-n').innerHTML='<b class="c-ink">'+esc(file.name)+'</b> · '+nf(F.length,0)+' velas · '+fd(F[0])+' → '+fd(F[F.length-1]);$('#pi-csv-x').hidden=false;rellenarForm();toast('CSV cargado: '+nf(F.length,0)+' velas');if(listo)listo()};
   r.onerror=()=>toast('No se pudo leer el fichero');r.readAsText(file)}
 function quitarCSV(){CSV=null;csvFechas=null;SPEC.datos=clone(DEMO_SPEC.datos);$('#pi-csv-n').textContent='Datos de ejemplo del oro (XAUUSD D1)';$('#pi-csv-x').hidden=true;rellenarForm()}
 function initPI(){try{const g=store.get('mct_spec2');if(g){const o=JSON.parse(g);if(o&&o.version===1&&o.reglas)SPEC=o}}catch(e){}
@@ -1141,11 +1145,15 @@ function leerInforme(file){const r=new FileReader();r.onload=()=>{const buf=new 
   r.onerror=()=>toast('No se pudo leer el fichero');r.readAsArrayBuffer(file)}
 
 /* ---------- resultados del motor (contrato v3) ---------- */
-const REQ=['f1','full','fases','eq','dd','trades','anual','wf','wf_res','mc','meseta','stress','estado','dias_medio','desde','hasta','split'];
+/* Solo lo que el README marca como obligatorio (§Contrato de datos): el resto (anual, wf, wf_res, mc, meseta,
+   stress, estado, dias_medio, desde, hasta, split…) es opcional y cada pieza ya sabe decir «sin datos» si falta
+   (renderFases, fillVal…). Exigirlo aquí rechazaba resultados válidos hechos a mano o de un motor simplificado. */
+const REQ=['f1','full','fases','eq','dd','trades'];
 function validarRes(j){if(!j||typeof j!=='object')return 'La respuesta del motor no es un objeto.';
   const f=REQ.filter(k=>!(k in j));if(f.length)return 'Faltan campos: '+f.join(', ')+'.';
   if(!j.f1.IS||!j.f1.OOS)return 'f1 debe traer IS y OOS.';
   if(!Array.isArray(j.eq)||!j.eq.length)return 'eq debe ser una lista.';
+  if(!Array.isArray(j.dd)||j.dd.length!==j.eq.length)return 'dd debe ser una lista con un valor por cada punto de eq.';
   if(!Array.isArray(j.trades)||!j.trades.length)return 'Tu regla no ha hecho ninguna operación con estos datos.';return null}
 /** cargarResultados(json): pinta TODA la app con un resultado del motor (se guarda en sessionStorage y se recarga). */
 /* El resultado viaja por sessionStorage (≈5 MB de tope) y se pinta al recargar. En intradía, velas_full con una vela
@@ -1164,20 +1172,24 @@ function cargarResultados(json){const err=validarRes(json);if(err){toast('No se 
   location.reload();return true}
 window.cargarResultados=cargarResultados;
 
-/* ---------- nivel BASIC / COMPLETO (AVANZADO retirado del repo público: la terminal vive en sentinel/reportes/oro_rsi4) ---------- */
+/* ---------- nivel LANDING / MISIONES / BASIC / COMPLETO (AVANZADO retirado del repo público: la terminal vive
+   en sentinel/reportes/oro_rsi4) ---------- */
 let nivel='completo';
-function setNivel(n){if(n==='entender')n='completo';if(!['basic','completo'].includes(n))n='basic';const prev=nivel;nivel=n;
+function setNivel(n){if(n==='entender')n='completo';if(!['basic','completo','landing','misiones'].includes(n))n='basic';const prev=nivel;nivel=n;
   $$('.nivel button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.n===n));
   document.body.classList.toggle('basic',n==='basic');
-  if(n!=='avanzado')store.set('nivel',n);
-  if(n==='avanzado'){const fr=$('#avz iframe');if(!fr.getAttribute('src'))fr.setAttribute('src','avanzado.html');fijarHdr();hideTip()}
-  document.body.classList.toggle('avz',n==='avanzado');
-  if(n==='basic'){hideTip();mesaActiva(false);bxEntrar();try{history.replaceState(null,'','#basic')}catch(e){}window.scrollTo(0,0)}
+  document.body.classList.toggle('landing',n==='landing');
+  document.body.classList.toggle('misiones',n==='misiones');
+  if(n==='basic'||n==='completo')store.set('nivel',n);
+  hideTip();
+  if(n==='basic'){mesaActiva(false);bxEntrar();try{history.replaceState(null,'','#basic')}catch(e){}window.scrollTo(0,0)}
+  else if(n==='landing'){try{history.replaceState(null,'','#inicio')}catch(e){}window.scrollTo(0,0)}
+  else if(n==='misiones'){try{history.replaceState(null,'','#misiones')}catch(e){}window.scrollTo(0,0)}
   else{if(prev==='basic'){mesaActiva(VIEWS[cur]==='mesa');try{history.replaceState(null,'','#'+VIEWS[cur])}catch(e){}}
-    if(n==='completo')requestAnimationFrame(()=>{fijarHdr();renderAll();renderTree()})}}
-/* nivel al abrir: ?avanzado/#avanzado → AVANZADO · #vista → COMPLETO · si no, lo último elegido (BASIC por defecto) */
-function nivelInicial(){const u=location.search+location.hash,h=location.hash.slice(1);
-  if(h==='basic')return 'basic';if(VIEWS.includes(h))return 'completo';const g=store.get('nivel');return g==='completo'?'completo':'basic'}
+    requestAnimationFrame(()=>{fijarHdr();renderAll();renderTree()})}}
+/* nivel al abrir: #basic → BASIC · #vista → COMPLETO · #misiones → MISIONES · si no, LANDING (portada) */
+function nivelInicial(){const h=location.hash.slice(1);
+  if(h==='basic')return 'basic';if(VIEWS.includes(h))return 'completo';if(h==='misiones')return 'misiones';return 'landing'}
 
 /* ---------- BASIC: la prueba en 3 pasos ----------
    Reutiliza TODO: traductor (#pi-trad), IA (#pi-ia), agente 03/04, datos (usarLib/quitarCSV/cargarNAS/leerCSV),
@@ -1226,7 +1238,120 @@ function bxDatos(){const d=datosCargados(),nc=datosNoCuadran(SPEC),hecha=bxHecha
   const que=k==='csv'?`<b>${esc(CSV.nombre)}</b> · ${nf(CSV.n,0)} velas`:'<b>'+esc(d.txt.replace(/^los de /,'').replace(/^./,c=>c.toUpperCase()))+'</b>';
   const ql=(SPEC.activo.simbolo||'tu activo')+' · '+(TFN[SPEC.temporalidad]||SPEC.temporalidad||'').replace(/^vela /,'');
   $('#bx-dat-t').innerHTML='Cargados: '+que;const ml=$('#bx-mal');ml.hidden=!(hecha&&nc);ml.textContent=hecha&&nc?'Tu idea es de '+ql+': elige sus datos o sube tu CSV.':'';
-  $('#bx-p2').classList.toggle('hecho',hecha&&!nc)}
+  $('#bx-p2').classList.toggle('hecho',hecha&&!nc);
+  const av=$('#bx-costes-av'),sp=hecha&&sinPerfilCostes();if(av){av.hidden=!sp;if(sp)$('#bx-costes-sim').textContent=SPEC.activo.simbolo}}
+function abrirCostesDlg(){const c=SPEC.costes;$('#cd-sim').textContent=SPEC.activo.simbolo||'tu activo';
+  $('#cd-spread').value=c.spread_pb??'';$('#cd-com').value=c.comision_pb_lado??'';$('#cd-desl').value=c.deslizamiento_pb_lado??'';
+  $('#cd-swl').value=c.swap_largo_pct_anual??'';$('#cd-sws').value=c.swap_corto_pct_anual??'';openDlg('costes-dlg')}
+function guardarCostesDlg(){const n=(id,def)=>{const v=$(id).value;return v===''?def:+v};
+  SPEC.costes={perfil:'manual',spread_pb:Math.max(0,n('#cd-spread',0)),comision_pb_lado:Math.max(0,n('#cd-com',0)),
+    deslizamiento_pb_lado:Math.max(0,n('#cd-desl',0)),swap_largo_pct_anual:n('#cd-swl',0),swap_corto_pct_anual:n('#cd-sws',0)};
+  closeDlg();rellenarForm();bxSync(false);toast('Costes guardados para '+(SPEC.activo.simbolo||'tu activo'))}
+
+/* =====================================================================
+   MISIÓN 1 · CONOCE TU ACTIVO — AED muy simple (pistas, no un veredicto): tendencia de fondo, comportamiento
+   día a día (sigue vs revierte), colas. Reusa el mismo motor/puente que la prueba inicial (mt.perfil_activo_json).
+   ===================================================================== */
+async function perfilMotor(csv){const M=window.MCT_MOTOR;if(!M||typeof M.perfilActivo!=='function')return{error:'Este ejemplar no trae el motor: no se puede analizar.',tipo:'SinMotor'};return await M.perfilActivo(csv)}
+let m1Forzar=false,m1Vista='facil',m1Simbolo='XAUUSD';
+function m1Sync(){const t=$('#m1-dat-t');if(!t)return;const k=!CSV?'oro_d1':(libFich(CSV.nombre)||{}).id||'csv';
+  $$('#m1-ejs [data-ej]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.ej===k)));
+  const d=datosCargados();t.innerHTML='Cargados: '+(k==='csv'?`<b>${esc(CSV.nombre)}</b> · ${nf(CSV.n,0)} velas`:'<b>'+esc((d?d.txt:'ejemplo del oro (XAUUSD diario)').replace(/^los de /,'').replace(/^./,c=>c.toUpperCase()))+'</b>')}
+async function m1Dato(id){if($('#m1-analizar').disabled)return;const e=libId(id);if(e&&e.gz)$('#m1-dat-t').textContent='Cargando '+e.b_t+' ('+e.b_s+')…';
+  if(e)m1Simbolo=e.sim;await usarLib(id,true);m1Sync();$('#m1-res').hidden=true}
+function m1Clasificar(p){
+  const fondo=p.ret_anual_pct>5?'alcista':p.ret_anual_pct<-5?'bajista':'lateral';
+  const tend=p.eficiencia_kaufman!=null&&p.eficiencia_kaufman>=0.35&&p.autocorr_lag1>0.02;
+  const rev=p.eficiencia_kaufman!=null&&p.eficiencia_kaufman<0.22&&p.autocorr_lag1<-0.02;
+  const corto=tend&&!rev?'sigue':rev&&!tend?'revierte':'mixto';
+  const colas=p.curtosis_exceso>1?'gordas':'normales';
+  return{fondo,corto,colas}}
+const M1_FAMILIAS={
+  'alcista,revierte':'De fondo sube, pero día a día se enfría y vuelve. Es el patrón clásico de <b>comprar en caídas dentro de una tendencia</b>: RSI corto (tipo tu demo del oro) con un filtro de media alcista por detrás.',
+  'alcista,sigue':'De fondo sube y además el movimiento se sostiene día a día. Encaja con <b>ruptura o momentum</b>: comprar máximos de N velas (canal de Donchian) o seguir el impulso cuando ya tira para arriba.',
+  'bajista,revierte':'De fondo baja, pero día a día rebota. Ir corto en rebotes es más difícil de defender (el rebote puede durar); revísalo con cuidado o considera si este es el activo correcto para tu idea.',
+  'bajista,sigue':'De fondo baja y el movimiento se sostiene. Encaja con <b>ruptura a la baja o momentum corto</b>: vender en mínimos de N velas.',
+  'lateral,revierte':'Sin tendencia de fondo clara, y día a día se devuelve. Es el terreno de las <b>estrategias de rango puro</b>: bandas de Bollinger, RSI sin filtro de tendencia — comprar abajo del rango, vender arriba.',
+  'lateral,sigue':'Sin tendencia de fondo clara, pero con impulso día a día. Es poco común: prueba otro periodo de datos o confírmalo con más historia antes de construir nada encima.',
+};
+const M1_TF_FRASE={M5:'en 5 minutos',M15:'en 15 minutos',H1:'en 1 hora',H4:'en 4 horas',D1:'en diario',W1:'en semanal'};
+const M1_IDEAS={
+  'alcista,revierte':(s,tf)=>`Compro ${s} ${tf} cuando el RSI de 4 baja de 25 y el precio está por encima de la media de 200. Vendo cuando el RSI sube de 55.`,
+  'alcista,sigue':(s,tf)=>`Compro ${s} ${tf} cuando el precio rompe el máximo de 20 velas. Vendo cuando baja del mínimo de 10 velas.`,
+  'bajista,revierte':(s,tf)=>`Vendo en corto ${s} ${tf} cuando el RSI de 4 sube de 75 y el precio está por debajo de la media de 200. Recompro cuando el RSI baja de 45.`,
+  'bajista,sigue':(s,tf)=>`Vendo en corto ${s} ${tf} cuando el precio rompe el mínimo de 20 velas. Recompro cuando sube del máximo de 10 velas.`,
+  'lateral,revierte':(s,tf)=>`Compro ${s} ${tf} cuando el precio cruza por debajo de la banda inferior de Bollinger(20,2). Vendo cuando cruza por encima de la media de Bollinger(20).`,
+  'lateral,sigue':(s,tf)=>`Compro ${s} ${tf} cuando el precio rompe el máximo de 20 velas. Vendo tras 15 velas.`,
+};
+function m1Facil(p,c){const ic={alcista:'📈',bajista:'📉',lateral:'➡️',sigue:'🏃',revierte:'🪃',mixto:'🤷'};
+  const fondoTxt={alcista:`De fondo sube: ${nf(p.ret_anual_pct,1)} % al año de media, y pasó el ${nf(p.pct_tiempo_sobre_media,0)} % del tiempo por encima de su propia media larga.`,
+    bajista:`De fondo baja: ${nf(p.ret_anual_pct,1)} % al año de media.`,
+    lateral:`Sin tendencia de fondo clara: ${nf(p.ret_anual_pct,1)} % al año, ni claramente arriba ni abajo.`}[c.fondo];
+  const cortoTxt={sigue:'Cuando se mueve un día, tiende a seguir moviéndose en la misma dirección al día siguiente (el movimiento se sostiene).',
+    revierte:'Cuando se mueve un día, tiende a devolverse al día siguiente (se enfría rápido).',
+    mixto:'Día a día no hay un patrón claro de seguir o devolverse.'}[c.corto];
+  const colasTxt=c.colas==='gordas'?'Tiene <b>sustos más grandes</b> de lo normal: días extremos más frecuentes que en una campana de distribución normal.':'Sus movimientos extremos son parecidos a los de una campana normal: sin sustos fuera de lo común.';
+  const familia=M1_FAMILIAS[c.fondo+','+c.corto];
+  const tieneIdea=!!M1_IDEAS[c.fondo+','+c.corto];
+  return `<div class="m1-card"><h4>${ic[c.fondo]} Tendencia de fondo</h4><p>${fondoTxt}</p></div>
+    <div class="m1-card"><h4>${ic[c.corto]} Día a día</h4><p>${cortoTxt}</p></div>
+    <div class="m1-card"><h4>🎢 Colas (sustos)</h4><p>${colasTxt} Volatilidad: ${nf(p.vol_anual_pct,1)} % al año · caída máxima comprando y aguantando: ${nf(p.caida_comprar_mantener_pct,1)} %.</p></div>
+    ${familia?`<div class="m1-familias"><h4 style="margin:0 0 .3rem;font-family:var(--f-head)">🧭 Por dónde empezar a mirar</h4><p style="margin:0">${familia}</p>
+      ${tieneIdea?'<button type="button" class="btn gold" id="m1-usar" style="margin-top:.6rem">📝 PROBAR ESTA IDEA DE PARTIDA EN EL PASO 1 →</button>':''}</div>`:''}
+    <p class="c-dim" style="font-size:.85rem">Son pistas de un AED muy simple, no un veredicto: para saber si una idea concreta funciona hace falta correrla por las 5 fases del protocolo.</p>`}
+function m1Usar(p,c){const gen=M1_IDEAS[c.fondo+','+c.corto];if(!gen)return;
+  const texto=gen(m1Simbolo,M1_TF_FRASE[p.tf]||'');
+  closeDlg();const ta=$('#bx-idea');ta.value=texto;ta.dispatchEvent(new Event('input'));
+  if(nivel!=='basic')setNivel('basic');
+  ta.scrollIntoView({behavior:RM?'auto':'smooth',block:'center'});ta.focus();
+  toast('Idea de partida puesta en el paso 1 — ajústala y tradúcela cuando quieras')}
+function m1Tecnica(p){const fila=(l,v)=>`<div class="m1-fila"><span>${esc(l)}</span><b>${esc(v)}</b></div>`;
+  return `<div class="m1-ficha">
+    ${fila('Periodo',p.desde+' → '+p.hasta)}${fila('Velas',nf(p.n_velas,0)+' · '+p.tf)}${fila('Años',nf(p.anios,1))}
+    ${fila('Retorno total',nf(p.ret_total_pct,1)+' %')}${fila('Retorno anual (CAGR)',nf(p.ret_anual_pct,2)+' %')}
+    ${fila('% tiempo sobre su media ('+p.media_larga_velas+' velas)',p.pct_tiempo_sobre_media!=null?nf(p.pct_tiempo_sobre_media,1)+' %':'—')}
+    ${fila('Autocorrelación (1 vela)',nf(p.autocorr_lag1,4))}
+    ${fila('Eficiencia de Kaufman ('+p.eficiencia_ventana+' velas)',p.eficiencia_kaufman!=null?nf(p.eficiencia_kaufman,4):'—')}
+    ${fila('Asimetría',nf(p.asimetria,3))}${fila('Curtosis (exceso)',nf(p.curtosis_exceso,3))}
+    ${fila('Volatilidad anualizada',nf(p.vol_anual_pct,2)+' %')}${fila('Caída comprar y mantener',nf(p.caida_comprar_mantener_pct,2)+' %')}
+    ${fila('% días alcistas',nf(p.pct_dias_alcistas,1)+' %')}
+  </div>
+  <p class="c-dim" style="font-size:.85rem">Eficiencia de Kaufman: desplazamiento neto / suma de pasos (Smarter Trading, 1995). 1 = tendencia pura, cerca de 0 = zigzag puro.
+    Autocorrelación: correlación entre el retorno de un día y el del día siguiente (positiva = sigue, negativa = revierte).
+    Curtosis en exceso &gt; 0 = colas más gordas que una normal.</p>`}
+async function m1Analizar(){if($('#m1-analizar').disabled)return;const movil=bxMovil()&&!m1Forzar;
+  $('#m1-movil').hidden=!movil;$('#m1-analizar').hidden=movil;$('#m1-progwrap').style.display=movil?'none':'';if(movil)return;
+  $('#m1-res').hidden=true;$('#m1-nota').textContent='Preparando…';$('#m1-analizar').disabled=true;$('#m1-analizar').textContent='ANALIZANDO…';
+  const progPrev=window.MCT_MOTOR&&window.MCT_MOTOR.progreso;
+  if(window.MCT_MOTOR)window.MCT_MOTOR.progreso=(etapa,pct)=>{$('#m1-prog').style.width=Math.max(3,Math.min(100,pct||0))+'%';if(etapa)$('#m1-nota').textContent=etapa};
+  try{const p=await perfilMotor(CSV?CSV.texto:CSV_EJEMPLO);
+    if(p&&p.error){$('#m1-nota').innerHTML='<b class="c-red">No se pudo analizar.</b> '+esc(p.error);return}
+    const c=m1Clasificar(p);$('#m1-facil').innerHTML=m1Facil(p,c);$('#m1-tecnica').innerHTML=m1Tecnica(p);
+    const bu=$('#m1-usar');if(bu)bu.onclick=()=>m1Usar(p,c);
+    $('#m1-res').hidden=false;$('#m1-nota').textContent='';m1Vista='facil';$('#m1-facil').hidden=false;$('#m1-tecnica').hidden=true;
+    $$('#m1-vista button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.m1v==='facil')))}
+  catch(e){$('#m1-nota').innerHTML='<b class="c-red">Error inesperado.</b> '+esc(e&&e.message||String(e))}
+  finally{if(window.MCT_MOTOR)window.MCT_MOTOR.progreso=progPrev;$('#m1-analizar').disabled=false;$('#m1-analizar').textContent='▶ ANALIZAR ESTE ACTIVO';$('#m1-prog').style.width='0'}}
+function m1Subido(){m1Simbolo=(SPEC.activo&&SPEC.activo.simbolo)||m1Simbolo;m1Sync();$('#m1-res').hidden=true}
+function initLanding(){
+  $('#land-tester').onclick=()=>setNivel('basic');
+  $('#land-misiones').onclick=()=>setNivel('misiones');
+  $('#land-mesa').onclick=()=>go('mesa');
+  $('#mis-atras').onclick=()=>setNivel('landing');
+  $('#mis-1').onclick=()=>{m1Sync();openDlg('mision1-dlg')};
+  $('#b-inicio-rail').onclick=()=>setNivel('landing');
+  $('#b-inicio-bx').onclick=()=>setNivel('landing')}
+function initMision1(){$('#bx-mision1').onclick=()=>{m1Sync();openDlg('mision1-dlg')};
+  $('#m1-csv-b').onclick=()=>$('#m1-csv').click();
+  $('#m1-csv').onchange=e=>{const x=e.target.files[0];if(x)leerCSV(x,m1Subido);e.target.value=''};
+  const z=$('#m1-csvz');if(z){['dragover','dragenter'].forEach(t=>z.addEventListener(t,e=>{e.preventDefault();z.classList.add('sobre')}));
+    ['dragleave','drop'].forEach(t=>z.addEventListener(t,()=>z.classList.remove('sobre')));
+    z.addEventListener('drop',e=>{e.preventDefault();const x=e.dataTransfer.files[0];if(x)leerCSV(x,m1Subido)})}
+  $('#m1-analizar').onclick=m1Analizar;$('#m1-movil-si').onclick=()=>{m1Forzar=true;m1Analizar()};
+  $$('#m1-vista button').forEach(b=>b.onclick=()=>{m1Vista=b.dataset.m1v;$$('#m1-vista button').forEach(x=>x.setAttribute('aria-pressed',x===b));
+    $('#m1-facil').hidden=m1Vista!=='facil';$('#m1-tecnica').hidden=m1Vista!=='tecnica'});
+  $('#m1-imprimir').onclick=()=>window.print()}
+
 function bxResHTML(){const N=[['¿Gana más de lo que pierde?',nf(OOS.pf,2),OOS.pf>=1.3,`Por cada 1 USD que pierde, gana ${nf(OOS.pf,2)}. Pide 1,30 o más.`],
     ['¿Hay operaciones suficientes?',String(OOS.n),OOS.n>=30,`${OOS.n} operaciones en la prueba honesta. Pide 30 o más para no fiarse de la suerte.`],
     ['¿Se aguanta la peor racha?',pct(-OOS.maxdd,1),OOS.maxdd<.2,`Llegó a caer un ${pct(OOS.maxdd,1,false)} desde su máximo. Pide menos del 20 %.`],
@@ -1281,6 +1406,7 @@ function initBasic(){const ta=$('#bx-idea'),pt=$('#pi-idea-t');ta.value=pt.value
   z.addEventListener('drop',e=>{e.preventDefault();const x=e.dataTransfer.files[0];if(x)leerCSV(x)});
   $$('#bx-ejs [data-ej]').forEach(b=>b.onclick=()=>bxDato(b.dataset.ej));
   $('#bx-csv-ayuda').onclick=()=>openDlg('csv-dlg');
+  $('#bx-costes-ab').onclick=()=>abrirCostesDlg();$('#cd-guardar').onclick=()=>guardarCostesDlg();
   $('#bx-correr').onclick=bxCorrer;$('#bx-movil-si').onclick=()=>{bxForzar=true;bxPaso3()};
   $('#bx-mesa').onclick=()=>go('mesa');
   $('#bx-res').innerHTML=ES_DEMO?bxVacioHTML():bxResHTML();
@@ -1501,12 +1627,14 @@ const normIdea=t=>String(t).normalize('NFC').normalize('NFD').replace(/[̀-ͯ]/g
 const ACT_NL=[[/\b(oro|xauusd|gold)\b/,'XAUUSD','metal'],[/\b(plata|xagusd|silver)\b/,'XAGUSD','metal'],[/\b(nasdaq|nas100|ndx|us100)\b/,'NAS100','indice'],[/(\bs&p\s*(500)?|\bsp500\b|\bspx(500)?\b|\bus500\b)/,'US500','indice'],
   [/\b(dow\s*jones|us30)\b/,'US30','indice'],[/\b(dax|ger40|de40)\b/,'GER40','indice'],[/\b(bitcoin|btc|btcusd)\b/,'BTCUSD','cripto'],[/\b(ethereum|eth|ethusd)\b/,'ETHUSD','cripto'],
   [/\b(petroleo|crudo|wti|xtiusd)\b/,'XTIUSD','energia'],[/\b(eurusd|euro\s*dolar)\b/,'EURUSD','forex'],[/\b(gbpusd|libra)\b/,'GBPUSD','forex'],[/\b(usdjpy)\b/,'USDJPY','forex']];
+/* «del»/«al» son contracciones de «de el»/«a el»: muy comunes («sube del mínimo», «baja del máximo») y antes
+   solo se reconocía la forma sin contraer («sube de», «baja de»). de(?:l)? / a(?:l)? aceptan las dos. */
 const OPS_NL=[
- [/\b(?:cruza|cruzan|corta|cortan)\s+(?:hacia\s+)?(?:arriba|al\s+alza|por\s+encima)(?:\s+(?:de|a|del))?\b/,'cruza_arriba'],
- [/\b(?:cruza|cruzan|corta|cortan)\s+(?:hacia\s+)?(?:abajo|a\s+la\s+baja|por\s+debajo)(?:\s+(?:de|a|del))?\b/,'cruza_abajo'],
- [/>=|≥|\bmayor\s+o\s+igual\s+(?:que|a)\b/,'>='],[/<=|≤|\bmenor\s+o\s+igual\s+(?:que|a)\b/,'<='],
- [/(?:\b(?:esta|estan|cierra|cierran|queda|quedan|sigue|se\s+mantiene)\s+)?(?:por\s+)?encima\s+(?:de|del)\b|\bsobre\b|\b(?:sube|suba)(?:n)?\s+(?:de|por\s+encima\s+de|a\s+mas\s+de|sobre)\b|\bsupera(?:n)?\b|\bmayor\s+(?:que|a|de)\b|\bpasa\s+de\b|\bmas\s+de\b|\brompe(?:n)?\b(?=\s+(?:el\s+|la\s+)?(?:maximo|resistencia))|>/,'>'],
- [/(?:\b(?:esta|estan|cierra|cierran|queda|quedan|sigue|se\s+mantiene)\s+)?(?:por\s+)?debajo\s+(?:de|del)\b|\b(?:baja|baje)(?:n)?\s+(?:de|a\s+menos\s+de|por\s+debajo\s+de)\b|\b(?:cae|caiga)(?:n)?\s+(?:de|a\s+menos\s+de|por\s+debajo\s+de)\b|\bperfora(?:n)?\b|\bmenor\s+(?:que|a|de)\b|\bmenos\s+de\b|\brompe(?:n)?\b(?=\s+(?:el\s+|la\s+)?(?:minimo|soporte))|\bbajo\b|</,'<']];
+ [/\b(?:cruza|cruzan|corta|cortan)\s+(?:hacia\s+)?(?:arriba|al\s+alza|por\s+encima)(?:\s+(?:de(?:l)?|a(?:l)?))?\b/,'cruza_arriba'],
+ [/\b(?:cruza|cruzan|corta|cortan)\s+(?:hacia\s+)?(?:abajo|a\s+la\s+baja|por\s+debajo)(?:\s+(?:de(?:l)?|a(?:l)?))?\b/,'cruza_abajo'],
+ [/>=|≥|\bmayor\s+o\s+igual\s+(?:que|a(?:l)?)\b/,'>='],[/<=|≤|\bmenor\s+o\s+igual\s+(?:que|a(?:l)?)\b/,'<='],
+ [/(?:\b(?:esta|estan|cierra|cierran|queda|quedan|sigue|se\s+mantiene)\s+)?(?:por\s+)?encima\s+(?:de(?:l)?)\b|\bsobre\b|\b(?:sube|suba)(?:n)?\s+(?:de(?:l)?|por\s+encima\s+de(?:l)?|a\s+mas\s+de(?:l)?|sobre)\b|\bsupera(?:n)?\b|\bmayor\s+(?:que|a(?:l)?|de(?:l)?)\b|\bpasa\s+de(?:l)?\b|\bmas\s+de(?:l)?\b|\brompe(?:n)?\b(?=\s+(?:el\s+|la\s+)?(?:maximo|resistencia))|>/,'>'],
+ [/(?:\b(?:esta|estan|cierra|cierran|queda|quedan|sigue|se\s+mantiene)\s+)?(?:por\s+)?debajo\s+(?:de(?:l)?)\b|\b(?:baja|baje)(?:n)?\s+(?:de(?:l)?|a\s+menos\s+de(?:l)?|por\s+debajo\s+de(?:l)?)\b|\b(?:cae|caiga)(?:n)?\s+(?:de(?:l)?|a\s+menos\s+de(?:l)?|por\s+debajo\s+de(?:l)?)\b|\bperfora(?:n)?\b|\bmenor\s+(?:que|a(?:l)?|de(?:l)?)\b|\bmenos\s+de(?:l)?\b|\brompe(?:n)?\b(?=\s+(?:el\s+|la\s+)?(?:minimo|soporte))|\bbajo\b|</,'<']];
 function opNL(s){s=s.replace(/\b(solo|solamente|cuando|si|que|el|la|los|las|lo|su|sus|del|de|al|a|actual|valor|nivel|indicador|esta|estan|ya|un|una|precio\s+de)\b/g,' ').replace(/[()]/g,' ').replace(/\s+/g,' ').trim();let m;
   if((m=s.match(/\brsi\s*(\d+)?/)))return{tipo:'rsi',periodo:m[1]?+m[1]:null};
   if((m=s.match(/\b(?:ema|mme|media\s+(?:movil\s+)?exponencial)\s*(?:ultim[oa]s\s+)?(\d+)?/)))return{tipo:'ema',periodo:m[1]?+m[1]:null};
@@ -1553,7 +1681,7 @@ function traducirIdea(orig){const txt=String(orig).normalize('NFC');let s=normId
     nuevo.gestion.stop={tipo:atr?'atr':'pct',valor:v};pon(m[2]?'ok':'av','Stop: '+nf(v,v%1?1:0)+(atr?' × ATR':' %')+(m[2]?'':' (no dijiste la unidad: supongo %)'));marca(m.index,m.index+m[0].length,'ok');borra(m.index,m.index+m[0].length)}
   if((m=s.match(new RegExp('\\b(?:con\\s+(?:un\\s+)?)?(?:objetivo|take\\s*profit|tp|target|recojo\\s+beneficios?)\\s*(?:de(?:l)?|en|a|:)?\\s*(?:un\\s+|una\\s+)?(\\d+(?:\\.\\d+)?)\\s*'+UNI)))){const v=+m[1],atr=/atr/.test(m[2]||'');
     nuevo.gestion.objetivo={tipo:atr?'atr':'pct',valor:v};pon(m[2]?'ok':'av','Objetivo: '+nf(v,v%1?1:0)+(atr?' × ATR':' %')+(m[2]?'':' (supongo %)'));marca(m.index,m.index+m[0].length,'ok');borra(m.index,m.index+m[0].length)}
-  if((m=s.match(/\b(?:o\s+)?(?:salgo\s+|cierro\s+|vendo\s+)?(?:a\s+las|a\s+los|tras|despues\s+de|pasad[oa]s|al\s+cabo\s+de|como\s+maximo|maximo|cuando\s+pasen)\s+(\d+)\s+(velas|dias|sesiones|barras)\b(?!\s+(?:diari[oa]s\s+)?(?:verdes?|rojas?|alcistas?|bajistas?|positivas?|negativas?|consecutiv|seguid|que\s+(?:suben|bajan|cierran)))/))){
+  if((m=s.match(/\b(?:o\s+)?(?:salgo\s+|cierro\s+|vendo\s+)?(?:a\s+las|a\s+los|tras|despues\s+de|pasad[oa]s|pasa(?:n)?|al\s+cabo\s+de|como\s+maximo|maximo|cuando\s+pasen)\s+(\d+)\s+(velas|dias|sesiones|barras)\b(?!\s+(?:diari[oa]s\s+)?(?:verdes?|rojas?|alcistas?|bajistas?|positivas?|negativas?|consecutiv|seguid|que\s+(?:suben|bajan|cierran)))/))){
     nuevo.gestion.salida_tiempo_velas=+m[1];pon('ok','Salida por tiempo: '+m[1]+' velas');marca(m.index,m.index+m[0].length,'ok');borra(m.index,m.index+m[0].length)}
   /* marcadores de entrada y salida */
   const MK=[];let R=/\b(?:compro|comprar|compra|entro|entrar|abro|me\s+pongo|voy|vendo\s+en\s+corto|vendo\s+corto|vender\s+en\s+corto)\b[^.;]*?\b(?:cuando|si)\b/g;
@@ -1912,7 +2040,7 @@ function init(){const nivel0=nivelInicial();
     else if(e.key==='?'||e.key==='h'||e.key==='H')openDlg('help');
     else if(e.key==='Home')go(0)});
   $$('.nivel button').forEach(b=>b.onclick=()=>setNivel(b.dataset.n));
-  renderFases();initPI();initIdea();initIA();initMesa();renderProtocolo();
+  renderFases();initPI();initIdea();initIA();initMesa();renderProtocolo();initMision1();initLanding();
   $('#b-rail').onclick=()=>setRail(!document.body.classList.contains('rail-min'));$$('.tab').forEach(t=>{const b=$('b',t);if(b)t.title=b.textContent});setRail(store.get('rail')==='1',true);
   window.addEventListener('resize',fijarHdr);fijarHdr();
   applySettings();

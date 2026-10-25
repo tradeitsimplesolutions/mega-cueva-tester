@@ -31,6 +31,7 @@
 <aside class="rail" aria-label="Manual de la herramienta">
   <div class="rail-top">
     <div class="brand"><b>MEGA CUEVA<i>·</i>TESTER</b><span><em>TIS</em> · Trade It Simple</span></div>
+    <button type="button" class="link brand-inicio" id="b-inicio-rail" title="Volver al inicio">← inicio</button>
     <b class="brand-min" aria-hidden="true">MC</b>
     <button type="button" class="pliega" id="b-rail" aria-expanded="true" aria-controls="rail-tabs" title="Plegar el menú (tecla M)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="sr">Plegar o desplegar el menú</span></button>
   </div>
@@ -466,14 +467,50 @@
 </footer>
 </div>
 
+<!-- ============ LANDING: portada con los 3 caminos ============ -->
+<div id="landing" class="landing">
+  <div class="landing-in">
+    <div class="brand landing-brand"><b>MEGA CUEVA<i>·</i>TESTER</b><span><em>TIS</em> · Trade It Simple</span></div>
+    <h1 class="landing-h1">¿Qué quieres hacer hoy?</h1>
+    <div class="landing-cards">
+      <button type="button" class="landing-card" id="land-tester">
+        <span class="landing-ic">🧪</span><b>CUEVA TESTER</b>
+        <small>Escribe tu idea, pruébala con costes reales y mira si aprueba las 5 fases.</small></button>
+      <button type="button" class="landing-card" id="land-misiones">
+        <span class="landing-ic">🧭</span><b>MISIONES</b>
+        <small>Recorridos guiados paso a paso: conoce tu activo, y las que se vayan sumando.</small></button>
+      <button type="button" class="landing-card" id="land-mesa">
+        <span class="landing-ic">🪄</span><b>MONTA TU PROPIA CUEVA</b>
+        <small>Instala tu propia mesa de 4 agentes: VS Code + Claude Code, en unos minutos.</small></button>
+    </div>
+  </div>
+</div>
+<!-- ============ MISIONES: hub de recorridos guiados ============ -->
+<div id="misiones" class="landing">
+  <div class="landing-in">
+    <button type="button" class="link landing-atras" id="mis-atras">← inicio</button>
+    <h1 class="landing-h1">Misiones</h1>
+    <p class="lead">Recorridos cortos y guiados, paso a paso. Se irán sumando más.</p>
+    <div class="landing-cards">
+      <button type="button" class="landing-card" id="mis-1">
+        <span class="landing-ic">🧭</span><b>MISIÓN 1 · CONOCE TU ACTIVO</b>
+        <small>¿Tu activo tiende a seguir su movimiento o a devolverse? Pistas para elegir qué probar primero.</small></button>
+      <div class="landing-card landing-pronto" aria-disabled="true"><span class="landing-ic">🔒</span><b>MISIÓN 2</b><small>Próximamente</small></div>
+      <div class="landing-card landing-pronto" aria-disabled="true"><span class="landing-ic">🔒</span><b>MISIÓN 3</b><small>Próximamente</small></div>
+    </div>
+  </div>
+</div>
+
 <!-- ============ BASIC: la prueba en 3 pasos (vista por defecto de los asistentes) ============ -->
 <div id="basic" class="bx">
   <header class="bx-top">
     <div class="brand"><b>MEGA CUEVA<i>·</i>TESTER</b><span><em>TIS</em> · Trade It Simple</span></div>
+    <button type="button" class="link brand-inicio" id="b-inicio-bx" title="Volver al inicio">← inicio</button>
     <button type="button" class="link bx-mesa" id="bx-mesa">Primero monta tu mesa con los 4 agentes →</button>
     <div class="seg nivel bx-nivel" role="group" aria-label="Nivel de detalle"><button type="button" data-n="basic" aria-pressed="true" title="La prueba en 3 pasos (tecla N)">BASIC</button><button type="button" data-n="completo" aria-pressed="false" title="Todo el recorrido (tecla N)">COMPLETO</button></div>
   </header>
   <div class="bx-main">
+    <button type="button" class="btn gold bigb m1-banner" id="bx-mision1">🧭 MISIÓN 1 · CONOCE TU ACTIVO →</button>
     <div class="bx-hero">
       <h1>Prueba tu idea <span>en 3 pasos</span></h1>
       <p class="lead">Escríbela como se la contarías a alguien. El tester la traduce, la prueba con costes reales y te dice si aprueba.</p>
@@ -500,6 +537,8 @@
         <p class="bx-h">O usa un ejemplo</p>
         <div class="bx-ejs" id="bx-ejs" role="group" aria-label="Librería de datos"></div>
         <div class="bx-dat" id="bx-dat" aria-live="polite"><span id="bx-dat-t"></span><span class="fuente-sello" id="bx-sello" hidden></span><span class="bx-mal" id="bx-mal" hidden></span></div>
+        <p class="bx-mal" id="bx-costes-av" hidden>No tengo los costes reales de <b id="bx-costes-sim"></b>: estoy usando los del oro de muestra.
+          <button type="button" class="link" id="bx-costes-ab">Pon tus costes →</button></p>
         <button type="button" class="link bx-ayuda" id="bx-csv-ayuda">Cómo sacar tu CSV de TradingView →</button>
       </li>
       <li class="panel bx-paso" id="bx-p3">
@@ -526,6 +565,36 @@
     <div class="cv" id="cv-velas"><canvas role="img" aria-label="Velas de la operación con entrada y salida"></canvas><div class="tt"></div></div>
   </div>
 </div>
+<div class="ovl" id="mision1-dlg" role="dialog" aria-modal="true" aria-labelledby="m1-h">
+  <div class="dlg m1-dlg">
+    <h2 id="m1-h">🧭 MISIÓN 1 · CONOCE TU ACTIVO</h2>
+    <p class="nota">Antes de escribir una regla, mira cómo se mueve tu activo: si tiende a <b>seguir</b> su camino o a
+      <b>devolverse</b>, y si tiene sustos más grandes de lo normal. Son pistas para elegir qué familia de estrategia
+      probar primero — no un veredicto. Lo único que valida una idea de verdad son las 5 fases del protocolo.</p>
+    <div class="bx-csv" id="m1-csvz">
+      <button type="button" class="btn" id="m1-csv-b"><svg class="ic"><use href="#i-subir"/></svg> SUBIR MI CSV</button>
+      <span class="c-dim">o arrástralo aquí</span>
+      <input type="file" id="m1-csv" accept=".csv,.txt,text/csv" class="sr" tabindex="-1" aria-hidden="true">
+    </div>
+    <p class="bx-h">O usa un ejemplo</p>
+    <div class="bx-ejs" id="m1-ejs" role="group" aria-label="Librería de datos"></div>
+    <div class="bx-dat" id="m1-dat" aria-live="polite"><span id="m1-dat-t"></span></div>
+    <button type="button" class="btn gold bigb" id="m1-analizar">▶ ANALIZAR ESTE ACTIVO</button>
+    <p class="bx-movil" id="m1-movil" hidden><b>Para analizar, ábrelo en el ordenador.</b> En el móvil el cálculo es demasiado pesado. <button type="button" class="link" id="m1-movil-si">probar igualmente</button></p>
+    <div class="prog" aria-hidden="true" id="m1-progwrap"><i id="m1-prog"></i></div>
+    <p class="bx-nota" id="m1-nota" aria-live="polite"></p>
+    <div id="m1-res" hidden>
+      <div class="seg" role="group" aria-label="Vista del resultado" id="m1-vista">
+        <button type="button" data-m1v="facil" aria-pressed="true">VERSIÓN FÁCIL</button>
+        <button type="button" data-m1v="tecnica" aria-pressed="false">FICHA TÉCNICA</button>
+      </div>
+      <div id="m1-facil"></div>
+      <div id="m1-tecnica" hidden></div>
+      <button type="button" class="btn" id="m1-imprimir">🖨 IMPRIMIR / GUARDAR PDF</button>
+    </div>
+    <button class="btn" data-close>CERRAR</button>
+  </div>
+</div>
 <div class="ovl" id="csv-dlg" role="dialog" aria-modal="true" aria-labelledby="csv-h">
   <div class="dlg">
     <h2 id="csv-h">CÓMO EXPORTAR EL CSV DE TRADINGVIEW</h2>
@@ -541,6 +610,26 @@
 2026-01-05T09:30:00-05:00,21500.25,21540.00,21490.50,21530.75,1234</pre>
     <p class="nota">También valen los CSV de MetaTrader 5 (como el ejemplo del oro). Comprueba la zona horaria: TIS usa la hora del servidor del bróker. Para años de datos, usa diario o 1 hora.</p>
     <button class="btn" data-close>ENTENDIDO</button>
+  </div>
+</div>
+<div class="ovl" id="costes-dlg" role="dialog" aria-modal="true" aria-labelledby="costes-h">
+  <div class="dlg">
+    <h2 id="costes-h">COSTES DE <span id="cd-sim">TU ACTIVO</span></h2>
+    <p class="nota" id="cd-porque">No tengo el perfil Darwinex de este activo. Escribe lo que de verdad cobra tu bróker: sin esto, el
+      backtest usa costes de otro activo y el resultado no vale para decidir nada.</p>
+    <div class="campos">
+      <div class="campo"><label for="cd-spread">Spread (puntos básicos, total por operación)</label><input type="number" id="cd-spread" step="0.01" min="0" placeholder="p. ej. 1,03"></div>
+      <div class="campo"><label for="cd-com">Comisión por lado (pb)</label><input type="number" id="cd-com" step="0.01" min="0" placeholder="p. ej. 0,01"></div>
+      <div class="campo"><label for="cd-desl">Deslizamiento por lado (pb)</label><input type="number" id="cd-desl" step="0.1" min="0" placeholder="p. ej. 3"></div>
+      <div class="campo"><label for="cd-swl">Swap de comprar (% anual)</label><input type="number" id="cd-swl" step="0.01" placeholder="negativo si te cuesta"></div>
+      <div class="campo"><label for="cd-sws">Swap de vender en corto (% anual)</label><input type="number" id="cd-sws" step="0.01" placeholder="negativo si te cuesta"></div>
+    </div>
+    <p class="nota">Lo sacas del terminal de tu bróker (o de su web de condiciones). Si no lo sabes todavía, pon al menos spread y
+      comisión: swap y deslizamiento puedes dejarlos en 0 y corregirlos después.</p>
+    <div class="bx-run" style="justify-content:flex-end">
+      <button type="button" class="btn" data-close>CANCELAR</button>
+      <button type="button" class="btn gold" id="cd-guardar">GUARDAR COSTES</button>
+    </div>
   </div>
 </div>
 <div class="ovl" id="help" role="dialog" aria-modal="true" aria-labelledby="help-h">

@@ -995,7 +995,10 @@ def _correr(D: _Datos, s: dict, P: dict, cache: dict, factor_costes: float = 1.0
         if sz["tipo"] == "nocional":
             f = sz["pct"] / 100.0
         else:
-            f = sz["apalancamiento_max"]
+            # sizing por riesgo: necesita la distancia al stop; si no se puede calcular (p. ej. ATR
+            # sin calentar), NO se apalanca al máximo por defecto (eso sería arriesgar de más sin querer):
+            # se queda sin tamaño.
+            f = sz["apalancamiento_max"] if np.isfinite(stop) and abs(px_in - stop) > 0 else 0.0
             if np.isfinite(stop) and abs(px_in - stop) > 0:
                 f = min(f, (sz["pct"] / 100.0) / (abs(px_in - stop) / px_in))
         # salida en apertura: por señal (evaluada desde la vela de entrada) o por tiempo
@@ -1277,8 +1280,19 @@ def _correr_pasos(D: _Datos, s: dict, P: dict, cache: dict, factor_costes: float
             continue
         pos = max(ini, libre)
         while pos <= fin:
-            dkey = int(D.idx[pos].normalize().value) if info is None else ini
-            if dia_ops.get(dkey, 0) >= max_dia:
+            if info is None:
+                dkey = int(D.idx[pos].normalize().value)
+                if dia_ops.get(dkey, 0) >= max_dia:
+                    # sin sesión, «grupos» es todo el histórico en un solo bloque: saltar al día
+                    # siguiente (no se puede romper el bucle, eso pararía toda la simulación)
+                    sig = pos + 1
+                    while sig <= fin and int(D.idx[sig].normalize().value) == dkey:
+                        sig += 1
+                    if sig > fin:
+                        break
+                    pos = sig
+                    continue
+            elif dia_ops.get(ini, 0) >= max_dia:
                 break
             mejor = None
             for nm in lados:
@@ -1320,7 +1334,8 @@ def _correr_pasos(D: _Datos, s: dict, P: dict, cache: dict, factor_costes: float
             if sz["tipo"] == "nocional":
                 f = sz["pct"] / 100.0
             else:
-                f = sz["apalancamiento_max"]
+                # ver _correr: sin distancia al stop conocida, no se apalanca al máximo por defecto.
+                f = sz["apalancamiento_max"] if np.isfinite(stop) and abs(px_in - stop) > 0 else 0.0
                 if np.isfinite(stop) and abs(px_in - stop) > 0:
                     f = min(f, (sz["pct"] / 100.0) / (abs(px_in - stop) / px_in))
             lim = fin if cerrar else n - 1
@@ -2371,6 +2386,72 @@ def ejecutar(texto_csv, spec_json) -> str:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
+# 8b. PERFIL DEL ACTIVO — AED muy simple (Mega Cueva, «Misión 1»): pistas, no un veredicto.
+#     Para decidir una estrategia hace falta el protocolo completo (las 5 fases).
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+def _eficiencia_kaufman(c: np.ndarray, n: int) -> np.ndarray:
+    """Desplazamiento neto en n velas / suma de los pasos absolutos de esas n velas. 1 = tendencia pura (recta),
+    cerca de 0 = zigzag puro (vuelve sobre sus pasos). Kaufman, Smarter Trading (1995)."""
+    cambio = np.abs(c[n:] - c[:-n])
+    pasos = np.abs(np.diff(c))
+    suma_pasos = pd.Series(pasos).rolling(n).sum().to_numpy()[n - 1:]
+    with np.errstate(divide="ignore", invalid="ignore"):
+        return np.where(suma_pasos > 0, cambio / suma_pasos, np.nan)
+
+
+def perfil_activo(df: pd.DataFrame) -> dict:
+    """AED muy simple de un activo, en DOS planos que no son lo mismo (ojo, se confunden mucho):
+    · tendencia DE FONDO (el recorrido largo: ¿acaba más arriba o más abajo de donde empezó?)
+    · comportamiento DÍA A DÍA (tras un movimiento, ¿el activo tiende a seguir o a devolverse?)
+    Un activo puede ser alcista de fondo Y revertir día a día a la vez (es lo normal: compra en caídas dentro de
+    una tendencia). También mide si tiene colas más gordas que una campana normal. Son PISTAS para orientar qué
+    familia de estrategia probar primero, no un veredicto: solo el protocolo completo (las 5 fases) valida una idea."""
+    c = df.close.to_numpy(float)
+    n = len(c)
+    ret = c[1:] / c[:-1] - 1.0
+    r0, r1 = ret[:-1], ret[1:]
+    autocorr = float(np.corrcoef(r0, r1)[0, 1]) if len(r0) > 2 and np.std(r0) > 0 and np.std(r1) > 0 else 0.0
+    ventana = int(min(20, max(5, n // 10)))
+    er = _eficiencia_kaufman(c, ventana)
+    er_mediana = float(np.nanmedian(er)) if er.size and np.isfinite(er).any() else float("nan")
+    mu, sd = float(np.mean(ret)), float(np.std(ret, ddof=1))
+    asimetria = float(((ret - mu) ** 3).mean() / sd ** 3) if sd > 0 else 0.0
+    curtosis_exceso = float(((ret - mu) ** 4).mean() / sd ** 4 - 3.0) if sd > 0 else 0.0
+    tf, med_min = _detectar_tf(df.index)
+    barras_anio = (365.25 * 1440 / med_min) if med_min > 0 else 252.0
+    vol_anual = sd * math.sqrt(barras_anio)
+    # tendencia de fondo: recorrido total y % del tiempo por encima de su propia media larga (no es señal de entrada,
+    # es solo "¿de qué lado ha pasado la mayor parte del tiempo?")
+    media_larga = int(max(20, min(200, n // 5)))
+    sma = pd.Series(c).rolling(media_larga).mean().to_numpy()
+    pct_sobre_media = float(np.nanmean(c[media_larga - 1:] > sma[media_larga - 1:])) if n > media_larga else float("nan")
+    anios = max((df.index[-1] - df.index[0]).days / 365.25, 1e-9)
+    ret_total = float(c[-1] / c[0] - 1.0)
+    ret_anual_cagr = float((c[-1] / c[0]) ** (1.0 / anios) - 1.0) if c[0] > 0 and anios > 0 else float("nan")
+    return _limpio({
+        "n_velas": n, "tf": tf, "desde": str(df.index[0].date()), "hasta": str(df.index[-1].date()), "anios": round(anios, 1),
+        "ret_total_pct": round(ret_total * 100, 1), "ret_anual_pct": round(ret_anual_cagr * 100, 2),
+        "media_larga_velas": media_larga, "pct_tiempo_sobre_media": None if pct_sobre_media != pct_sobre_media else round(pct_sobre_media * 100, 1),
+        "autocorr_lag1": round(autocorr, 4),
+        "eficiencia_kaufman": None if er_mediana != er_mediana else round(er_mediana, 4), "eficiencia_ventana": ventana,
+        "asimetria": round(asimetria, 3), "curtosis_exceso": round(curtosis_exceso, 3),
+        "vol_anual_pct": round(vol_anual * 100, 2), "caida_comprar_mantener_pct": round(maxdd(ret) * 100, 2),
+        "pct_dias_alcistas": round(float((ret > 0).mean()) * 100, 1),
+    })
+
+
+def perfil_activo_json(texto_csv) -> str:
+    """Atajo para la interfaz (Pyodide): CSV en texto → JSON de perfil_activo() o error legible."""
+    try:
+        df = cargar_csv(texto_csv)
+        p = perfil_activo(df)
+        p["avisos"] = df.attrs.get("avisos", [])
+        return json.dumps(p, ensure_ascii=False)
+    except (ErrorDatos, ErrorSpec) as e:
+        return json.dumps({"error": str(e), "tipo": type(e).__name__}, ensure_ascii=False)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
 # 9. PARIDAD MT5 — reconciliación con el informe del Strategy Tester
 # ═══════════════════════════════════════════════════════════════════════════════════════════════
 _COLS_MT5 = {
@@ -2480,11 +2561,15 @@ def reconciliar_mt5(df_trades_motor, texto_informe_mt5, tolerancia: float = 0.02
     mov_x = xx.lado * (xx.px_out / xx.px_in - 1.0)
     res_m, res_x = float(mov_m.sum()), float(mov_x.sum())
     dif = abs(res_x - res_m) / max(abs(res_m), 1e-9)
-    # emparejado por día de entrada
-    claves_x = {d: i for i, d in enumerate(xx.fecha_in.dt.normalize())}
+    # emparejado por día de entrada (en orden: si hay varias operaciones el mismo día —sesiones con
+    # max_operaciones_dia > 1—, la primera del motor casa con la primera de MT5 de ese día, no todas con la última)
+    colas_x: dict = {}
+    for i, d in enumerate(xx.fecha_in.dt.normalize()):
+        colas_x.setdefault(d, []).append(i)
     detalle, emparejadas = [], 0
     for i, r in mm.iterrows():
-        j = claves_x.get(r.fecha_in.normalize())
+        cola = colas_x.get(r.fecha_in.normalize())
+        j = cola.pop(0) if cola else None
         if j is None:
             detalle.append({"motor_fi": str(r.fecha_in.date()), "mt5_fi": None, "nota": "solo en el motor"})
             continue

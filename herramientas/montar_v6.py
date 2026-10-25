@@ -52,8 +52,9 @@ _FECHA = re.compile(r"(\d{4})[.\-/](\d{2})[.\-/](\d{2})")
 
 
 def seguro(txt: str) -> str:
-    """Evita que un </script> dentro de los datos o del motor cierre la etiqueta."""
-    return txt.replace("</script", "<\\/script").replace("<!--", "<\\!--")
+    """Evita que un </... (cualquier mayúscula/minúscula) dentro de los datos o del motor cierre la etiqueta.
+    Igual que motor/construir_puente.py: escapar TODO «</» es más seguro que solo "</script" en minúsculas."""
+    return txt.replace("</", "<\\/").replace("<!--", "<\\!--")
 
 
 def ficha(texto: str) -> dict:

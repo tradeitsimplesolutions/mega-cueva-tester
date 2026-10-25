@@ -57,12 +57,13 @@ export default {
       const ipf = req.headers.get("CF-Connecting-IP") || "?";
       const lim = await contar(env, "fb:" + dia + ":" + ipf, parseInt(env.TOPE_FEEDBACK_IP || "5", 10));
       if (!lim.ok) return json({ error: "Ya enviaste varios comentarios hoy. ¡Gracias!" }, 429, origen);
-      const email = String(f.email || "").trim().slice(0, 120);
+      const unaLinea = (s, n) => String(s || "").replace(/[\r\n]+/g, " ").slice(0, n);
+      const email = unaLinea(f.email, 120);
       const cuerpo = [texto, "", "---",
-        "Pantalla: " + String(f.vista || "?").slice(0, 60),
-        "Estrategia: " + String(f.estrategia || "?").slice(0, 120),
+        "Pantalla: " + (unaLinea(f.vista, 60) || "?"),
+        "Estrategia: " + (unaLinea(f.estrategia, 120) || "?"),
         "Email: " + (email || "(no lo dejó)"),
-        "Navegador: " + String(req.headers.get("User-Agent") || "").slice(0, 160),
+        "Navegador: " + unaLinea(req.headers.get("User-Agent"), 160),
         "Fecha: " + new Date().toISOString()].join("\n");
       const gh = await fetch("https://api.github.com/repos/" + (env.REPO_FEEDBACK || "tradeitsimplesolutions/mega-cueva-tester") + "/issues", {
         method: "POST",
