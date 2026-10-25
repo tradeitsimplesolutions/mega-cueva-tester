@@ -1175,21 +1175,23 @@ window.cargarResultados=cargarResultados;
 /* ---------- nivel LANDING / MISIONES / BASIC / COMPLETO (AVANZADO retirado del repo público: la terminal vive
    en sentinel/reportes/oro_rsi4) ---------- */
 let nivel='completo';
-function setNivel(n){if(n==='entender')n='completo';if(!['basic','completo','landing','misiones'].includes(n))n='basic';const prev=nivel;nivel=n;
+function setNivel(n){if(n==='entender')n='completo';if(!['basic','completo','landing','misiones','mision1'].includes(n))n='basic';const prev=nivel;nivel=n;
   $$('.nivel button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.n===n));
   document.body.classList.toggle('basic',n==='basic');
   document.body.classList.toggle('landing',n==='landing');
   document.body.classList.toggle('misiones',n==='misiones');
+  document.body.classList.toggle('mision1',n==='mision1');
   if(n==='basic'||n==='completo')store.set('nivel',n);
   hideTip();
   if(n==='basic'){mesaActiva(false);bxEntrar();try{history.replaceState(null,'','#basic')}catch(e){}window.scrollTo(0,0)}
   else if(n==='landing'){try{history.replaceState(null,'','#inicio')}catch(e){}window.scrollTo(0,0)}
   else if(n==='misiones'){try{history.replaceState(null,'','#misiones')}catch(e){}window.scrollTo(0,0)}
+  else if(n==='mision1'){try{history.replaceState(null,'','#mision1')}catch(e){}window.scrollTo(0,0)}
   else{if(prev==='basic'){mesaActiva(VIEWS[cur]==='mesa');try{history.replaceState(null,'','#'+VIEWS[cur])}catch(e){}}
     requestAnimationFrame(()=>{fijarHdr();renderAll();renderTree()})}}
 /* nivel al abrir: #basic → BASIC · #vista → COMPLETO · #misiones → MISIONES · si no, LANDING (portada) */
 function nivelInicial(){const h=location.hash.slice(1);
-  if(h==='basic')return 'basic';if(VIEWS.includes(h))return 'completo';if(h==='misiones')return 'misiones';return 'landing'}
+  if(h==='basic')return 'basic';if(VIEWS.includes(h))return 'completo';if(h==='misiones')return 'misiones';if(h==='mision1')return 'mision1';return 'landing'}
 
 /* ---------- BASIC: la prueba en 3 pasos ----------
    Reutiliza TODO: traductor (#pi-trad), IA (#pi-ia), agente 03/04, datos (usarLib/quitarCSV/cargarNAS/leerCSV),
@@ -1259,75 +1261,209 @@ function m1Sync(){const t=$('#m1-dat-t');if(!t)return;const k=!CSV?'oro_d1':(lib
   const d=datosCargados();t.innerHTML='Cargados: '+(k==='csv'?`<b>${esc(CSV.nombre)}</b> · ${nf(CSV.n,0)} velas`:'<b>'+esc((d?d.txt:'ejemplo del oro (XAUUSD diario)').replace(/^los de /,'').replace(/^./,c=>c.toUpperCase()))+'</b>')}
 async function m1Dato(id){if($('#m1-analizar').disabled)return;const e=libId(id);if(e&&e.gz)$('#m1-dat-t').textContent='Cargando '+e.b_t+' ('+e.b_s+')…';
   if(e)m1Simbolo=e.sim;await usarLib(id,true);m1Sync();$('#m1-res').hidden=true}
-function m1Clasificar(p){
+/* ---------- clasificación (pistas, no veredicto) ---------- */
+function m1Clasificar(p){const f=p.fig||{},b=(f.acf&&f.acf.banda)||0.02;
   const fondo=p.ret_anual_pct>5?'alcista':p.ret_anual_pct<-5?'bajista':'lateral';
-  const tend=p.eficiencia_kaufman!=null&&p.eficiencia_kaufman>=0.35&&p.autocorr_lag1>0.02;
-  const rev=p.eficiencia_kaufman!=null&&p.eficiencia_kaufman<0.22&&p.autocorr_lag1<-0.02;
-  const corto=tend&&!rev?'sigue':rev&&!tend?'revierte':'mixto';
+  const a1=p.autocorr_lag1,er=p.eficiencia_kaufman;
+  const sigue=(a1>b&&(er==null||er>=0.25))||(er!=null&&er>=0.35&&a1>0);
+  const revierte=a1<-b||(er!=null&&er<0.22&&a1<0);
+  const corto=sigue&&!revierte?'sigue':revierte&&!sigue?'revierte':'mixto';
   const colas=p.curtosis_exceso>1?'gordas':'normales';
-  return{fondo,corto,colas}}
-const M1_FAMILIAS={
-  'alcista,revierte':'De fondo sube, pero día a día se enfría y vuelve. Es el patrón clásico de <b>comprar en caídas dentro de una tendencia</b>: RSI corto (tipo tu demo del oro) con un filtro de media alcista por detrás.',
-  'alcista,sigue':'De fondo sube y además el movimiento se sostiene día a día. Encaja con <b>ruptura o momentum</b>: comprar máximos de N velas (canal de Donchian) o seguir el impulso cuando ya tira para arriba.',
-  'bajista,revierte':'De fondo baja, pero día a día rebota. Ir corto en rebotes es más difícil de defender (el rebote puede durar); revísalo con cuidado o considera si este es el activo correcto para tu idea.',
-  'bajista,sigue':'De fondo baja y el movimiento se sostiene. Encaja con <b>ruptura a la baja o momentum corto</b>: vender en mínimos de N velas.',
-  'lateral,revierte':'Sin tendencia de fondo clara, y día a día se devuelve. Es el terreno de las <b>estrategias de rango puro</b>: bandas de Bollinger, RSI sin filtro de tendencia — comprar abajo del rango, vender arriba.',
-  'lateral,sigue':'Sin tendencia de fondo clara, pero con impulso día a día. Es poco común: prueba otro periodo de datos o confírmalo con más historia antes de construir nada encima.',
-};
+  const V=f.vol||{};const regimen=V.hoy==null?'—':V.hoy>V.q66?'alto':V.hoy<V.q33?'bajo':'medio';
+  const fam=corto==='sigue'?(fondo==='bajista'?'mom_corto':'momentum'):corto==='revierte'?(fondo==='alcista'?'retroceso':fondo==='bajista'?'rebote_bajista':'rango'):(fondo==='alcista'?'tendencia_lenta':fondo==='bajista'?'mom_corto':'rango');
+  return{fondo,corto,colas,regimen,fam,banda:b}}
 const M1_TF_FRASE={M5:'en 5 minutos',M15:'en 15 minutos',H1:'en 1 hora',H4:'en 4 horas',D1:'en diario',W1:'en semanal'};
-const M1_IDEAS={
-  'alcista,revierte':(s,tf)=>`Compro ${s} ${tf} cuando el RSI de 4 baja de 25 y el precio está por encima de la media de 200. Vendo cuando el RSI sube de 55.`,
-  'alcista,sigue':(s,tf)=>`Compro ${s} ${tf} cuando el precio rompe el máximo de 20 velas. Vendo cuando baja del mínimo de 10 velas.`,
-  'bajista,revierte':(s,tf)=>`Vendo en corto ${s} ${tf} cuando el RSI de 4 sube de 75 y el precio está por debajo de la media de 200. Recompro cuando el RSI baja de 45.`,
-  'bajista,sigue':(s,tf)=>`Vendo en corto ${s} ${tf} cuando el precio rompe el mínimo de 20 velas. Recompro cuando sube del máximo de 10 velas.`,
-  'lateral,revierte':(s,tf)=>`Compro ${s} ${tf} cuando el precio cruza por debajo de la banda inferior de Bollinger(20,2). Vendo cuando cruza por encima de la media de Bollinger(20).`,
-  'lateral,sigue':(s,tf)=>`Compro ${s} ${tf} cuando el precio rompe el máximo de 20 velas. Vendo tras 15 velas.`,
-};
-function m1Facil(p,c){const ic={alcista:'i-sube',bajista:'i-baja',lateral:'i-lateral',sigue:'i-sigue',revierte:'i-revierte',mixto:'i-mixto'};
-  const svg=n=>`<svg class="ic"><use href="#${n}"/></svg>`;
-  const fondoTxt={alcista:`De fondo sube: ${nf(p.ret_anual_pct,1)} % al año de media, y pasó el ${nf(p.pct_tiempo_sobre_media,0)} % del tiempo por encima de su propia media larga.`,
-    bajista:`De fondo baja: ${nf(p.ret_anual_pct,1)} % al año de media.`,
-    lateral:`Sin tendencia de fondo clara: ${nf(p.ret_anual_pct,1)} % al año, ni claramente arriba ni abajo.`}[c.fondo];
-  const cortoTxt={sigue:'Cuando se mueve un día, tiende a seguir moviéndose en la misma dirección al día siguiente (el movimiento se sostiene).',
-    revierte:'Cuando se mueve un día, tiende a devolverse al día siguiente (se enfría rápido).',
-    mixto:'Día a día no hay un patrón claro de seguir o devolverse.'}[c.corto];
-  const colasTxt=c.colas==='gordas'?'Tiene <b>sustos más grandes</b> de lo normal: días extremos más frecuentes que en una campana de distribución normal.':'Sus movimientos extremos son parecidos a los de una campana normal: sin sustos fuera de lo común.';
-  const familia=M1_FAMILIAS[c.fondo+','+c.corto];
-  const tieneIdea=!!M1_IDEAS[c.fondo+','+c.corto];
-  const fondoCls=c.fondo==='alcista'?'card-pos':c.fondo==='bajista'?'card-neg':'';
-  return `<div class="m1-card ${fondoCls}"><h4>${svg(ic[c.fondo])} Tendencia de fondo</h4><p>${fondoTxt}</p></div>
-    <div class="m1-card"><h4>${svg(ic[c.corto])} Día a día</h4><p>${cortoTxt}</p></div>
-    <div class="m1-card"><h4>${svg('i-pico')} Colas (sustos)</h4><p>${colasTxt} Volatilidad: ${nf(p.vol_anual_pct,1)} % al año · caída máxima comprando y aguantando: ${nf(p.caida_comprar_mantener_pct,1)} %.</p></div>
-    ${familia?`<div class="m1-familias"><h4>${svg('i-brujula')} Por dónde empezar a mirar</h4><p>${familia}</p>
-      ${tieneIdea?'<button type="button" class="btn gold" id="m1-usar">📝 PROBAR ESTA IDEA DE PARTIDA EN EL PASO 1 →</button>':''}</div>`:''}
-    <p class="c-dim m1-pie" style="font-size:.85rem">Son pistas de un AED muy simple, no un veredicto: para saber si una idea concreta funciona hace falta correrla por las 5 fases del protocolo.</p>`}
-function m1Usar(p,c){const gen=M1_IDEAS[c.fondo+','+c.corto];if(!gen)return;
-  const texto=gen(m1Simbolo,M1_TF_FRASE[p.tf]||'');
-  closeDlg();const ta=$('#bx-idea');ta.value=texto;ta.dispatchEvent(new Event('input'));
-  if(nivel!=='basic')setNivel('basic');
+/* familias y estrategias documentadas (fuente pública). semilla = idea que el traductor del paso 1 entiende */
+const M1_FAM={
+  retroceso:{t:'Comprar retrocesos dentro de la tendencia',d:'De fondo sube, pero día a día se enfría y vuelve. La ventaja clásica aquí es comprar cuando se ha calentado a la baja, solo mientras la tendencia de fondo siga alcista.',
+    e:[{n:'RSI(2) de Connors',src:'L. Connors y C. Alvarez, «Short Term Trading Strategies That Work» (2008)',r:'Compra si el RSI(2) baja de 10 y el precio está sobre su media de 200; sale cuando cierra sobre la media de 5.',
+        s:(a,t)=>`Compro ${a} ${t} cuando el RSI de 2 baja de 10 y el precio está por encima de la media de 200. Vendo cuando el precio está por encima de la media de 5.`},
+       {n:'Double 7s',src:'L. Connors y C. Alvarez, «Short Term Trading Strategies That Work» (2008)',r:'Compra al cerrar en el mínimo de 7 velas sobre la media de 200; sale al marcar el máximo de 7 velas.',
+        s:(a,t)=>`Compro ${a} ${t} cuando el precio cierra por debajo del mínimo de 7 velas y está por encima de la media de 200. Vendo cuando el precio rompe el máximo de 7 velas.`},
+       {n:'IBS bajo (Internal Bar Strength)',src:'Pagonidis, «The IBS Effect» (2013)',r:'Compra cuando el cierre queda en el 20 % inferior del rango de la vela; sale al día siguiente. Se monta a mano en COMPLETO.',s:null}]},
+  momentum:{t:'Ruptura y momentum',d:'Lo que se mueve tiende a seguir moviéndose y hay tramos de tendencia limpia. Aquí la ventaja clásica es subirse a la ruptura y dejar correr.',
+    e:[{n:'Canal de Donchian 20/10 (Tortugas)',src:'C. Faith, «Way of the Turtle» (2007)',r:'Compra al romper el máximo de 20 velas; sale al romper el mínimo de 10.',
+        s:(a,t)=>`Compro ${a} ${t} cuando el precio rompe el máximo de 20 velas. Vendo cuando el precio rompe el mínimo de 10 velas.`},
+       {n:'Cruce de medias 50/200',src:'Regla pública clásica («golden cross»)',r:'Compra cuando la media de 50 cruza por encima de la de 200; sale en el cruce contrario.',
+        s:(a,t)=>`Compro ${a} ${t} cuando la media de 50 cruza por encima de la media de 200. Vendo cuando la media de 50 cruza por debajo de la media de 200.`},
+       {n:'Momentum de serie temporal',src:'Moskowitz, Ooi y Pedersen, «Time Series Momentum», JFE (2012)',r:'Largo si el retorno de los últimos 12 meses es positivo; se revisa cada mes. Se monta a mano en COMPLETO.',s:null}]},
+  tendencia_lenta:{t:'Seguir la tendencia de fondo, sin prisa',d:'De fondo sube pero día a día no hay un patrón claro. Lo más robusto suele ser estar dentro mientras la tendencia larga siga viva, con reglas lentas.',
+    e:[{n:'Cruce de medias 50/200',src:'Regla pública clásica («golden cross»)',r:'Compra cuando la media de 50 cruza por encima de la de 200; sale en el cruce contrario.',
+        s:(a,t)=>`Compro ${a} ${t} cuando la media de 50 cruza por encima de la media de 200. Vendo cuando la media de 50 cruza por debajo de la media de 200.`},
+       {n:'Donchian 55/20 (sistema 2 de las Tortugas)',src:'C. Faith, «Way of the Turtle» (2007)',r:'Compra al romper el máximo de 55 velas; sale al romper el mínimo de 20.',
+        s:(a,t)=>`Compro ${a} ${t} cuando el precio rompe el máximo de 55 velas. Vendo cuando el precio rompe el mínimo de 20 velas.`},
+       {n:'RSI(2) de Connors',src:'L. Connors y C. Alvarez (2008)',r:'Como alternativa de entrada fina: comprar retrocesos dentro de la tendencia.',
+        s:(a,t)=>`Compro ${a} ${t} cuando el RSI de 2 baja de 10 y el precio está por encima de la media de 200. Vendo cuando el precio está por encima de la media de 5.`}]},
+  rango:{t:'Rango: comprar abajo, vender arriba',d:'Sin tendencia de fondo clara y con tendencia a devolverse. Es el terreno de los osciladores: entrar en los extremos del rango y salir en el centro.',
+    e:[{n:'RSI 30/70',src:'J. W. Wilder, «New Concepts in Technical Trading Systems» (1978)',r:'Compra cuando el RSI(14) baja de 30; sale cuando sube de 70.',
+        s:(a,t)=>`Compro ${a} ${t} cuando el RSI de 14 baja de 30. Vendo cuando el RSI de 14 sube de 70.`},
+       {n:'Reversión a las bandas de Bollinger',src:'J. Bollinger, «Bollinger on Bollinger Bands» (2001)',r:'Compra al cerrar bajo la banda inferior (20, 2); sale al volver a la media. Se monta a mano en COMPLETO.',s:null},
+       {n:'RSI(2) sin filtro de tendencia',src:'L. Connors y C. Alvarez (2008)',r:'Compra si el RSI(2) baja de 10; sale cuando sube de 70.',
+        s:(a,t)=>`Compro ${a} ${t} cuando el RSI de 2 baja de 10. Vendo cuando el RSI de 2 sube de 70.`}]},
+  mom_corto:{t:'Momentum a la baja (cortos)',d:'De fondo baja y el movimiento se sostiene. La lógica de las rupturas funciona igual hacia abajo, pero recuerda: en índices los cortos suelen pagar poco y cuestan swap.',
+    e:[{n:'Donchian a la baja',src:'C. Faith, «Way of the Turtle» (2007)',r:'Vende en corto al romper el mínimo de 20 velas; recompra al romper el máximo de 10.',
+        s:(a,t)=>`Vendo en corto ${a} ${t} cuando el precio rompe el mínimo de 20 velas. Recompro cuando el precio rompe el máximo de 10 velas.`},
+       {n:'Cruce de medias bajista',src:'Regla pública clásica («death cross»)',r:'Corto cuando la media de 50 cruza por debajo de la de 200.',
+        s:(a,t)=>`Vendo en corto ${a} ${t} cuando la media de 50 cruza por debajo de la media de 200. Recompro cuando la media de 50 cruza por encima de la media de 200.`}]},
+  rebote_bajista:{t:'Vender los rebotes en tendencia bajista',d:'De fondo baja, pero día a día rebota. El espejo de la compra de retrocesos: vender en corto cuando el rebote se calienta.',
+    e:[{n:'RSI(2) de Connors en corto',src:'L. Connors y C. Alvarez (2008)',r:'Corto si el RSI(2) sube de 90 y el precio está bajo su media de 200; recompra al cerrar bajo la media de 5.',
+        s:(a,t)=>`Vendo en corto ${a} ${t} cuando el RSI de 2 sube de 90 y el precio está por debajo de la media de 200. Recompro cuando el precio está por debajo de la media de 5.`}]}};
+
+/* ---------- utilidades de las figuras (SVG, se imprime bien) ---------- */
+const m1P=(x,d=1)=>x==null||!isFinite(x)?'—':nf(x*100,d)+' %';
+const m1B=x=>x==null||!isFinite(x)?'—':(x>0?'+':'')+nf(x*1e4,1)+' pb';
+const m1Num=v=>nf(v,Math.abs(v)>=100?0:2);
+const m1Sx=(n,W,pl,pr)=>i=>pl+(W-pl-pr)*(n>1?i/(n-1):0);
+function m1Path(vals,sx,sy){let d='',pen=false;vals.forEach((v,i)=>{if(v==null||!isFinite(v)){pen=false;return}d+=(pen?'L':'M')+sx(i).toFixed(1)+' '+sy(v).toFixed(1)+' ';pen=true});return d}
+const m1Svg=(W,H,inner,lbl)=>`<svg class="m1svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(lbl)}">${inner}</svg>`;
+function m1Ticks(t,sx,y){const n=t.length;if(!n)return'';const k=[0,.25,.5,.75,1].map(q=>Math.round(q*(n-1)));
+  return [...new Set(k)].map(i=>`<text class="ax" x="${sx(i).toFixed(1)}" y="${y}" text-anchor="${i===0?'start':i===n-1?'end':'middle'}">${esc(String(t[i]).slice(0,7))}</text>`).join('')}
+function m1Bars(items,W,H,{val,lab,col,base,fmt,zeroLbl}){const pl=46,pr=8,pt=14,pb=34,n=items.length;if(!n)return'';
+  const vs=items.map(val).concat(base==null?[]:[base],[0]);const lo=Math.min(...vs),hi=Math.max(...vs),r=(hi-lo)||1;
+  const sy=v=>pt+(H-pt-pb)*(1-(v-lo)/r),bw=(W-pl-pr)/n;
+  let s=`<line class="gr" x1="${pl}" x2="${W-pr}" y1="${sy(0)}" y2="${sy(0)}"/><text class="ax" x="${pl-6}" y="${sy(hi)+4}" text-anchor="end">${fmt(hi)}</text><text class="ax" x="${pl-6}" y="${sy(lo)+4}" text-anchor="end">${fmt(lo)}</text>`;
+  items.forEach((it,i)=>{const v=val(it),x=pl+i*bw+bw*.15,w=bw*.7,y0=sy(0),y1=sy(v);
+    s+=`<rect class="${col(it,v)}" x="${x.toFixed(1)}" y="${Math.min(y0,y1).toFixed(1)}" width="${w.toFixed(1)}" height="${Math.max(1,Math.abs(y1-y0)).toFixed(1)}"><title>${esc(lab(it))}: ${esc(fmt(v))}</title></rect>`;
+    s+=`<text class="ax" x="${(x+w/2).toFixed(1)}" y="${H-pb+14}" text-anchor="middle">${esc(lab(it))}</text>`});
+  if(base!=null)s+=`<line class="base" x1="${pl}" x2="${W-pr}" y1="${sy(base)}" y2="${sy(base)}"/><text class="ax gold" x="${W-pr}" y="${sy(base)-4}" text-anchor="end">${esc(zeroLbl||'media')}</text>`;
+  return s}
+
+/* ---------- las 7 figuras ---------- */
+function m1Fig(num,titulo,preg,svg,lee,ind,ancha){return `<article class="m1p-fig${ancha?' ancha':''}"><header><span class="num mono">FIG ${num}</span><h3>${titulo}</h3></header>
+  <p class="preg">${preg}</p>${svg}<p class="m1p-lee"><b>Qué ves:</b> ${lee}</p><p class="m1p-ind"><b>Qué significa para tu estrategia:</b> ${ind}</p></article>`}
+function m1Figuras(p,c){const f=p.fig,out=[];
+  /* 1 · curva + caída */
+  {const C=f.curva,W=920,H=300,pl=54,pr=10,n=C.c.length,sx=m1Sx(n,W,pl,pr);
+    const lv=C.c.map(v=>Math.log(v)),lm=C.m.map(v=>v==null?null:Math.log(v)),all=lv.concat(lm.filter(v=>v!=null));
+    const lo=Math.min(...all),hi=Math.max(...all),sy=v=>12+(190-12)*(1-(v-lo)/((hi-lo)||1));
+    const ddMin=Math.min(...C.dd)||-0.01,sd=v=>212+(272-212)*(v/ddMin);
+    let s=[lo,(lo+hi)/2,hi].map(v=>`<line class="gr" x1="${pl}" x2="${W-pr}" y1="${sy(v)}" y2="${sy(v)}"/><text class="ax" x="${pl-6}" y="${sy(v)+4}" text-anchor="end">${m1Num(Math.exp(v))}</text>`).join('');
+    s+=`<path class="ln-m" d="${m1Path(lm,sx,sy)}"/><path class="ln-p" d="${m1Path(lv,sx,sy)}"/>`;
+    s+=`<path class="ar-dd" d="M${sx(0)} 212 ${C.dd.map((v,i)=>'L'+sx(i).toFixed(1)+' '+sd(v).toFixed(1)).join(' ')} L${sx(n-1)} 212 Z"/>`;
+    s+=`<text class="ax" x="${pl-6}" y="216" text-anchor="end">0 %</text><text class="ax" x="${pl-6}" y="276" text-anchor="end">${m1P(ddMin,0)}</text>`;
+    s+=`<text class="ax" x="${pl+4}" y="206">caída desde máximos</text>`+m1Ticks(C.t,sx,H-4);
+    const fondo={alcista:'Las compras van a favor del viento. Un filtro «precio por encima de su media larga» suele ayudar a cualquier idea larga.',
+      bajista:'Ir largo es remar contra corriente: si quieres comprar, exige una señal fuerte, o plantéate cortos.',
+      lateral:'No hay viento de fondo: la ventaja tendrá que salir de la táctica (entradas y salidas), no de la tendencia.'}[c.fondo];
+    out.push(m1Fig(1,'Precio y caídas','¿Hacia dónde ha ido de fondo y cuánto ha llegado a caer?',m1Svg(W,H,s,'Curva de precio en escala logarítmica con su media larga y la caída desde máximos'),
+      `de ${esc(p.desde)} a ${esc(p.hasta)} el precio ha hecho <b>${nf(p.ret_total_pct,0)} %</b> (${nf(p.ret_anual_pct,1)} % al año) y ha pasado el <b>${nf(p.pct_tiempo_sobre_media,0)} %</b> del tiempo por encima de su media de ${C.media} velas (línea dorada). Peor caída comprando y aguantando: <b>${nf(p.caida_comprar_mantener_pct,1)} %</b>.`,
+      fondo+` Cualquier estrategia sin stop tendrá que soportar caídas de este orden.`,true))}
+  /* 2 · distribución */
+  {const D=f.dist,W=460,H=240,pl=10,pr=10,pt=10,pb=30,n=D.x.length,bw=(W-pl-pr)/n,mx=Math.max(...D.n,...D.normal)||1,sy=v=>pt+(H-pt-pb)*(1-v/mx);
+    let s='';D.x.forEach((x,i)=>{const cola=Math.abs(x-D.mu)>2*D.sd;s+=`<rect class="${cola?'b-red':'b-cy'}" x="${(pl+i*bw).toFixed(1)}" y="${sy(D.n[i]).toFixed(1)}" width="${(bw*.86).toFixed(1)}" height="${(H-pb-sy(D.n[i])).toFixed(1)}"/>`});
+    s+=`<path class="ln-n" d="${D.normal.map((v,i)=>(i?'L':'M')+(pl+i*bw+bw*.43).toFixed(1)+' '+sy(v).toFixed(1)).join(' ')}"/>`;
+    s+=`<text class="ax" x="${pl}" y="${H-10}">${m1P(D.x[0],1)}</text><text class="ax" x="${W/2}" y="${H-10}" text-anchor="middle">0</text><text class="ax" x="${W-pr}" y="${H-10}" text-anchor="end">${m1P(D.x[n-1],1)}</text>`;
+    const veces=D.pct_3sd/D.pct_3sd_normal;
+    out.push(m1Fig(2,'Tamaño de los movimientos','¿Sus sustos son como los de una campana normal, o más grandes?',m1Svg(W,H,s,'Histograma de retornos por vela frente a una campana normal'),
+      `barras = cuántas velas se movieron cada cantidad; línea = lo que esperaría una campana normal; en rojo, más de 2 desviaciones. El <b>${m1P(D.pct_3sd,2)}</b> de las velas se mueve más de 3 desviaciones (la campana diría 0,27 %: <b>${nf(veces,1)} veces más</b>). Peor vela: ${m1P(D.peor,1)} · mejor: ${m1P(D.mejor,1)}.`,
+      c.colas==='gordas'?'Los días extremos llegan bastante más a menudo de lo que «parece». El tamaño de la posición y un límite de pérdida importan más que el punto exacto de entrada.':'Sus extremos son parecidos a los de una campana normal: los stops basados en volatilidad (ATR) se comportan de forma predecible.'))}
+  /* 3 · autocorrelación */
+  {const A=f.acf.v,b=f.acf.banda,W=460,H=240,pl=46,pr=8,pt=12,pb=28,n=A.length,lim=Math.max(b*2.2,...A.map(Math.abs)),sy=v=>pt+(H-pt-pb)*(1-(v+lim)/(2*lim)),bw=(W-pl-pr)/n;
+    let s=`<rect class="banda" x="${pl}" y="${sy(b)}" width="${W-pl-pr}" height="${sy(-b)-sy(b)}"/><line class="gr" x1="${pl}" x2="${W-pr}" y1="${sy(0)}" y2="${sy(0)}"/>`;
+    A.forEach((v,i)=>{const x=pl+i*bw+bw*.2,y0=sy(0),y1=sy(v),cl=v>b?'b-ok':v<-b?'b-cy':'b-dim';s+=`<rect class="${cl}" x="${x.toFixed(1)}" y="${Math.min(y0,y1).toFixed(1)}" width="${(bw*.6).toFixed(1)}" height="${Math.max(1,Math.abs(y1-y0)).toFixed(1)}"><title>desfase ${i+1}: ${nf(v,3)}</title></rect>`;
+      if(i===0||(i+1)%5===0)s+=`<text class="ax" x="${(x+bw*.3).toFixed(1)}" y="${H-10}" text-anchor="middle">${i+1}</text>`});
+    s+=`<text class="ax" x="${pl-6}" y="${sy(lim)+4}" text-anchor="end">${nf(lim,2)}</text><text class="ax" x="${pl-6}" y="${sy(-lim)+4}" text-anchor="end">−${nf(lim,2)}</text><text class="ax" x="${W-pr}" y="${sy(b)-4}" text-anchor="end">zona de ruido</text>`;
+    const sig=A.filter(v=>Math.abs(v)>b).length,a1=A[0];
+    const lee=a1>b?`la vela siguiente tiende a <b>seguir</b> a la de hoy (desfase 1: ${nf(a1,3)}, fuera de la zona de ruido ±${nf(b,3)}).`:a1<-b?`la vela siguiente tiende a <b>devolver</b> parte de la de hoy (desfase 1: ${nf(a1,3)}, fuera de la zona de ruido ±${nf(b,3)}).`:`el desfase 1 (${nf(a1,3)}) cae <b>dentro de la zona de ruido</b> (±${nf(b,3)}): lo de hoy casi no dice nada de la vela siguiente.`;
+    out.push(m1Fig(3,'Memoria','¿Lo que hace hoy dice algo de lo que hará después?',m1Svg(W,H,s,'Autocorrelación de los retornos para desfases de 1 a 20 velas'),
+      lee+` ${sig} de los 20 desfases salen de la zona de ruido.`,
+      c.corto==='revierte'?(a1<-b?'Hay memoria de reversión: tras un movimiento suele venir algo de vuelta. Es la base de las entradas «compra cuando cae» (RSI corto, IBS).':'La memoria a 1 vela es débil por sí sola; la pista de reversión viene del zigzag (Fig 7) y de cómo reacciona tras las caídas (Fig 4). Las entradas «compra cuando cae» tienen sentido, pero no por la vela de ayer sola.'):c.corto==='sigue'?(a1>b?'Hay memoria de continuación: lo que se mueve tiende a seguir. Es la base de las rupturas y del momentum.':'La memoria a 1 vela es débil por sí sola; la pista de continuación viene de los tramos de tendencia limpia (Fig 7). Rupturas y momentum tienen sentido en ventanas largas.'):'La vela siguiente no es predecible por sí sola: la ventaja, si existe, estará en ventanas más largas o en filtros de régimen, no en reaccionar a la última vela.'))}
+  /* 4 · qué pasa después */
+  {const G=f.despues.grupos,B=f.despues.base,W=920,H=250;
+    const s=m1Bars(G,W,H,{val:g=>g.sig,lab:g=>g.g.replace('Caída fuerte','Caída ++').replace('Subida fuerte','Subida ++').replace('Algo baja','Baja −').replace('Algo sube','Sube −'),col:(g,v)=>v>=B.sig?'b-ok':'b-red',base:B.sig,fmt:m1B,zeroLbl:'vela cualquiera'});
+    const cf=G[0],sf=G[G.length-1],dC=cf.sig-B.sig,dS=sf.sig-B.sig;
+    const ind=dC>0&&cf.pos>B.pos?'Comprar después de caídas fuertes ha tenido viento a favor: es justo lo que explotan las estrategias de reversión.':dS>0&&sf.pos>B.pos?'Lo que sube fuerte tiende a seguir subiendo: viento a favor para rupturas y momentum.':'Tras los días extremos no hay una reacción clara y repetible: no construyas la idea solo sobre «reaccionar al día anterior».';
+    out.push(m1Fig(4,'Qué pasa después','¿Cómo suele ser la vela siguiente según cómo fue la de hoy?',m1Svg(W,H,s,'Retorno medio de la vela siguiente agrupado por cómo fue la vela actual'),
+      `tras una <b>caída fuerte</b> (el 5 % peor) la vela siguiente rinde de media <b>${m1B(cf.sig)}</b> y sube el ${m1P(cf.pos,0)} de las veces; tras una <b>subida fuerte</b>, ${m1B(sf.sig)} (${m1P(sf.pos,0)}). Una vela cualquiera: ${m1B(B.sig)} (${m1P(B.pos,0)}).`,
+      ind+' Ojo: diferencias de pocos puntos básicos se las come el coste de operar.',true))}
+  /* 5 · estacionalidad */
+  {const W=460,H=200,dw=f.dow||[],otro=(f.hora&&f.hora.length?f.hora:f.mes)||[],otroT=f.hora&&f.hora.length?'hora':'mes';
+    const s1=m1Bars(dw,W,H,{val:d=>d.r,lab:d=>d.k,col:(d,v)=>v>=0?'b-ok':'b-red',fmt:m1B}),s2=m1Bars(otro,W,H,{val:d=>d.r,lab:d=>d.k.replace('h',''),col:(d,v)=>v>=0?'b-ok':'b-red',fmt:m1B});
+    const ord=[...dw].sort((a,b)=>b.r-a.r),mej=ord[0],peo=ord[ord.length-1];
+    out.push(m1Fig(5,'Calendario','¿Hay días (o '+(otroT==='hora'?'horas':'meses')+') mejores que otros?',`<div class="m1p-duo"><div><p class="mono c-dim">DÍA DE LA SEMANA</p>${m1Svg(W,H,s1,'Retorno medio por día de la semana')}</div><div><p class="mono c-dim">${otroT==='hora'?'HORA':'MES'}</p>${m1Svg(W,H,s2,'Retorno medio por '+otroT)}</div></div>`,
+      mej?`el mejor día ha sido el <b>${mej.k}</b> (${m1B(mej.r)}, sube el ${m1P(mej.pos,0)}) y el peor el <b>${peo.k}</b> (${m1B(peo.r)}).`:'no hay suficientes velas para comparar días.',
+      'Úsalo como filtro, nunca como sistema: diferencias de pocos puntos básicos rara vez sobreviven a los costes y al paso del tiempo. Solo merece la pena si es grande y tiene una razón (cierres de mes, aperturas de sesión…).',true))}
+  /* 6 · régimen de volatilidad */
+  {const V=f.vol,W=460,H=240,pl=46,pr=8,pt=12,pb=24,n=V.v.length,sx=m1Sx(n,W,pl,pr),vs=V.v.filter(v=>v!=null),lo=0,hi=Math.max(...vs)*1.05,sy=v=>pt+(H-pt-pb)*(1-(v-lo)/((hi-lo)||1));
+    let s=`<rect class="z-alta" x="${pl}" y="${sy(hi)}" width="${W-pl-pr}" height="${sy(V.q66)-sy(hi)}"/><rect class="z-baja" x="${pl}" y="${sy(V.q33)}" width="${W-pl-pr}" height="${sy(0)-sy(V.q33)}"/>`;
+    s+=`<path class="ln-v" d="${m1Path(V.v,sx,sy)}"/>`;
+    s+=`<text class="ax" x="${pl-6}" y="${sy(V.q66)+4}" text-anchor="end">${m1P(V.q66,0)}</text><text class="ax" x="${pl-6}" y="${sy(V.q33)+4}" text-anchor="end">${m1P(V.q33,0)}</text>`;
+    s+=`<text class="ax" x="${W-pr}" y="${sy(hi)+12}" text-anchor="end">régimen alto</text><text class="ax" x="${W-pr}" y="${sy(0)-6}" text-anchor="end">régimen bajo</text>`+m1Ticks(V.t,sx,H-4);
+    const ult=[...V.v].reverse().findIndex(v=>v!=null);if(ult>=0){const i=n-1-ult;s+=`<circle class="pt-hoy" cx="${sx(i)}" cy="${sy(V.v[i])}" r="4.5"/>`}
+    out.push(m1Fig(6,'Régimen de volatilidad','¿Cuándo se agita y en qué momento está ahora?',m1Svg(W,H,s,'Volatilidad anualizada rodante con sus terciles'),
+      `volatilidad anualizada en ventanas de ${V.ventana} velas. Su mediana es <b>${m1P(V.mediana,0)}</b>; ahora está en <b>${m1P(V.hoy,0)}</b> (punto dorado): <b>régimen ${c.regimen}</b>.`,
+      'La volatilidad viene en rachas. En régimen alto los stops fijos saltan más y una misma posición arriesga más: dimensionar por volatilidad (ATR) en vez de lotes fijos mantiene el riesgo constante.'))}
+  /* 7 · eficiencia rodante */
+  {const E=f.er,W=460,H=240,pl=46,pr=8,pt=12,pb=24,n=E.e.length,sx=m1Sx(n,W,pl,pr),sy=v=>pt+(H-pt-pb)*(1-v);
+    const ev=E.e.filter(v=>v!=null),tl=ev.filter(v=>v>=0.35).length/(ev.length||1),zz=ev.filter(v=>v<0.22).length/(ev.length||1);
+    let s=`<rect class="z-alta-ok" x="${pl}" y="${sy(1)}" width="${W-pl-pr}" height="${sy(0.35)-sy(1)}"/><rect class="z-baja-cy" x="${pl}" y="${sy(0.22)}" width="${W-pl-pr}" height="${sy(0)-sy(0.22)}"/>`;
+    s+=`<path class="ln-e" d="${m1Path(E.e,sx,sy)}"/><text class="ax" x="${pl-6}" y="${sy(0.35)+4}" text-anchor="end">0,35</text><text class="ax" x="${pl-6}" y="${sy(0.22)+4}" text-anchor="end">0,22</text>`;
+    s+=`<text class="ax" x="${W-pr}" y="${sy(1)+12}" text-anchor="end">tendencia limpia</text><text class="ax" x="${W-pr}" y="${sy(0)-6}" text-anchor="end">zigzag</text>`+m1Ticks(E.t,sx,H-4);
+    out.push(m1Fig(7,'Tendencia limpia o zigzag','¿Sus movimientos van en línea recta o dan muchas vueltas?',m1Svg(W,H,s,'Eficiencia de Kaufman rodante'),
+      `eficiencia de Kaufman en ventanas de ${E.ventana} velas, suavizada (1 = línea recta, 0 = ida y vuelta). Mediana: <b>${nf(p.eficiencia_kaufman,2)}</b>. Pasó el <b>${m1P(tl,0)}</b> del tiempo en tendencia limpia y el <b>${m1P(zz,0)}</b> en zigzag.`,
+      zz>tl?'Domina el zigzag: las rupturas dan muchas señales falsas y las entradas contra el movimiento tienen más sentido. Un filtro de eficiencia puede decirte cuándo cambiar de modo.':'Hay tramos largos de tendencia limpia: las rupturas tienen recorrido. Un filtro de eficiencia puede evitar operar en los tramos de zigzag.'))}
+  return `<div class="m1p-figs">${out.join('')}</div>`}
+
+/* ---------- personalidad, árbol, estrategias documentadas, ficha ---------- */
+const M1_TXT={fondo:{alcista:'Alcista',bajista:'Bajista',lateral:'Lateral'},corto:{sigue:'Sigue (momentum)',revierte:'Revierte',mixto:'Sin patrón claro'},colas:{gordas:'Gordas',normales:'Normales'},regimen:{alto:'Alta',medio:'Media',bajo:'Baja','—':'—'}};
+function m1Activo(){const e=CSV?libFich(CSV.nombre):libId('oro_d1');return e?e.b_t+' · '+e.b_s:(CSV?CSV.nombre:m1Simbolo)}
+function m1Perfil(p,c){const F=M1_FAM[c.fam],x=F.e.find(e=>e.s),veces=p.fig.dist.pct_3sd/p.fig.dist.pct_3sd_normal;
+  const rasgo=(lbl,val,det,cl)=>`<div class="m1p-rasgo ${cl}"><span>${lbl}</span><b>${val}</b><small>${det}</small></div>`;
+  return `<div class="m1p-veredicto"><p class="m1p-eyebrow mono">LA PERSONALIDAD DE ${esc(m1Activo().toUpperCase())}</p>
+    <h2>${esc(F.t)}</h2><p>${F.d}</p>
+    ${x?`<button type="button" class="btn gold" data-m1-probar="${c.fam}|0">PROBAR «${esc(x.n.toUpperCase())}» EN EL TESTER →</button>`:''}</div>
+    <div class="m1p-rasgos">
+    ${rasgo('Tendencia de fondo',M1_TXT.fondo[c.fondo],nf(p.ret_anual_pct,1)+' % al año',c.fondo==='alcista'?'ok':c.fondo==='bajista'?'bad':'dim')}
+    ${rasgo('Día a día',M1_TXT.corto[c.corto],'memoria a 1 vela: '+nf(p.autocorr_lag1,3),c.corto==='revierte'?'cy':c.corto==='sigue'?'ok':'dim')}
+    ${rasgo('Colas',M1_TXT.colas[c.colas],nf(veces,1)+'× más extremos que una normal',c.colas==='gordas'?'bad':'ok')}
+    ${rasgo('Volatilidad hoy',M1_TXT.regimen[c.regimen],m1P(p.fig.vol.hoy,0)+' anual · mediana '+m1P(p.fig.vol.mediana,0),c.regimen==='alto'?'bad':c.regimen==='bajo'?'ok':'gold')}</div>`}
+function m1Arbol(c){const nodo=(on,t,d)=>`<div class="m1p-nodo${on?' on':''}"><b>${t}</b>${d?`<small>${d}</small>`:''}</div>`;
+  const famOn=k=>c.fam===k;
+  return `<section class="m1p-arbol panel"><div class="m1p-h"><span class="bx-n" aria-hidden="true">2</span><h2>Árbol de decisión</h2></div>
+    <p class="c-dim">Tres preguntas, en orden. En dorado, el camino de tu activo.</p>
+    <div class="m1p-niveles">
+      <div><h4>1 · ¿Tendencia de fondo?</h4>${nodo(c.fondo==='alcista','Alcista','más de +5 % al año')}${nodo(c.fondo==='lateral','Lateral','entre −5 % y +5 %')}${nodo(c.fondo==='bajista','Bajista','menos de −5 % al año')}</div>
+      <div><h4>2 · ¿Día a día?</h4>${nodo(c.corto==='sigue','Sigue','lo que se mueve, continúa')}${nodo(c.corto==='mixto','Sin patrón claro','dentro del ruido')}${nodo(c.corto==='revierte','Revierte','lo que se mueve, vuelve')}</div>
+      <div><h4>3 · Familia a probar primero</h4>${Object.keys(M1_FAM).map(k=>nodo(famOn(k),M1_FAM[k].t,'')).join('')}</div>
+    </div></section>`}
+function m1Docs(c,p){const F=M1_FAM[c.fam];
+  return `<section class="m1p-docs panel"><div class="m1p-h"><span class="bx-n" aria-hidden="true">3</span><h2>Estrategias documentadas de esta familia</h2></div>
+    <p class="c-dim">Reglas públicas, con su fuente. Pruébalas tal cual en el tester con los datos de este activo: es el punto de partida, no el final.</p>
+    <div class="m1p-docs-l">${F.e.map((e,i)=>`<article class="m1p-doc"><h4>${esc(e.n)}</h4><p class="src mono">${esc(e.src)}</p><p>${esc(e.r)}</p>
+      ${e.s?`<button type="button" class="btn" data-m1-probar="${c.fam}|${i}">PROBAR EN EL TESTER →</button>`:'<span class="c-dim mono">se monta a mano en COMPLETO</span>'}</article>`).join('')}</div></section>`}
+function m1Tecnica(p,c){const D=p.fig.dist,V=p.fig.vol,b=c.banda,veces=D.pct_3sd/D.pct_3sd_normal;
+  const asim=p.asimetria<-0.2?'Caídas más bruscas que las subidas':p.asimetria>0.2?'Subidas más bruscas que las caídas':'Simétrica';
+  const fila=(m,v,r,l)=>`<tr><td>${m}</td><td class="v">${v}</td><td class="r">${r}</td><td class="l">${l}</td></tr>`,sec=t=>`<tr class="sec"><td colspan="4">${t}</td></tr>`;
+  const cab=(k,v)=>`<div><span class="mono c-dim">${k}</span><b>${v}</b></div>`;
+  return `<section class="m1p-ficha"><header class="m1p-ficha-top"><div><p class="m1p-eyebrow mono">FICHA TÉCNICA · AED</p><h2>${esc(m1Activo())}</h2></div><p class="mono c-dim">Mega Cueva Tester · Trade It Simple</p></header>
+    <div class="m1p-ficha-cab">${cab('PERIODO',esc(p.desde)+' → '+esc(p.hasta))}${cab('VELAS',nf(p.n_velas,0)+' · '+esc(p.tf))}${cab('AÑOS',nf(p.anios,1))}${cab('FAMILIA',esc(M1_FAM[c.fam].t))}</div>
+    <table class="m1p-t"><thead><tr><th>Métrica</th><th>Valor</th><th>Referencia</th><th>Lectura</th></tr></thead><tbody>
+    ${sec('Tendencia de fondo')}
+    ${fila('Retorno total',nf(p.ret_total_pct,1)+' %','—',p.ret_total_pct>=0?'Ganó':'Perdió')}
+    ${fila('Retorno anual (CAGR)',nf(p.ret_anual_pct,2)+' %','±5 % = lateral',M1_TXT.fondo[c.fondo])}
+    ${fila('Tiempo sobre su media de '+p.media_larga_velas+' velas',nf(p.pct_tiempo_sobre_media,1)+' %','50 % = sin sesgo',p.pct_tiempo_sobre_media>55?'Mayormente por encima':p.pct_tiempo_sobre_media<45?'Mayormente por debajo':'Sin sesgo')}
+    ${fila('Caída máxima comprando y aguantando',nf(p.caida_comprar_mantener_pct,1)+' %','—','Lo que exige aguantar sin stop')}
+    ${sec('Comportamiento día a día')}
+    ${fila('Autocorrelación a 1 vela',nf(p.autocorr_lag1,4),'±'+nf(b,3)+' = ruido',p.autocorr_lag1>b?'Sigue':p.autocorr_lag1<-b?'Revierte':'Ruido')}
+    ${fila('Eficiencia de Kaufman (mediana, '+p.eficiencia_ventana+' velas)',p.eficiencia_kaufman==null?'—':nf(p.eficiencia_kaufman,3),'&lt;0,22 zigzag · &gt;0,35 limpia',p.eficiencia_kaufman<0.22?'Zigzag':p.eficiencia_kaufman>0.35?'Tendencia limpia':'Intermedia')}
+    ${fila('Velas alcistas',nf(p.pct_dias_alcistas,1)+' %','50 %',p.pct_dias_alcistas>52?'Sesgo comprador':p.pct_dias_alcistas<48?'Sesgo vendedor':'Equilibrado')}
+    ${sec('Forma de los movimientos')}
+    ${fila('Asimetría',nf(p.asimetria,3),'0 = simétrica',asim)}
+    ${fila('Curtosis (exceso)',nf(p.curtosis_exceso,2),'0 = campana normal',c.colas==='gordas'?'Colas gordas':'Colas normales')}
+    ${fila('Velas de más de 3 desviaciones',m1P(D.pct_3sd,2),'0,27 % en una normal',nf(veces,1)+'× lo normal')}
+    ${fila('Peor / mejor vela',m1P(D.peor,1)+' / '+m1P(D.mejor,1),'—','—')}
+    ${sec('Riesgo')}
+    ${fila('Volatilidad anualizada',nf(p.vol_anual_pct,1)+' %','—','—')}
+    ${fila('Volatilidad hoy ('+V.ventana+' velas)',m1P(V.hoy,1),'tercios: '+m1P(V.q33,0)+' / '+m1P(V.q66,0),'Régimen '+c.regimen)}
+    </tbody></table>
+    <p class="c-dim m1p-nota">Autocorrelación: correlación entre el retorno de una vela y el de la siguiente. Eficiencia de Kaufman (Smarter Trading, 1995): desplazamiento neto / suma de los pasos. Curtosis en exceso &gt; 0: colas más gordas que una campana normal. Son pistas de un AED; una idea solo queda validada cuando pasa las 5 fases del protocolo.</p></section>`}
+
+function m1Probar(fam,i){const e=M1_FAM[fam]&&M1_FAM[fam].e[i];if(!e||!e.s)return;
+  const tf=(m1Ultimo&&m1Ultimo.tf)||'D1',texto=e.s(m1Simbolo,M1_TF_FRASE[tf]||'');
+  setNivel('basic');const ta=$('#bx-idea');ta.value=texto;ta.dispatchEvent(new Event('input'));
   ta.scrollIntoView({behavior:RM?'auto':'smooth',block:'center'});ta.focus();
-  toast('Idea de partida puesta en el paso 1 — ajústala y tradúcela cuando quieras')}
-function m1Tecnica(p){const fila=(l,v,cls)=>`<div class="factor m1-fila q-neu"><span class="cn">${esc(l)}</span><b class="big${cls?' '+cls:''}">${esc(v)}</b></div>`;
-  const grupo=t=>`<div class="m1-grupo-t">${esc(t)}</div>`;
-  const clsSigno=v=>v==null?'':v>=0?'pos':'neg';
-  return `<div class="m1-ficha factores">
-    ${grupo('Periodo')}
-    ${fila('Periodo',p.desde+' → '+p.hasta)}${fila('Velas',nf(p.n_velas,0)+' · '+p.tf)}${fila('Años',nf(p.anios,1))}
-    ${grupo('Rendimiento')}
-    ${fila('Retorno total',nf(p.ret_total_pct,1)+' %',clsSigno(p.ret_total_pct))}
-    ${fila('Retorno anual (CAGR)',nf(p.ret_anual_pct,2)+' %',clsSigno(p.ret_anual_pct))}
-    ${fila('% tiempo sobre su media ('+p.media_larga_velas+' velas)',p.pct_tiempo_sobre_media!=null?nf(p.pct_tiempo_sobre_media,1)+' %':'—')}
-    ${fila('% días alcistas',nf(p.pct_dias_alcistas,1)+' %')}
-    ${grupo('Comportamiento día a día')}
-    ${fila('Autocorrelación (1 vela)',nf(p.autocorr_lag1,4))}
-    ${fila('Eficiencia de Kaufman ('+p.eficiencia_ventana+' velas)',p.eficiencia_kaufman!=null?nf(p.eficiencia_kaufman,4):'—')}
-    ${fila('Asimetría',nf(p.asimetria,3))}${fila('Curtosis (exceso)',nf(p.curtosis_exceso,3))}
-    ${grupo('Riesgo')}
-    ${fila('Volatilidad anualizada',nf(p.vol_anual_pct,2)+' %')}${fila('Caída comprar y mantener',nf(p.caida_comprar_mantener_pct,2)+' %')}
-  </div>
-  <p class="c-dim m1-pie" style="font-size:.85rem">Eficiencia de Kaufman: desplazamiento neto / suma de pasos (Smarter Trading, 1995). 1 = tendencia pura, cerca de 0 = zigzag puro.
-    Autocorrelación: correlación entre el retorno de un día y el del día siguiente (positiva = sigue, negativa = revierte).
-    Curtosis en exceso &gt; 0 = colas más gordas que una normal.</p>`}
+  toast('«'+e.n+'» puesta en el paso 1: pulsa TRADUCIR AQUÍ y corre la prueba')}
+let m1Ultimo=null;
 async function m1Analizar(){if($('#m1-analizar').disabled)return;const movil=bxMovil()&&!m1Forzar;
   $('#m1-movil').hidden=!movil;$('#m1-analizar').hidden=movil;$('#m1-progwrap').style.display=movil?'none':'';if(movil)return;
   $('#m1-res').hidden=true;$('#m1-nota').textContent='Preparando…';$('#m1-analizar').disabled=true;$('#m1-analizar').textContent='ANALIZANDO…';
@@ -1335,22 +1471,26 @@ async function m1Analizar(){if($('#m1-analizar').disabled)return;const movil=bxM
   if(window.MCT_MOTOR)window.MCT_MOTOR.progreso=(etapa,pct)=>{$('#m1-prog').style.width=Math.max(3,Math.min(100,pct||0))+'%';if(etapa)$('#m1-nota').textContent=etapa};
   try{const p=await perfilMotor(CSV?CSV.texto:CSV_EJEMPLO);
     if(p&&p.error){$('#m1-nota').innerHTML='<b class="c-red">No se pudo analizar.</b> '+esc(p.error);return}
-    const c=m1Clasificar(p);$('#m1-facil').innerHTML=m1Facil(p,c);$('#m1-tecnica').innerHTML=m1Tecnica(p);
-    const bu=$('#m1-usar');if(bu)bu.onclick=()=>m1Usar(p,c);
+    if(!p.fig){$('#m1-nota').innerHTML='<b class="c-red">El motor no devolvió las figuras.</b> Recarga la página (Ctrl+Mayús+R).';return}
+    m1Ultimo=p;const c=m1Clasificar(p);
+    $('#m1-perfil').innerHTML=m1Perfil(p,c);$('#m1-facil').innerHTML=m1Figuras(p,c);$('#m1-tecnica').innerHTML=m1Tecnica(p,c);
+    $('#m1-arbol').innerHTML=m1Arbol(c);$('#m1-docs').innerHTML=m1Docs(c,p);
     $('#m1-res').hidden=false;$('#m1-nota').textContent='';m1Vista='facil';$('#m1-facil').hidden=false;$('#m1-tecnica').hidden=true;
-    $$('#m1-vista button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.m1v==='facil')))}
+    $$('#m1-vista button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.m1v==='facil')));
+    $('#m1-perfil').scrollIntoView({behavior:RM?'auto':'smooth',block:'start'})}
   catch(e){$('#m1-nota').innerHTML='<b class="c-red">Error inesperado.</b> '+esc(e&&e.message||String(e))}
   finally{if(window.MCT_MOTOR)window.MCT_MOTOR.progreso=progPrev;$('#m1-analizar').disabled=false;$('#m1-analizar').textContent='▶ ANALIZAR ESTE ACTIVO';$('#m1-prog').style.width='0'}}
 function m1Subido(){m1Simbolo=(SPEC.activo&&SPEC.activo.simbolo)||m1Simbolo;m1Sync();$('#m1-res').hidden=true}
+function m1Abrir(){m1Sync();setNivel('mision1')}
 function initLanding(){
   $('#land-tester').onclick=()=>setNivel('basic');
   $('#land-misiones').onclick=()=>setNivel('misiones');
   $('#land-mesa').onclick=()=>go('mesa');
   $('#mis-atras').onclick=()=>setNivel('landing');
-  $('#mis-1').onclick=()=>{m1Sync();openDlg('mision1-dlg')};
+  $('#mis-1').onclick=m1Abrir;
   $('#b-inicio-rail').onclick=()=>setNivel('landing');
   $('#b-inicio-bx').onclick=()=>setNivel('landing')}
-function initMision1(){$('#bx-mision1').onclick=()=>{m1Sync();openDlg('mision1-dlg')};
+function initMision1(){$('#bx-mision1').onclick=m1Abrir;$('#m1-volver').onclick=()=>setNivel('misiones');
   $('#m1-csv-b').onclick=()=>$('#m1-csv').click();
   $('#m1-csv').onchange=e=>{const x=e.target.files[0];if(x)leerCSV(x,m1Subido);e.target.value=''};
   const z=$('#m1-csvz');if(z){['dragover','dragenter'].forEach(t=>z.addEventListener(t,e=>{e.preventDefault();z.classList.add('sobre')}));
@@ -1359,6 +1499,7 @@ function initMision1(){$('#bx-mision1').onclick=()=>{m1Sync();openDlg('mision1-d
   $('#m1-analizar').onclick=m1Analizar;$('#m1-movil-si').onclick=()=>{m1Forzar=true;m1Analizar()};
   $$('#m1-vista button').forEach(b=>b.onclick=()=>{m1Vista=b.dataset.m1v;$$('#m1-vista button').forEach(x=>x.setAttribute('aria-pressed',x===b));
     $('#m1-facil').hidden=m1Vista!=='facil';$('#m1-tecnica').hidden=m1Vista!=='tecnica'});
+  $('#m1-res').addEventListener('click',e=>{const b=e.target.closest('[data-m1-probar]');if(b){const[f,i]=b.dataset.m1Probar.split('|');m1Probar(f,+i)}});
   $('#m1-imprimir').onclick=()=>window.print()}
 
 function bxResHTML(){const N=[['¿Gana más de lo que pierde?',nf(OOS.pf,2),OOS.pf>=1.3,`Por cada 1 USD que pierde, gana ${nf(OOS.pf,2)}. Pide 1,30 o más.`],

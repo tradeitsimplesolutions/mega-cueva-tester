@@ -2399,6 +2399,82 @@ def _eficiencia_kaufman(c: np.ndarray, n: int) -> np.ndarray:
         return np.where(suma_pasos > 0, cambio / suma_pasos, np.nan)
 
 
+def _muestra(n: int, k: int = 420) -> np.ndarray:
+    return np.unique(np.linspace(0, n - 1, min(n, k)).astype(int)) if n else np.zeros(0, int)
+
+
+def _figuras_aed(df, c, ret, sma, media_larga, ventana, er, barras_anio, tf) -> dict:
+    """Datos de las figuras de la Misión 1 (estilo AED Asset Lab): curva + caída, distribución vs normal,
+    autocorrelación por desfase, «qué pasa después de», estacionalidad, régimen de volatilidad y eficiencia rodante."""
+    idx = df.index
+    intradia = tf not in ("D1", "W1", "MN")
+    fmt = (lambda t: t.strftime("%Y-%m-%d %H:%M")) if intradia else (lambda t: t.strftime("%Y-%m-%d"))
+    n = len(c)
+    # 1 · curva de precio, su media larga y la caída de comprar y aguantar
+    eq = c / c[0]
+    dd = eq / np.maximum.accumulate(eq) - 1.0
+    k = _muestra(n)
+    curva = {"t": [fmt(idx[i]) for i in k], "c": [float(c[i]) for i in k],
+             "m": [None if not np.isfinite(sma[i]) else float(sma[i]) for i in k], "dd": [float(dd[i]) for i in k],
+             "media": media_larga}
+    # 2 · distribución de retornos frente a una campana normal con la misma media y desviación
+    mu, sd = float(ret.mean()), float(ret.std(ddof=1))
+    lo, hi = np.quantile(ret, [0.005, 0.995])
+    cnt, bordes = np.histogram(np.clip(ret, lo, hi), bins=41, range=(lo, hi))
+    centros = (bordes[:-1] + bordes[1:]) / 2
+    ancho = float(bordes[1] - bordes[0])
+    normal = len(ret) * ancho * np.exp(-0.5 * ((centros - mu) / sd) ** 2) / (sd * math.sqrt(2 * math.pi)) if sd > 0 else np.zeros_like(centros)
+    extremos = float((np.abs(ret - mu) > 3 * sd).mean()) if sd > 0 else 0.0
+    dist = {"x": [float(x) for x in centros], "n": [int(x) for x in cnt], "normal": [float(x) for x in normal],
+            "mu": mu, "sd": sd, "pct_3sd": extremos, "pct_3sd_normal": 0.0027,
+            "peor": float(ret.min()), "mejor": float(ret.max())}
+    # 3 · autocorrelación por desfase: ¿lo de hoy dice algo de lo que viene?
+    acf = []
+    for lag in range(1, 21):
+        if len(ret) > lag + 10:
+            a, b = ret[:-lag], ret[lag:]
+            acf.append(float(np.corrcoef(a, b)[0, 1]) if a.std() > 0 and b.std() > 0 else 0.0)
+    banda = 1.96 / math.sqrt(len(ret)) if len(ret) else 0.0
+    # 4 · qué pasa en la vela siguiente según cómo fue la de hoy (quintiles + extremos)
+    r0, r1 = ret[:-1], ret[1:]
+    cortes = np.quantile(r0, [0.05, 0.2, 0.4, 0.6, 0.8, 0.95])
+    grupos = [("Caída fuerte", r0 <= cortes[0]), ("Baja", (r0 > cortes[0]) & (r0 <= cortes[1])),
+              ("Algo baja", (r0 > cortes[1]) & (r0 <= cortes[2])), ("Plana", (r0 > cortes[2]) & (r0 <= cortes[3])),
+              ("Algo sube", (r0 > cortes[3]) & (r0 <= cortes[4])), ("Sube", (r0 > cortes[4]) & (r0 < cortes[5])),
+              ("Subida fuerte", r0 >= cortes[5])]
+    despues = [{"g": g, "n": int(m.sum()), "sig": float(r1[m].mean()) if m.any() else 0.0,
+                "pos": float((r1[m] > 0).mean()) if m.any() else 0.0} for g, m in grupos]
+    base = {"sig": float(r1.mean()), "pos": float((r1 > 0).mean())}
+    # 5 · estacionalidad: día de la semana, mes y (intradía) hora
+    t_ret = idx[1:]
+    def _por(claves, etiquetas, minimo=15):
+        out = []
+        for k_, et in etiquetas:
+            m = claves == k_
+            if m.sum() >= minimo:
+                out.append({"k": et, "r": float(ret[m].mean()), "pos": float((ret[m] > 0).mean()), "n": int(m.sum())})
+        return out
+    dow = _por(t_ret.dayofweek.to_numpy(), [(0, "Lun"), (1, "Mar"), (2, "Mié"), (3, "Jue"), (4, "Vie"), (5, "Sáb"), (6, "Dom")])
+    mes = _por(t_ret.month.to_numpy(), list(zip(range(1, 13), ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"])))
+    hora = _por(t_ret.hour.to_numpy(), [(h, f"{h:02d}h") for h in range(24)], 30) if intradia else []
+    # 6 · régimen de volatilidad (volatilidad anualizada rodante, terciles de su propia historia)
+    w = int(max(5, round(barras_anio / 12)))
+    vol = pd.Series(ret).rolling(w).std().to_numpy() * math.sqrt(barras_anio)
+    vv = vol[np.isfinite(vol)]
+    q33, q66 = (np.quantile(vv, [1 / 3, 2 / 3]) if vv.size else (np.nan, np.nan))
+    kv = _muestra(len(vol))
+    volf = {"t": [fmt(t_ret[i]) for i in kv], "v": [None if not np.isfinite(vol[i]) else float(vol[i]) for i in kv],
+            "q33": float(q33), "q66": float(q66), "ventana": w,
+            "hoy": float(vv[-1]) if vv.size else None, "mediana": float(np.median(vv)) if vv.size else None}
+    # 7 · eficiencia de Kaufman rodante: ¿cuándo fue tendencia limpia y cuándo zigzag?
+    er = pd.Series(er).rolling(ventana * 3, min_periods=ventana).mean().to_numpy()   # suavizada: la cruda es puro ruido
+    ke = _muestra(len(er))
+    t_er = idx[ventana:]
+    erf = {"t": [fmt(t_er[i]) for i in ke], "e": [None if not np.isfinite(er[i]) else float(er[i]) for i in ke], "ventana": ventana}
+    return {"curva": curva, "dist": dist, "acf": {"v": acf, "banda": banda}, "despues": {"grupos": despues, "base": base},
+            "dow": dow, "mes": mes, "hora": hora, "vol": volf, "er": erf}
+
+
 def perfil_activo(df: pd.DataFrame) -> dict:
     """AED muy simple de un activo, en DOS planos que no son lo mismo (ojo, se confunden mucho):
     · tendencia DE FONDO (el recorrido largo: ¿acaba más arriba o más abajo de donde empezó?)
@@ -2428,7 +2504,9 @@ def perfil_activo(df: pd.DataFrame) -> dict:
     anios = max((df.index[-1] - df.index[0]).days / 365.25, 1e-9)
     ret_total = float(c[-1] / c[0] - 1.0)
     ret_anual_cagr = float((c[-1] / c[0]) ** (1.0 / anios) - 1.0) if c[0] > 0 and anios > 0 else float("nan")
+    fig = _figuras_aed(df, c, ret, sma, media_larga, ventana, er, barras_anio, tf)
     return _limpio({
+        "fig": fig,
         "n_velas": n, "tf": tf, "desde": str(df.index[0].date()), "hasta": str(df.index[-1].date()), "anios": round(anios, 1),
         "ret_total_pct": round(ret_total * 100, 1), "ret_anual_pct": round(ret_anual_cagr * 100, 2),
         "media_larga_velas": media_larga, "pct_tiempo_sobre_media": None if pct_sobre_media != pct_sobre_media else round(pct_sobre_media * 100, 1),

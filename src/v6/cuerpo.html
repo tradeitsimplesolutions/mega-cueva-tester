@@ -507,6 +507,56 @@
         <small>¿Tu activo tiende a seguir su movimiento o a devolverse? Pistas para elegir qué probar primero.</small></button>
       <div class="landing-card landing-pronto" aria-disabled="true"><span class="landing-ic"><svg class="ic"><use href="#i-candado"/></svg></span><b>MISIÓN 2</b><small class="fuente-sello tuyo">Próximamente</small></div>
       <div class="landing-card landing-pronto" aria-disabled="true"><span class="landing-ic"><svg class="ic"><use href="#i-candado"/></svg></span><b>MISIÓN 3</b><small class="fuente-sello tuyo">Próximamente</small></div>
+      <div class="landing-card landing-pronto" aria-disabled="true"><span class="landing-ic"><svg class="ic"><use href="#i-candado"/></svg></span><b>MISIÓN 4</b><small class="fuente-sello tuyo">Próximamente</small></div>
+      <div class="landing-card landing-pronto" aria-disabled="true"><span class="landing-ic"><svg class="ic"><use href="#i-candado"/></svg></span><b>MISIÓN 5</b><small class="fuente-sello tuyo">Próximamente</small></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MISIÓN 1 · CONOCE TU ACTIVO (página propia, AED estilo Asset Lab) ============ -->
+<div id="mision1" class="m1p">
+  <header class="m1p-top">
+    <button type="button" class="link" id="m1-volver">← misiones</button>
+    <div class="brand"><b>MEGA CUEVA<i>·</i>TESTER</b><span><em>TIS</em> · Trade It Simple</span></div>
+    <span class="m1p-paso mono">MISIÓN 1 DE 5</span>
+  </header>
+  <section class="m1p-hero">
+    <p class="m1p-eyebrow mono">MISIÓN 1 · AED</p>
+    <h1>Conoce tu activo <span>antes de escribir una regla</span></h1>
+    <p class="lead">Siete figuras que describen cómo se mueve: hacia dónde va de fondo, si lo de hoy dice algo de mañana,
+      qué tamaño tienen sus sustos y cuándo se agita. De ahí sale qué familia de estrategia tiene sentido probar primero.</p>
+  </section>
+  <section class="panel m1p-datos">
+    <div class="m1p-h"><span class="bx-n" aria-hidden="true">1</span><h2>Elige el activo</h2></div>
+    <div class="m1p-datos-in">
+      <div class="bx-ejs" id="m1-ejs" role="group" aria-label="Librería de datos"></div>
+      <div class="bx-csv" id="m1-csvz">
+        <button type="button" class="btn" id="m1-csv-b"><svg class="ic"><use href="#i-subir"/></svg> SUBIR MI CSV</button>
+        <span class="c-dim">o arrástralo aquí</span>
+        <input type="file" id="m1-csv" accept=".csv,.txt,text/csv" class="sr" tabindex="-1" aria-hidden="true">
+      </div>
+    </div>
+    <div class="m1p-run">
+      <div class="bx-dat" id="m1-dat" aria-live="polite"><span id="m1-dat-t"></span></div>
+      <button type="button" class="btn gold bigb" id="m1-analizar">▶ ANALIZAR ESTE ACTIVO</button>
+    </div>
+    <p class="bx-movil" id="m1-movil" hidden><b>Para analizar, ábrelo en el ordenador.</b> En el móvil el cálculo es demasiado pesado. <button type="button" class="link" id="m1-movil-si">probar igualmente</button></p>
+    <div class="prog" aria-hidden="true" id="m1-progwrap"><i id="m1-prog"></i></div>
+    <p class="bx-nota" id="m1-nota" aria-live="polite"></p>
+  </section>
+  <div id="m1-res" hidden>
+    <section class="m1p-perfil" id="m1-perfil"></section>
+    <nav class="m1p-tabs seg" role="group" aria-label="Vista del resultado" id="m1-vista">
+      <button type="button" data-m1v="facil" aria-pressed="true">LAS 7 FIGURAS</button>
+      <button type="button" data-m1v="tecnica" aria-pressed="false">FICHA TÉCNICA</button>
+    </nav>
+    <div id="m1-facil"></div>
+    <div id="m1-tecnica" hidden></div>
+    <section id="m1-arbol"></section>
+    <section id="m1-docs"></section>
+    <div class="m1p-pie">
+      <button type="button" class="btn" id="m1-imprimir">🖨 IMPRIMIR / GUARDAR PDF</button>
+      <p class="c-dim">Pistas de un AED, no un veredicto: una idea solo queda validada cuando pasa las 5 fases del protocolo.</p>
     </div>
   </div>
 </div>
@@ -573,36 +623,6 @@
       <div class="treebar"><button class="btn" id="vd-prev" title="Operación anterior">◀</button><button class="btn" id="vd-next" title="Operación siguiente">▶</button><button class="btn" data-close>CERRAR (Esc)</button></div></div>
     <div class="vinfo" id="velas-info"></div>
     <div class="cv" id="cv-velas"><canvas role="img" aria-label="Velas de la operación con entrada y salida"></canvas><div class="tt"></div></div>
-  </div>
-</div>
-<div class="ovl" id="mision1-dlg" role="dialog" aria-modal="true" aria-labelledby="m1-h">
-  <div class="dlg m1-dlg">
-    <h2 id="m1-h"><svg class="ic"><use href="#i-brujula"/></svg> MISIÓN 1 · CONOCE TU ACTIVO</h2>
-    <p class="nota">Antes de escribir una regla, mira cómo se mueve tu activo: si tiende a <b>seguir</b> su camino o a
-      <b>devolverse</b>, y si tiene sustos más grandes de lo normal. Son pistas para elegir qué familia de estrategia
-      probar primero — no un veredicto. Lo único que valida una idea de verdad son las 5 fases del protocolo.</p>
-    <div class="bx-csv" id="m1-csvz">
-      <button type="button" class="btn" id="m1-csv-b"><svg class="ic"><use href="#i-subir"/></svg> SUBIR MI CSV</button>
-      <span class="c-dim">o arrástralo aquí</span>
-      <input type="file" id="m1-csv" accept=".csv,.txt,text/csv" class="sr" tabindex="-1" aria-hidden="true">
-    </div>
-    <p class="bx-h">O usa un ejemplo</p>
-    <div class="bx-ejs" id="m1-ejs" role="group" aria-label="Librería de datos"></div>
-    <div class="bx-dat" id="m1-dat" aria-live="polite"><span id="m1-dat-t"></span></div>
-    <button type="button" class="btn gold bigb" id="m1-analizar">▶ ANALIZAR ESTE ACTIVO</button>
-    <p class="bx-movil" id="m1-movil" hidden><b>Para analizar, ábrelo en el ordenador.</b> En el móvil el cálculo es demasiado pesado. <button type="button" class="link" id="m1-movil-si">probar igualmente</button></p>
-    <div class="prog" aria-hidden="true" id="m1-progwrap"><i id="m1-prog"></i></div>
-    <p class="bx-nota" id="m1-nota" aria-live="polite"></p>
-    <div id="m1-res" hidden>
-      <div class="seg" role="group" aria-label="Vista del resultado" id="m1-vista">
-        <button type="button" data-m1v="facil" aria-pressed="true">VERSIÓN FÁCIL</button>
-        <button type="button" data-m1v="tecnica" aria-pressed="false">FICHA TÉCNICA</button>
-      </div>
-      <div id="m1-facil"></div>
-      <div id="m1-tecnica" hidden></div>
-      <button type="button" class="btn" id="m1-imprimir">🖨 IMPRIMIR / GUARDAR PDF</button>
-    </div>
-    <button class="btn" data-close>CERRAR</button>
   </div>
 </div>
 <div class="ovl" id="csv-dlg" role="dialog" aria-modal="true" aria-labelledby="csv-h">
