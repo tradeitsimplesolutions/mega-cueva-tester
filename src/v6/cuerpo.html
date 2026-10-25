@@ -26,6 +26,16 @@
   <symbol id="i-escudo" viewBox="0 0 24 24"><path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
   <symbol id="i-copiar" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 8V4H4v13h4" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
   <symbol id="i-subir" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M4 20h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-tubo" viewBox="0 0 24 24"><path d="M9 2h6M10 2v11.2a5 5 0 1 0 4 0V2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M9.3 15h5.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-brujula" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15.2 8.8l-2 4.4-4.4 2 2-4.4z" fill="currentColor"/></symbol>
+  <symbol id="i-varita" viewBox="0 0 24 24"><path d="M4.5 19.5L16 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M18.3 2.2l1 2.1 2.1 1-2.1 1-1 2.1-1-2.1-2.1-1 2.1-1z" fill="currentColor"/><path d="M5.5 4.5l.9 1.8M2.5 8.2h2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+  <symbol id="i-candado" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="16" r="1.5" fill="currentColor"/></symbol>
+  <symbol id="i-sube" viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 7.5-7.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 6.5h5.5V12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-baja" viewBox="0 0 24 24"><path d="M3 7l6 6 4-4 7.5 7.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 17.5h5.5V12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-lateral" viewBox="0 0 24 24"><path d="M2 12h20M15.5 7l4.5 5-4.5 5M8.5 7L4 12l4.5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-sigue" viewBox="0 0 24 24"><path d="M4 6l6.5 6-6.5 6" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M12.5 6L19 12l-6.5 6" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-revierte" viewBox="0 0 24 24"><path d="M5 5v6a6 6 0 0 0 6 6h8" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"/><path d="M15.5 13l4 4-4 4" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-mixto" viewBox="0 0 24 24"><path d="M3 16l4.5-9 4.5 7 4.5-10 4.5 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
 </svg>
 <div class="app">
 <aside class="rail" aria-label="Manual de la herramienta">
@@ -473,14 +483,14 @@
     <div class="brand landing-brand"><b>MEGA CUEVA<i>·</i>TESTER</b><span><em>TIS</em> · Trade It Simple</span></div>
     <h1 class="landing-h1">¿Qué quieres hacer hoy?</h1>
     <div class="landing-cards">
-      <button type="button" class="landing-card" id="land-tester">
-        <span class="landing-ic">🧪</span><b>CUEVA TESTER</b>
+      <button type="button" class="landing-card primary" id="land-tester">
+        <span class="landing-ic"><svg class="ic"><use href="#i-tubo"/></svg></span><b>CUEVA TESTER</b>
         <small>Escribe tu idea, pruébala con costes reales y mira si aprueba las 5 fases.</small></button>
       <button type="button" class="landing-card" id="land-misiones">
-        <span class="landing-ic">🧭</span><b>MISIONES</b>
+        <span class="landing-ic"><svg class="ic"><use href="#i-brujula"/></svg></span><b>MISIONES</b>
         <small>Recorridos guiados paso a paso: conoce tu activo, y las que se vayan sumando.</small></button>
       <button type="button" class="landing-card" id="land-mesa">
-        <span class="landing-ic">🪄</span><b>MONTA TU PROPIA CUEVA</b>
+        <span class="landing-ic"><svg class="ic"><use href="#i-varita"/></svg></span><b>MONTA TU PROPIA CUEVA</b>
         <small>Instala tu propia mesa de 4 agentes: VS Code + Claude Code, en unos minutos.</small></button>
     </div>
   </div>
@@ -492,11 +502,11 @@
     <h1 class="landing-h1">Misiones</h1>
     <p class="lead">Recorridos cortos y guiados, paso a paso. Se irán sumando más.</p>
     <div class="landing-cards">
-      <button type="button" class="landing-card" id="mis-1">
-        <span class="landing-ic">🧭</span><b>MISIÓN 1 · CONOCE TU ACTIVO</b>
+      <button type="button" class="landing-card primary" id="mis-1">
+        <span class="landing-ic"><svg class="ic"><use href="#i-brujula"/></svg></span><b>MISIÓN 1 · CONOCE TU ACTIVO</b>
         <small>¿Tu activo tiende a seguir su movimiento o a devolverse? Pistas para elegir qué probar primero.</small></button>
-      <div class="landing-card landing-pronto" aria-disabled="true"><span class="landing-ic">🔒</span><b>MISIÓN 2</b><small>Próximamente</small></div>
-      <div class="landing-card landing-pronto" aria-disabled="true"><span class="landing-ic">🔒</span><b>MISIÓN 3</b><small>Próximamente</small></div>
+      <div class="landing-card landing-pronto" aria-disabled="true"><span class="landing-ic"><svg class="ic"><use href="#i-candado"/></svg></span><b>MISIÓN 2</b><small class="fuente-sello tuyo">Próximamente</small></div>
+      <div class="landing-card landing-pronto" aria-disabled="true"><span class="landing-ic"><svg class="ic"><use href="#i-candado"/></svg></span><b>MISIÓN 3</b><small class="fuente-sello tuyo">Próximamente</small></div>
     </div>
   </div>
 </div>
@@ -510,7 +520,7 @@
     <div class="seg nivel bx-nivel" role="group" aria-label="Nivel de detalle"><button type="button" data-n="basic" aria-pressed="true" title="La prueba en 3 pasos (tecla N)">BASIC</button><button type="button" data-n="completo" aria-pressed="false" title="Todo el recorrido (tecla N)">COMPLETO</button></div>
   </header>
   <div class="bx-main">
-    <button type="button" class="btn gold bigb m1-banner" id="bx-mision1">🧭 MISIÓN 1 · CONOCE TU ACTIVO →</button>
+    <button type="button" class="btn gold bigb m1-banner" id="bx-mision1"><svg class="ic"><use href="#i-brujula"/></svg> MISIÓN 1 · CONOCE TU ACTIVO →</button>
     <div class="bx-hero">
       <h1>Prueba tu idea <span>en 3 pasos</span></h1>
       <p class="lead">Escríbela como se la contarías a alguien. El tester la traduce, la prueba con costes reales y te dice si aprueba.</p>
@@ -567,7 +577,7 @@
 </div>
 <div class="ovl" id="mision1-dlg" role="dialog" aria-modal="true" aria-labelledby="m1-h">
   <div class="dlg m1-dlg">
-    <h2 id="m1-h">🧭 MISIÓN 1 · CONOCE TU ACTIVO</h2>
+    <h2 id="m1-h"><svg class="ic"><use href="#i-brujula"/></svg> MISIÓN 1 · CONOCE TU ACTIVO</h2>
     <p class="nota">Antes de escribir una regla, mira cómo se mueve tu activo: si tiende a <b>seguir</b> su camino o a
       <b>devolverse</b>, y si tiene sustos más grandes de lo normal. Son pistas para elegir qué familia de estrategia
       probar primero — no un veredicto. Lo único que valida una idea de verdad son las 5 fases del protocolo.</p>

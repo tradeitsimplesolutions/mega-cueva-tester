@@ -1283,7 +1283,8 @@ const M1_IDEAS={
   'lateral,revierte':(s,tf)=>`Compro ${s} ${tf} cuando el precio cruza por debajo de la banda inferior de Bollinger(20,2). Vendo cuando cruza por encima de la media de Bollinger(20).`,
   'lateral,sigue':(s,tf)=>`Compro ${s} ${tf} cuando el precio rompe el máximo de 20 velas. Vendo tras 15 velas.`,
 };
-function m1Facil(p,c){const ic={alcista:'📈',bajista:'📉',lateral:'➡️',sigue:'🏃',revierte:'🪃',mixto:'🤷'};
+function m1Facil(p,c){const ic={alcista:'i-sube',bajista:'i-baja',lateral:'i-lateral',sigue:'i-sigue',revierte:'i-revierte',mixto:'i-mixto'};
+  const svg=n=>`<svg class="ic"><use href="#${n}"/></svg>`;
   const fondoTxt={alcista:`De fondo sube: ${nf(p.ret_anual_pct,1)} % al año de media, y pasó el ${nf(p.pct_tiempo_sobre_media,0)} % del tiempo por encima de su propia media larga.`,
     bajista:`De fondo baja: ${nf(p.ret_anual_pct,1)} % al año de media.`,
     lateral:`Sin tendencia de fondo clara: ${nf(p.ret_anual_pct,1)} % al año, ni claramente arriba ni abajo.`}[c.fondo];
@@ -1293,30 +1294,38 @@ function m1Facil(p,c){const ic={alcista:'📈',bajista:'📉',lateral:'➡️',s
   const colasTxt=c.colas==='gordas'?'Tiene <b>sustos más grandes</b> de lo normal: días extremos más frecuentes que en una campana de distribución normal.':'Sus movimientos extremos son parecidos a los de una campana normal: sin sustos fuera de lo común.';
   const familia=M1_FAMILIAS[c.fondo+','+c.corto];
   const tieneIdea=!!M1_IDEAS[c.fondo+','+c.corto];
-  return `<div class="m1-card"><h4>${ic[c.fondo]} Tendencia de fondo</h4><p>${fondoTxt}</p></div>
-    <div class="m1-card"><h4>${ic[c.corto]} Día a día</h4><p>${cortoTxt}</p></div>
-    <div class="m1-card"><h4>🎢 Colas (sustos)</h4><p>${colasTxt} Volatilidad: ${nf(p.vol_anual_pct,1)} % al año · caída máxima comprando y aguantando: ${nf(p.caida_comprar_mantener_pct,1)} %.</p></div>
-    ${familia?`<div class="m1-familias"><h4 style="margin:0 0 .3rem;font-family:var(--f-head)">🧭 Por dónde empezar a mirar</h4><p style="margin:0">${familia}</p>
-      ${tieneIdea?'<button type="button" class="btn gold" id="m1-usar" style="margin-top:.6rem">📝 PROBAR ESTA IDEA DE PARTIDA EN EL PASO 1 →</button>':''}</div>`:''}
-    <p class="c-dim" style="font-size:.85rem">Son pistas de un AED muy simple, no un veredicto: para saber si una idea concreta funciona hace falta correrla por las 5 fases del protocolo.</p>`}
+  const fondoCls=c.fondo==='alcista'?'card-pos':c.fondo==='bajista'?'card-neg':'';
+  return `<div class="m1-card ${fondoCls}"><h4>${svg(ic[c.fondo])} Tendencia de fondo</h4><p>${fondoTxt}</p></div>
+    <div class="m1-card"><h4>${svg(ic[c.corto])} Día a día</h4><p>${cortoTxt}</p></div>
+    <div class="m1-card"><h4>${svg('i-pico')} Colas (sustos)</h4><p>${colasTxt} Volatilidad: ${nf(p.vol_anual_pct,1)} % al año · caída máxima comprando y aguantando: ${nf(p.caida_comprar_mantener_pct,1)} %.</p></div>
+    ${familia?`<div class="m1-familias"><h4>${svg('i-brujula')} Por dónde empezar a mirar</h4><p>${familia}</p>
+      ${tieneIdea?'<button type="button" class="btn gold" id="m1-usar">📝 PROBAR ESTA IDEA DE PARTIDA EN EL PASO 1 →</button>':''}</div>`:''}
+    <p class="c-dim m1-pie" style="font-size:.85rem">Son pistas de un AED muy simple, no un veredicto: para saber si una idea concreta funciona hace falta correrla por las 5 fases del protocolo.</p>`}
 function m1Usar(p,c){const gen=M1_IDEAS[c.fondo+','+c.corto];if(!gen)return;
   const texto=gen(m1Simbolo,M1_TF_FRASE[p.tf]||'');
   closeDlg();const ta=$('#bx-idea');ta.value=texto;ta.dispatchEvent(new Event('input'));
   if(nivel!=='basic')setNivel('basic');
   ta.scrollIntoView({behavior:RM?'auto':'smooth',block:'center'});ta.focus();
   toast('Idea de partida puesta en el paso 1 — ajústala y tradúcela cuando quieras')}
-function m1Tecnica(p){const fila=(l,v)=>`<div class="m1-fila"><span>${esc(l)}</span><b>${esc(v)}</b></div>`;
-  return `<div class="m1-ficha">
+function m1Tecnica(p){const fila=(l,v,cls)=>`<div class="factor m1-fila q-neu"><span class="cn">${esc(l)}</span><b class="big${cls?' '+cls:''}">${esc(v)}</b></div>`;
+  const grupo=t=>`<div class="m1-grupo-t">${esc(t)}</div>`;
+  const clsSigno=v=>v==null?'':v>=0?'pos':'neg';
+  return `<div class="m1-ficha factores">
+    ${grupo('Periodo')}
     ${fila('Periodo',p.desde+' → '+p.hasta)}${fila('Velas',nf(p.n_velas,0)+' · '+p.tf)}${fila('Años',nf(p.anios,1))}
-    ${fila('Retorno total',nf(p.ret_total_pct,1)+' %')}${fila('Retorno anual (CAGR)',nf(p.ret_anual_pct,2)+' %')}
+    ${grupo('Rendimiento')}
+    ${fila('Retorno total',nf(p.ret_total_pct,1)+' %',clsSigno(p.ret_total_pct))}
+    ${fila('Retorno anual (CAGR)',nf(p.ret_anual_pct,2)+' %',clsSigno(p.ret_anual_pct))}
     ${fila('% tiempo sobre su media ('+p.media_larga_velas+' velas)',p.pct_tiempo_sobre_media!=null?nf(p.pct_tiempo_sobre_media,1)+' %':'—')}
+    ${fila('% días alcistas',nf(p.pct_dias_alcistas,1)+' %')}
+    ${grupo('Comportamiento día a día')}
     ${fila('Autocorrelación (1 vela)',nf(p.autocorr_lag1,4))}
     ${fila('Eficiencia de Kaufman ('+p.eficiencia_ventana+' velas)',p.eficiencia_kaufman!=null?nf(p.eficiencia_kaufman,4):'—')}
     ${fila('Asimetría',nf(p.asimetria,3))}${fila('Curtosis (exceso)',nf(p.curtosis_exceso,3))}
+    ${grupo('Riesgo')}
     ${fila('Volatilidad anualizada',nf(p.vol_anual_pct,2)+' %')}${fila('Caída comprar y mantener',nf(p.caida_comprar_mantener_pct,2)+' %')}
-    ${fila('% días alcistas',nf(p.pct_dias_alcistas,1)+' %')}
   </div>
-  <p class="c-dim" style="font-size:.85rem">Eficiencia de Kaufman: desplazamiento neto / suma de pasos (Smarter Trading, 1995). 1 = tendencia pura, cerca de 0 = zigzag puro.
+  <p class="c-dim m1-pie" style="font-size:.85rem">Eficiencia de Kaufman: desplazamiento neto / suma de pasos (Smarter Trading, 1995). 1 = tendencia pura, cerca de 0 = zigzag puro.
     Autocorrelación: correlación entre el retorno de un día y el del día siguiente (positiva = sigue, negativa = revierte).
     Curtosis en exceso &gt; 0 = colas más gordas que una normal.</p>`}
 async function m1Analizar(){if($('#m1-analizar').disabled)return;const movil=bxMovil()&&!m1Forzar;

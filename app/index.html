@@ -520,13 +520,27 @@ body.pres .tab small{display:none}
 .dlg{background:var(--pan2);border:1px solid var(--line2);border-radius:calc(var(--rad) + 2px);padding:1.2rem 1.4rem;max-width:42rem;width:92vw}
 .m1-dlg{max-width:54rem;max-height:88vh;overflow:auto;display:flex;flex-direction:column;gap:.7rem}
 .m1-dlg .bx-ejs{display:grid;grid-template-columns:repeat(auto-fill,minmax(8.5rem,1fr));gap:.5rem}
-.m1-ficha{display:grid;grid-template-columns:repeat(auto-fill,minmax(13rem,1fr));gap:.6rem;margin:.6rem 0}
-.m1-ficha .m1-fila{background:var(--pan);border:1px solid var(--line);border-radius:var(--rad);padding:.55rem .7rem}
-.m1-ficha .m1-fila span{display:block;font-family:var(--f-head);text-transform:var(--up-head);letter-spacing:.06em;font-size:.72rem;color:var(--dim)}
-.m1-ficha .m1-fila b{font-size:1.15rem}
-.m1-facil .m1-card{background:var(--pan);border:1px solid var(--line);border-radius:var(--rad);padding:.8rem 1rem;margin-bottom:.6rem}
-.m1-facil .m1-card h4{margin:0 0 .3rem;font-family:var(--f-head);letter-spacing:.04em;text-transform:var(--up-head)}
-.m1-familias{background:rgba(var(--gold-rgb),.08);border:1px solid var(--gold);border-radius:var(--rad);padding:.8rem 1rem}
+/* ficha técnica: reusa el mismo tile de dashboard que .factores (COMPLETO) — número grande + borde superior, no una lista de pares etiqueta/valor */
+.m1-ficha.factores{grid-template-columns:repeat(auto-fit,minmax(11.5rem,1fr));gap:.7rem .8rem;margin:.1rem 0 .6rem}
+.m1-ficha .factor{background:var(--pan);box-shadow:0 1px 2px rgba(0,0,0,.2),0 6px 14px -8px rgba(0,0,0,.4)}
+.m1-ficha .factor .big{font-size:1.5rem;letter-spacing:-.01em}
+.m1-ficha .factor .big.pos{color:var(--ok)}
+.m1-ficha .factor .big.neg{color:var(--red)}
+.m1-grupo-t{grid-column:1/-1;font-family:var(--f-mono);font-size:max(11px,.72rem);letter-spacing:.14em;text-transform:uppercase;color:var(--dim2);padding-bottom:.3rem;border-bottom:1px solid var(--line);margin-top:1.1rem}
+.m1-grupo-t:first-child{margin-top:0}
+.m1-card{background:var(--pan);border:1px solid var(--line);border-radius:var(--rad);padding:.8rem 1rem;margin-bottom:.6rem;
+  box-shadow:0 1px 2px rgba(0,0,0,.2),0 8px 18px -10px rgba(0,0,0,.4)}
+.m1-card h4{margin:0 0 .35rem;font-family:var(--f-head);letter-spacing:.04em;text-transform:var(--up-head);display:flex;align-items:center;gap:.45rem}
+.m1-card h4 svg.ic{color:var(--gold);width:1.2rem;height:1.2rem}
+.m1-card.card-pos h4 svg.ic{color:var(--ok)}
+.m1-card.card-neg h4 svg.ic{color:var(--red)}
+.m1-pie{margin:.2rem 0 0}
+.m1-familias{background:rgba(var(--gold-rgb),.08);border:1px solid var(--gold);border-radius:var(--rad);padding:.8rem 1rem;
+  box-shadow:0 2px 3px rgba(0,0,0,.2),0 10px 22px -10px rgba(0,0,0,.45)}
+.m1-familias h4{margin:0 0 .4rem;font-family:var(--f-head);letter-spacing:.04em;text-transform:var(--up-head);display:flex;align-items:center;gap:.45rem;color:var(--gold)}
+.m1-familias h4 svg.ic{width:1.2rem;height:1.2rem}
+.m1-familias p{margin:0}
+.m1-familias .btn{margin-top:.7rem}
 @media print{
   body *{visibility:hidden}
   #mision1-dlg,#mision1-dlg *{visibility:visible}
@@ -537,7 +551,8 @@ body.pres .tab small{display:none}
   #mision1-dlg .m1-familias{border:1px solid #111!important;background:#fafafa!important}
   #m1-csvz,#m1-ejs,.bx-h,#m1-analizar,#m1-movil,#m1-progwrap,#m1-vista,#m1-imprimir,#mision1-dlg [data-close],#m1-csv-b{display:none!important}
 }
-.dlg h2{margin:0 0 .7rem;font-family:var(--f-head);letter-spacing:.1em;color:var(--cy)}
+.dlg h2{margin:0 0 .7rem;font-family:var(--f-head);letter-spacing:.1em;color:var(--cy);display:flex;align-items:center;gap:.5rem}
+.dlg h2 svg.ic{width:1.3rem;height:1.3rem;flex:none}
 .dlg ul{margin:0 0 1rem;padding-left:1.2rem} .dlg li{margin:.35rem 0}
 .dlg kbd{font-family:var(--f-mono);border:1px solid var(--line2);border-radius:3px;padding:0 .35rem;color:var(--cy2)}
 .setrow{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin:.7rem 0}
@@ -955,16 +970,23 @@ body.misiones #misiones{display:flex}
 .landing-in{max-width:58rem;width:100%;display:flex;flex-direction:column;align-items:center;gap:1.3rem;text-align:center}
 .landing-brand{justify-content:center;padding:0}
 .landing-h1{font-family:var(--f-head);text-transform:var(--up-head);letter-spacing:.04em;font-size:max(26px,2rem);margin:0}
-.landing-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(14rem,1fr));gap:1rem;width:100%;margin-top:.4rem}
-.landing-card{display:flex;flex-direction:column;align-items:flex-start;gap:.5rem;text-align:left;padding:1.5rem 1.3rem;
+.landing-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(14rem,1fr));gap:1.1rem;width:100%;margin-top:.4rem}
+.landing-card{display:flex;flex-direction:column;align-items:flex-start;gap:.6rem;text-align:left;padding:1.6rem 1.4rem;
   background:var(--pan2);border:1px solid var(--line2);border-radius:calc(var(--rad) + 2px);cursor:pointer;
-  transition:border-color .15s,transform .15s;font:inherit;color:inherit}
-.landing-card:hover{border-color:var(--gold);transform:translateY(-2px)}
-.landing-card .landing-ic{font-size:2rem;line-height:1}
-.landing-card b{font-family:var(--f-head);letter-spacing:.04em;text-transform:var(--up-head);font-size:1.02rem}
-.landing-card small{color:var(--dim);line-height:1.45;font-size:.88rem}
-.landing-pronto{cursor:default;opacity:.5}
+  box-shadow:0 1px 2px rgba(0,0,0,.22),0 12px 26px -14px rgba(0,0,0,.5);
+  transition:border-color .15s,transform .15s,box-shadow .15s;font:inherit;color:inherit}
+.landing-card:hover{border-color:var(--gold);transform:translateY(-3px);box-shadow:0 2px 4px rgba(0,0,0,.26),0 18px 34px -14px rgba(0,0,0,.55)}
+.landing-card .landing-ic{width:3.1rem;height:3.1rem;flex:none;display:grid;place-items:center;border-radius:50%;
+  background:var(--pan);border:1px solid var(--line2);color:var(--gold)}
+.landing-card .landing-ic svg.ic{width:1.5rem;height:1.5rem}
+.landing-card.primary{border-color:var(--gold)}
+.landing-card.primary .landing-ic{background:var(--gold);border-color:var(--gold);color:var(--on-acc)}
+.landing-card.primary:hover{box-shadow:0 2px 4px rgba(0,0,0,.26),0 18px 34px -14px rgba(0,0,0,.55),0 0 0 1px var(--gold) inset}
+.landing-card b{font-family:var(--f-head);letter-spacing:.04em;text-transform:var(--up-head);font-size:1.05rem;color:var(--ink)}
+.landing-card small{color:var(--dim);line-height:1.5;font-size:.89rem}
+.landing-pronto{box-shadow:none;cursor:default;opacity:.55}
 .landing-pronto:hover{border-color:var(--line2);transform:none}
+.landing-pronto .fuente-sello{margin-top:.1rem}
 .landing-atras{align-self:flex-start}
 .brand-inicio{font-family:var(--f-body);font-weight:600;letter-spacing:0;font-size:max(13px,.85rem)}
 .bx-hero h1{margin:0;font-family:var(--f-disp);font-weight:800;font-size:clamp(2.1rem,3vw,3.1rem);line-height:1;letter-spacing:.005em;color:var(--ink);text-transform:var(--up-head)}
@@ -1097,6 +1119,16 @@ body.basic .toast{left:50%;max-width:calc(100vw - 32px)}
   <symbol id="i-escudo" viewBox="0 0 24 24"><path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
   <symbol id="i-copiar" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 8V4H4v13h4" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
   <symbol id="i-subir" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M4 20h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-tubo" viewBox="0 0 24 24"><path d="M9 2h6M10 2v11.2a5 5 0 1 0 4 0V2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M9.3 15h5.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="i-brujula" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15.2 8.8l-2 4.4-4.4 2 2-4.4z" fill="currentColor"/></symbol>
+  <symbol id="i-varita" viewBox="0 0 24 24"><path d="M4.5 19.5L16 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M18.3 2.2l1 2.1 2.1 1-2.1 1-1 2.1-1-2.1-2.1-1 2.1-1z" fill="currentColor"/><path d="M5.5 4.5l.9 1.8M2.5 8.2h2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+  <symbol id="i-candado" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="16" r="1.5" fill="currentColor"/></symbol>
+  <symbol id="i-sube" viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 7.5-7.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 6.5h5.5V12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-baja" viewBox="0 0 24 24"><path d="M3 7l6 6 4-4 7.5 7.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 17.5h5.5V12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-lateral" viewBox="0 0 24 24"><path d="M2 12h20M15.5 7l4.5 5-4.5 5M8.5 7L4 12l4.5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-sigue" viewBox="0 0 24 24"><path d="M4 6l6.5 6-6.5 6" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M12.5 6L19 12l-6.5 6" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-revierte" viewBox="0 0 24 24"><path d="M5 5v6a6 6 0 0 0 6 6h8" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"/><path d="M15.5 13l4 4-4 4" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-mixto" viewBox="0 0 24 24"><path d="M3 16l4.5-9 4.5 7 4.5-10 4.5 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
 </svg>
 <div class="app">
 <aside class="rail" aria-label="Manual de la herramienta">
@@ -1544,14 +1576,14 @@ body.basic .toast{left:50%;max-width:calc(100vw - 32px)}
     <div class="brand landing-brand"><b>MEGA CUEVA<i>·</i>TESTER</b><span><em>TIS</em> · Trade It Simple</span></div>
     <h1 class="landing-h1">¿Qué quieres hacer hoy?</h1>
     <div class="landing-cards">
-      <button type="button" class="landing-card" id="land-tester">
-        <span class="landing-ic">🧪</span><b>CUEVA TESTER</b>
+      <button type="button" class="landing-card primary" id="land-tester">
+        <span class="landing-ic"><svg class="ic"><use href="#i-tubo"/></svg></span><b>CUEVA TESTER</b>
         <small>Escribe tu idea, pruébala con costes reales y mira si aprueba las 5 fases.</small></button>
       <button type="button" class="landing-card" id="land-misiones">
-        <span class="landing-ic">🧭</span><b>MISIONES</b>
+        <span class="landing-ic"><svg class="ic"><use href="#i-brujula"/></svg></span><b>MISIONES</b>
         <small>Recorridos guiados paso a paso: conoce tu activo, y las que se vayan sumando.</small></button>
       <button type="button" class="landing-card" id="land-mesa">
-        <span class="landing-ic">🪄</span><b>MONTA TU PROPIA CUEVA</b>
+        <span class="landing-ic"><svg class="ic"><use href="#i-varita"/></svg></span><b>MONTA TU PROPIA CUEVA</b>
         <small>Instala tu propia mesa de 4 agentes: VS Code + Claude Code, en unos minutos.</small></button>
     </div>
   </div>
@@ -1563,11 +1595,11 @@ body.basic .toast{left:50%;max-width:calc(100vw - 32px)}
     <h1 class="landing-h1">Misiones</h1>
     <p class="lead">Recorridos cortos y guiados, paso a paso. Se irán sumando más.</p>
     <div class="landing-cards">
-      <button type="button" class="landing-card" id="mis-1">
-        <span class="landing-ic">🧭</span><b>MISIÓN 1 · CONOCE TU ACTIVO</b>
+      <button type="button" class="landing-card primary" id="mis-1">
+        <span class="landing-ic"><svg class="ic"><use href="#i-brujula"/></svg></span><b>MISIÓN 1 · CONOCE TU ACTIVO</b>
         <small>¿Tu activo tiende a seguir su movimiento o a devolverse? Pistas para elegir qué probar primero.</small></button>
-      <div class="landing-card landing-pronto" aria-disabled="true"><span class="landing-ic">🔒</span><b>MISIÓN 2</b><small>Próximamente</small></div>
-      <div class="landing-card landing-pronto" aria-disabled="true"><span class="landing-ic">🔒</span><b>MISIÓN 3</b><small>Próximamente</small></div>
+      <div class="landing-card landing-pronto" aria-disabled="true"><span class="landing-ic"><svg class="ic"><use href="#i-candado"/></svg></span><b>MISIÓN 2</b><small class="fuente-sello tuyo">Próximamente</small></div>
+      <div class="landing-card landing-pronto" aria-disabled="true"><span class="landing-ic"><svg class="ic"><use href="#i-candado"/></svg></span><b>MISIÓN 3</b><small class="fuente-sello tuyo">Próximamente</small></div>
     </div>
   </div>
 </div>
@@ -1581,7 +1613,7 @@ body.basic .toast{left:50%;max-width:calc(100vw - 32px)}
     <div class="seg nivel bx-nivel" role="group" aria-label="Nivel de detalle"><button type="button" data-n="basic" aria-pressed="true" title="La prueba en 3 pasos (tecla N)">BASIC</button><button type="button" data-n="completo" aria-pressed="false" title="Todo el recorrido (tecla N)">COMPLETO</button></div>
   </header>
   <div class="bx-main">
-    <button type="button" class="btn gold bigb m1-banner" id="bx-mision1">🧭 MISIÓN 1 · CONOCE TU ACTIVO →</button>
+    <button type="button" class="btn gold bigb m1-banner" id="bx-mision1"><svg class="ic"><use href="#i-brujula"/></svg> MISIÓN 1 · CONOCE TU ACTIVO →</button>
     <div class="bx-hero">
       <h1>Prueba tu idea <span>en 3 pasos</span></h1>
       <p class="lead">Escríbela como se la contarías a alguien. El tester la traduce, la prueba con costes reales y te dice si aprueba.</p>
@@ -1638,7 +1670,7 @@ body.basic .toast{left:50%;max-width:calc(100vw - 32px)}
 </div>
 <div class="ovl" id="mision1-dlg" role="dialog" aria-modal="true" aria-labelledby="m1-h">
   <div class="dlg m1-dlg">
-    <h2 id="m1-h">🧭 MISIÓN 1 · CONOCE TU ACTIVO</h2>
+    <h2 id="m1-h"><svg class="ic"><use href="#i-brujula"/></svg> MISIÓN 1 · CONOCE TU ACTIVO</h2>
     <p class="nota">Antes de escribir una regla, mira cómo se mueve tu activo: si tiende a <b>seguir</b> su camino o a
       <b>devolverse</b>, y si tiene sustos más grandes de lo normal. Son pistas para elegir qué familia de estrategia
       probar primero — no un veredicto. Lo único que valida una idea de verdad son las 5 fases del protocolo.</p>
@@ -3325,7 +3357,8 @@ const M1_IDEAS={
   'lateral,revierte':(s,tf)=>`Compro ${s} ${tf} cuando el precio cruza por debajo de la banda inferior de Bollinger(20,2). Vendo cuando cruza por encima de la media de Bollinger(20).`,
   'lateral,sigue':(s,tf)=>`Compro ${s} ${tf} cuando el precio rompe el máximo de 20 velas. Vendo tras 15 velas.`,
 };
-function m1Facil(p,c){const ic={alcista:'📈',bajista:'📉',lateral:'➡️',sigue:'🏃',revierte:'🪃',mixto:'🤷'};
+function m1Facil(p,c){const ic={alcista:'i-sube',bajista:'i-baja',lateral:'i-lateral',sigue:'i-sigue',revierte:'i-revierte',mixto:'i-mixto'};
+  const svg=n=>`<svg class="ic"><use href="#${n}"/></svg>`;
   const fondoTxt={alcista:`De fondo sube: ${nf(p.ret_anual_pct,1)} % al año de media, y pasó el ${nf(p.pct_tiempo_sobre_media,0)} % del tiempo por encima de su propia media larga.`,
     bajista:`De fondo baja: ${nf(p.ret_anual_pct,1)} % al año de media.`,
     lateral:`Sin tendencia de fondo clara: ${nf(p.ret_anual_pct,1)} % al año, ni claramente arriba ni abajo.`}[c.fondo];
@@ -3335,30 +3368,38 @@ function m1Facil(p,c){const ic={alcista:'📈',bajista:'📉',lateral:'➡️',s
   const colasTxt=c.colas==='gordas'?'Tiene <b>sustos más grandes</b> de lo normal: días extremos más frecuentes que en una campana de distribución normal.':'Sus movimientos extremos son parecidos a los de una campana normal: sin sustos fuera de lo común.';
   const familia=M1_FAMILIAS[c.fondo+','+c.corto];
   const tieneIdea=!!M1_IDEAS[c.fondo+','+c.corto];
-  return `<div class="m1-card"><h4>${ic[c.fondo]} Tendencia de fondo</h4><p>${fondoTxt}</p></div>
-    <div class="m1-card"><h4>${ic[c.corto]} Día a día</h4><p>${cortoTxt}</p></div>
-    <div class="m1-card"><h4>🎢 Colas (sustos)</h4><p>${colasTxt} Volatilidad: ${nf(p.vol_anual_pct,1)} % al año · caída máxima comprando y aguantando: ${nf(p.caida_comprar_mantener_pct,1)} %.</p></div>
-    ${familia?`<div class="m1-familias"><h4 style="margin:0 0 .3rem;font-family:var(--f-head)">🧭 Por dónde empezar a mirar</h4><p style="margin:0">${familia}</p>
-      ${tieneIdea?'<button type="button" class="btn gold" id="m1-usar" style="margin-top:.6rem">📝 PROBAR ESTA IDEA DE PARTIDA EN EL PASO 1 →</button>':''}</div>`:''}
-    <p class="c-dim" style="font-size:.85rem">Son pistas de un AED muy simple, no un veredicto: para saber si una idea concreta funciona hace falta correrla por las 5 fases del protocolo.</p>`}
+  const fondoCls=c.fondo==='alcista'?'card-pos':c.fondo==='bajista'?'card-neg':'';
+  return `<div class="m1-card ${fondoCls}"><h4>${svg(ic[c.fondo])} Tendencia de fondo</h4><p>${fondoTxt}</p></div>
+    <div class="m1-card"><h4>${svg(ic[c.corto])} Día a día</h4><p>${cortoTxt}</p></div>
+    <div class="m1-card"><h4>${svg('i-pico')} Colas (sustos)</h4><p>${colasTxt} Volatilidad: ${nf(p.vol_anual_pct,1)} % al año · caída máxima comprando y aguantando: ${nf(p.caida_comprar_mantener_pct,1)} %.</p></div>
+    ${familia?`<div class="m1-familias"><h4>${svg('i-brujula')} Por dónde empezar a mirar</h4><p>${familia}</p>
+      ${tieneIdea?'<button type="button" class="btn gold" id="m1-usar">📝 PROBAR ESTA IDEA DE PARTIDA EN EL PASO 1 →</button>':''}</div>`:''}
+    <p class="c-dim m1-pie" style="font-size:.85rem">Son pistas de un AED muy simple, no un veredicto: para saber si una idea concreta funciona hace falta correrla por las 5 fases del protocolo.</p>`}
 function m1Usar(p,c){const gen=M1_IDEAS[c.fondo+','+c.corto];if(!gen)return;
   const texto=gen(m1Simbolo,M1_TF_FRASE[p.tf]||'');
   closeDlg();const ta=$('#bx-idea');ta.value=texto;ta.dispatchEvent(new Event('input'));
   if(nivel!=='basic')setNivel('basic');
   ta.scrollIntoView({behavior:RM?'auto':'smooth',block:'center'});ta.focus();
   toast('Idea de partida puesta en el paso 1 — ajústala y tradúcela cuando quieras')}
-function m1Tecnica(p){const fila=(l,v)=>`<div class="m1-fila"><span>${esc(l)}</span><b>${esc(v)}</b></div>`;
-  return `<div class="m1-ficha">
+function m1Tecnica(p){const fila=(l,v,cls)=>`<div class="factor m1-fila q-neu"><span class="cn">${esc(l)}</span><b class="big${cls?' '+cls:''}">${esc(v)}</b></div>`;
+  const grupo=t=>`<div class="m1-grupo-t">${esc(t)}</div>`;
+  const clsSigno=v=>v==null?'':v>=0?'pos':'neg';
+  return `<div class="m1-ficha factores">
+    ${grupo('Periodo')}
     ${fila('Periodo',p.desde+' → '+p.hasta)}${fila('Velas',nf(p.n_velas,0)+' · '+p.tf)}${fila('Años',nf(p.anios,1))}
-    ${fila('Retorno total',nf(p.ret_total_pct,1)+' %')}${fila('Retorno anual (CAGR)',nf(p.ret_anual_pct,2)+' %')}
+    ${grupo('Rendimiento')}
+    ${fila('Retorno total',nf(p.ret_total_pct,1)+' %',clsSigno(p.ret_total_pct))}
+    ${fila('Retorno anual (CAGR)',nf(p.ret_anual_pct,2)+' %',clsSigno(p.ret_anual_pct))}
     ${fila('% tiempo sobre su media ('+p.media_larga_velas+' velas)',p.pct_tiempo_sobre_media!=null?nf(p.pct_tiempo_sobre_media,1)+' %':'—')}
+    ${fila('% días alcistas',nf(p.pct_dias_alcistas,1)+' %')}
+    ${grupo('Comportamiento día a día')}
     ${fila('Autocorrelación (1 vela)',nf(p.autocorr_lag1,4))}
     ${fila('Eficiencia de Kaufman ('+p.eficiencia_ventana+' velas)',p.eficiencia_kaufman!=null?nf(p.eficiencia_kaufman,4):'—')}
     ${fila('Asimetría',nf(p.asimetria,3))}${fila('Curtosis (exceso)',nf(p.curtosis_exceso,3))}
+    ${grupo('Riesgo')}
     ${fila('Volatilidad anualizada',nf(p.vol_anual_pct,2)+' %')}${fila('Caída comprar y mantener',nf(p.caida_comprar_mantener_pct,2)+' %')}
-    ${fila('% días alcistas',nf(p.pct_dias_alcistas,1)+' %')}
   </div>
-  <p class="c-dim" style="font-size:.85rem">Eficiencia de Kaufman: desplazamiento neto / suma de pasos (Smarter Trading, 1995). 1 = tendencia pura, cerca de 0 = zigzag puro.
+  <p class="c-dim m1-pie" style="font-size:.85rem">Eficiencia de Kaufman: desplazamiento neto / suma de pasos (Smarter Trading, 1995). 1 = tendencia pura, cerca de 0 = zigzag puro.
     Autocorrelación: correlación entre el retorno de un día y el del día siguiente (positiva = sigue, negativa = revierte).
     Curtosis en exceso &gt; 0 = colas más gordas que una normal.</p>`}
 async function m1Analizar(){if($('#m1-analizar').disabled)return;const movil=bxMovil()&&!m1Forzar;
