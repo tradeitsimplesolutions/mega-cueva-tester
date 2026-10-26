@@ -976,9 +976,9 @@ function mostrarResPI(real,err){
   $('#pi-volver').onclick=()=>{$('#pi-res').hidden=true;$('#pi-form').hidden=false;$('#pi-mesa').hidden=false;$('#f-nombre').focus()};
   const c=chart('cv-pieq',drawEq);c.compact=true;requestAnimationFrame(()=>c.render());$('#pi-izq').scrollTop=0}
 /* fechas de cada vela en una pasada: si la línea empieza por AAAA-MM-DD se corta sin regex; si no, regex sobre los 40 primeros caracteres */
-function fechasCSV(txt){const F=[],n=txt.length,RE=/(\d{4})[.\-/](\d{2})[.\-/](\d{2})/;let i=0;
+function fechasCSV(txt){const F=[],n=txt.length,RE=/(\d{4})[.\-/](\d{2})[.\-/](\d{2})/,RD=/(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{4})/,p2=x=>String(x).padStart(2,'0');let i=0;
   while(i<n){let j=txt.indexOf('\n',i);if(j<0)j=n;const c=txt.charCodeAt(i);
-    if(c>=48&&c<=57&&txt.charCodeAt(i+4)===45&&txt.charCodeAt(i+7)===45)F.push(txt.slice(i,i+10));else if(j-i>6){const m=RE.exec(txt.slice(i,Math.min(j,i+40)));if(m)F.push(m[1]+'-'+m[2]+'-'+m[3])}
+    if(c>=48&&c<=57&&txt.charCodeAt(i+4)===45&&txt.charCodeAt(i+7)===45)F.push(txt.slice(i,i+10));else if(j-i>6){const t=txt.slice(i,Math.min(j,i+40)),m=RE.exec(t);if(m)F.push(m[1]+'-'+m[2]+'-'+m[3]);else{const d=RD.exec(t);if(d){const a=+d[1],b=+d[2];F.push(d[3]+'-'+p2(b>12?a:b)+'-'+p2(b>12?b:a))}}}
     i=j+1}return F}
 async function gunzipB64(b64){if(typeof DecompressionStream==='undefined')throw new Error('este navegador no descomprime (usa Chrome, Edge o Firefox recientes)');
   const a=atob(b64),bin=new Uint8Array(a.length);for(let i=0;i<a.length;i++)bin[i]=a.charCodeAt(i);return await new Response(new Blob([bin]).stream().pipeThrough(new DecompressionStream('gzip'))).text()}
@@ -1019,7 +1019,7 @@ async function cargarNAS(soloDatos){const b=$('#pi-nas');if(!NAS||typeof CSV_NAS
   catch(e){toast('No se pudo abrir el ejemplo NAS100: '+e.message);if(!CSV)$('#pi-csv-n').textContent='Datos de ejemplo del oro (XAUUSD D1)'}finally{b.disabled=false;b.textContent=bt;if(window.MCT_T_NAS&&window.MCT_T_NAS.datos!=null)window.MCT_T_NAS.total=Math.round(performance.now()-T00)}}
 function leerCSV(file,listo){const r=new FileReader();r.onload=()=>{const txt=String(r.result||'');
     const F=fechasCSV(txt);
-    if(F.length<300){toast('Ese CSV tiene '+F.length+' velas con fecha legible; el motor pide al menos 300.');return}
+    if(F.length<300){toast(F.length?'Ese CSV tiene '+F.length+' velas con fecha legible; el motor pide al menos 300.':'No leo las fechas de ese CSV. Formatos válidos: 2024-03-15, 2024.03.15 o 15/03/2024 (con o sin hora). NO se ha cargado: sigues con los datos anteriores.');return}
     CSV={nombre:file.name,texto:txt,n:F.length};csvFechas=F;SPEC.datos.fuente='csv_propio';SPEC.datos.desde=F[0];SPEC.datos.hasta=F[F.length-1];
     $('#pi-csv-n').innerHTML='<b class="c-ink">'+esc(file.name)+'</b> · '+nf(F.length,0)+' velas · '+fd(F[0])+' → '+fd(F[F.length-1]);$('#pi-csv-x').hidden=false;rellenarForm();toast('CSV cargado: '+nf(F.length,0)+' velas');if(listo)listo()};
   r.onerror=()=>toast('No se pudo leer el fichero');r.readAsText(file)}
@@ -1262,7 +1262,7 @@ function m1Sync(){const t=$('#m1-dat-t');if(!t)return;const k=!CSV?'oro_d1':(lib
   $$('#m1-ejs [data-ej]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.ej===k)));
   const d=datosCargados();t.innerHTML='Cargados: '+(k==='csv'?`<b>${esc(CSV.nombre)}</b> · ${nf(CSV.n,0)} velas`:'<b>'+esc((d?d.txt:'ejemplo del oro (XAUUSD diario)').replace(/^los de /,'').replace(/^./,c=>c.toUpperCase()))+'</b>')}
 async function m1Dato(id){if($('#m1-analizar').disabled)return;const e=libId(id);if(e&&e.gz)$('#m1-dat-t').textContent='Cargando '+e.b_t+' ('+e.b_s+')…';
-  if(e)m1Simbolo=e.sim;await usarLib(id,true);m1Sync();$('#m1-res').hidden=true}
+  if(e)m1Simbolo=e.sim;await usarLib(id,true);m1Sync();m1CostesIni();m1AplicarCostes();$('#m1-res').hidden=true;$('#m1-calidad').innerHTML='';$('#mision1').classList.remove('con-res')}
 /* ---------- clasificación (pistas, no veredicto) ---------- */
 function m1Clasificar(p){const f=p.fig||{},b=(f.acf&&f.acf.banda)||0.02;
   const fondo=p.ret_anual_pct>5?'alcista':p.ret_anual_pct<-5?'bajista':'lateral';
@@ -1431,11 +1431,11 @@ function m1Hallazgos(p){const H=p.hallazgos;if(!H)return'';const B=H.base,T=H.te
       ${tile('Peor / mejor vela',m1P(T.peor,1)+' / '+m1P(T.mejor,1),esc(T.peor_f)+' · '+esc(T.mejor_f))}</div></div></div>
     <p class="m1p-eyebrow mono" style="margin-top:1.2rem">02 · CÓMO SE COMPORTA · LA VELA SIGUIENTE, FRENTE A UNA CUALQUIERA</p>
     <p class="c-dim m1t-leyenda"><span class="sem clara">CLARA</span> se separa del ruido (t ≥ 2) y se repite en las 3 épocas ·
-      <span class="sem insinua">SE INSINÚA</span> asoma (t ≥ 1,5) o se repite con poca fuerza · <span class="sem nada">NADA</span> no se distingue del azar: ahí no se busca.</p>
+      <span class="sem insinua">SE INSINÚA</span> asoma (t ≥ 1,5) o se repite en las 3 épocas con t ≥ 1 · <span class="sem nada">NADA</span> no se distingue del azar: ahí no se busca.</p>
     <table class="m1t-t"><thead><tr><th>Semáforo</th><th>Hallazgo</th><th>Efecto</th><th>t</th><th>Épocas</th><th>Sirve para</th></tr></thead>
       <tbody>${vis.map(fila).join('')||'<tr><td colspan="6" class="c-dim">Ningún hallazgo asoma en este diseño.</td></tr>'}</tbody>
       ${nada.length?`<tbody class="m1t-nada" hidden>${nada.map(fila).join('')}</tbody>`:''}</table>
-    ${nada.length?`<button type="button" class="link" data-m1-nada>ver los ${nada.length} hallazgos en NADA →</button>`:''}
+    ${nada.length?`<button type="button" class="link" data-m1-nada>ver los ${nada.length} hallazgos sin señal (NADA) →</button>`:''}
     <p class="c-dim m1t-nota">Son pistas sobre el pasado: ninguna está aprobada hasta pasar el examen. Del calendario, solo te crees lo que el semáforo marque.</p></section>`}
 
 function m1Activo(){const e=CSV?libFich(CSV.nombre):libId('oro_d1');return e?e.b_t+' · '+e.b_s:(CSV?CSV.nombre:m1Simbolo)}
@@ -1443,12 +1443,17 @@ function m1Perfil(p,c){const F=M1_FAM[c.fam],x=F.e.find(e=>e.s),veces=p.fig.dist
   const rasgo=(lbl,val,det,cl)=>`<div class="m1p-rasgo ${cl}"><span>${lbl}</span><b>${val}</b><small>${det}</small></div>`;
   return `<div class="m1p-veredicto"><p class="m1p-eyebrow mono">LA PERSONALIDAD DE ${esc(m1Activo().toUpperCase())}</p>
     <h2>${esc(F.t)}</h2><p>${F.d}</p>
-    ${x?`<button type="button" class="btn gold" data-m1-probar="${c.fam}|0">PROBAR «${esc(x.n.toUpperCase())}» EN EL TESTER →</button>`:''}</div>
+    ${x?`<button type="button" class="btn gold" data-m1-probar="${c.fam}|0">PROBAR «${esc(x.n.toUpperCase())}» EN EL TESTER →</button>`:''}${m1Choque(p,x)}</div>
     <div class="m1p-rasgos">
     ${rasgo('Tendencia de fondo',M1_TXT.fondo[c.fondo],nf(p.ret_anual_pct,1)+' % al año',c.fondo==='alcista'?'ok':c.fondo==='bajista'?'bad':'dim')}
     ${rasgo('Día a día',M1_TXT.corto[c.corto],'memoria a 1 vela: '+nf(p.autocorr_lag1,3),c.corto==='revierte'?'cy':c.corto==='sigue'?'ok':'dim')}
     ${rasgo('Colas',M1_TXT.colas[c.colas],nf(veces,1)+'× más extremos que una normal',c.colas==='gordas'?'bad':'ok')}
     ${rasgo('Volatilidad al final del diseño',M1_TXT.regimen[c.regimen],m1P(p.fig.vol.hoy,0)+' anual · mediana '+m1P(p.fig.vol.mediana,0),c.regimen==='alto'?'bad':c.regimen==='bajo'?'ok':'gold')}</div>`}
+/* si la estrategia sugerida pide estar sobre la media de 200 y la ficha dice que rinde más debajo (o al revés), se avisa: es la pregunta de la Misión 2 */
+function m1Choque(p,x){if(!x||!p.hallazgos)return'';const L=p.hallazgos.lista||[],H=n=>L.find(h=>h.h===n),cl=h=>h&&h.semaforo!=='NADA'&&h.efecto>0,r=(x.r||'').toLowerCase();
+  const pide=/sobre su media de 200/.test(r)?'sobre':/bajo su media de 200/.test(r)?'bajo':'';if(!pide)return'';
+  const otro=pide==='sobre'?H('Bajo su media de 200'):H('Sobre su media de 200');if(!cl(otro))return'';
+  return `<p class="m1p-choque"><b>Ojo:</b> su regla pide estar <b>${pide}</b> la media de 200, pero tu ficha dice que la vela siguiente rinde más <b>${pide==='sobre'?'debajo':'encima'}</b> (${otro.semaforo}). Pruébala igual, pero esa es la pregunta de la Misión 2: ¿encaja o choca?</p>`}
 function m1Arbol(c){const nodo=(on,t,d)=>`<div class="m1p-nodo${on?' on':''}"><b>${t}</b>${d?`<small>${d}</small>`:''}</div>`;
   const famOn=k=>c.fam===k;
   return `<section class="m1p-arbol panel"><div class="m1p-h"><span class="bx-n" aria-hidden="true">2</span><h2>Mapa del activo</h2></div>
@@ -1496,7 +1501,7 @@ const M1_CAL={'APTA':'ok','APTA CON AVISOS':'aviso','NO APTA':'falla'};
 let m1Cal=null;
 function m1CalChip(cal){m1Cal=cal;$$('[data-cal-chip]').forEach(el=>{const av=cal?cal.checks.filter(x=>x.estado!=='ok').length:0;
   ['ok','aviso','falla','nd'].forEach(k=>el.classList.remove(k));el.classList.add(cal?M1_CAL[cal.veredicto]:'nd');el.hidden=false;
-  el.innerHTML=`<span class="calchip-d" aria-hidden="true"></span><span class="calchip-t"><small>CALIDAD DE DATOS</small><b>${cal?esc(cal.veredicto):'SIN ANALIZAR'}</b><em>${cal?esc(m1Activo())+(cal.veredicto==='NO APTA'?' · no se sigue':av?' · '+av+' aviso'+(av>1?'s':''):' · 8/8 bien'):'analiza tu activo en la fase 01'}</em></span>`;
+  el.innerHTML=`<span class="calchip-d" aria-hidden="true"></span><span class="calchip-t"><small>CALIDAD DE DATOS</small><b>${cal?esc(cal.veredicto):'SIN ANALIZAR'}</b><em>${cal?esc(m1Activo())+(cal.veredicto==='NO APTA'?' · no se sigue':av?' · '+av+' aviso'+(av>1?'s':''):' · 8/8 bien'):(window.MCT_LAB?'analiza tu activo en la fase 01':'analiza tu activo abajo')}</em></span>`;
   el.title=cal?'Ver las 8 comprobaciones':'Todavía no has analizado ningún activo'})}
 function m1Calidad(cal){if(!cal)return'';const ic={ok:'✓',aviso:'!',falla:'✕'};
   const msg={'APTA':'Los datos están limpios: sigue con el AED.','APTA CON AVISOS':'Se puede seguir, pero lee los avisos: pueden cambiar lo que ves en las figuras.',
@@ -1519,10 +1524,10 @@ function m1Media(p){const M=p.hallazgos&&p.hallazgos.media;if(!M||!M.filas||!M.f
     <table class="m1t-t"><thead><tr><th>Media</th><th>Ops/año</th><th>PF</th><th>Acierto</th><th>Duración</th><th>Gana por op.</th><th>Lectura</th></tr></thead><tbody>${M.filas.map(fila).join('')}</tbody></table>
     <p class="c-dim m1t-nota">Comprar y aguantar en el mismo tramo: ${(M.comprar_mantener>=0?'+':'')+nf(M.comprar_mantener*100,1)} %. PF ≥ 1,3 = funciona · PF &lt; 1 = whipsaw.${rt!=null?' «Coste» = lo que te cobra el bróker por entrar y salir (bloque 05): si una operación media no gana 3 veces eso, el bróker se lleva la ventaja.':''}</p></section>`}
 /* ---------- 05 · lo que cobra tu bróker: spread, comisión, deslizamiento, swap y la regla del 10 % ---------- */
-let m1Cost=null;
+let m1Cost=null;const m1CostMap={};
 const M1_CK=['spread_pb','comision_pb_lado','deslizamiento_pb_lado','swap_largo_pct_anual','swap_corto_pct_anual'];
-function m1CostesIni(){const s=String(m1Simbolo||'').toUpperCase();if(m1Cost&&m1Cost.simbolo===s)return m1Cost;const P=PERFILES[s];
-  m1Cost=P?Object.assign({simbolo:s,fuente:'darwinex'},clone(P.costes)):{simbolo:s,fuente:'pendiente'};M1_CK.forEach(k=>{if(m1Cost[k]===undefined)m1Cost[k]=null});delete m1Cost.perfil;return m1Cost}
+function m1CostesIni(){const s=String(m1Simbolo||'').toUpperCase();if(m1Cost&&m1Cost.simbolo===s)return(m1CostMap[s]=m1Cost);if(m1CostMap[s])return(m1Cost=m1CostMap[s]);const P=PERFILES[s];
+  m1Cost=P?Object.assign({simbolo:s,fuente:'darwinex'},clone(P.costes)):{simbolo:s,fuente:'pendiente'};M1_CK.forEach(k=>{if(m1Cost[k]===undefined)m1Cost[k]=null});delete m1Cost.perfil;return(m1CostMap[s]=m1Cost)}
 function m1CostCalc(p){const C=m1CostesIni();if(['spread_pb','comision_pb_lado','deslizamiento_pb_lado'].some(k=>C[k]==null||!isFinite(C[k])))return{C,rt:null};
   const rt=C.spread_pb+2*(C.comision_pb_lado+C.deslizamiento_pb_lado),mov=p&&p.hallazgos?p.hallazgos.base.mov_medio*1e4:null;return{C,rt,mov,ratio:mov?rt/mov:null}}
 function m1AplicarCostes(){const C=m1Cost;if(!C||m1CostCalc(m1Ultimo).rt==null)return false;const n=v=>v==null||!isFinite(v)?0:+v;
@@ -1532,9 +1537,10 @@ function m1AplicarCostes(){const C=m1Cost;if(!C||m1CostCalc(m1Ultimo).rt==null)r
   try{rellenarForm();bxSync(false)}catch(e){}return true}
 function m1Costes(p){const{C,rt,mov,ratio}=m1CostCalc(p),ok=rt!=null&&ratio!=null&&ratio<=0.10;
   const inp=(k,lbl,u,st)=>`<label class="m1c-f"><span>${lbl}</span><input type="number" step="${st}" inputmode="decimal" data-m1c="${k}" value="${C[k]==null?'':C[k]}" placeholder="pendiente"><small>${u}</small></label>`;
-  const sw=v=>v==null||!isFinite(v)?'—':(v>=0?'+':'')+nf(v*100/365,2)+' pb por noche';
+  const sw=v=>v==null||!isFinite(v)?'vacío (el tester usa 0)':(v>=0?'+':'')+nf(v*100/365,2)+' pb por noche';
   const dic=C.fuente==='darwinex'?'Precargado con el perfil Darwinex de <b>'+esc(C.simbolo)+'</b>. Si tu bróker es otro, cámbialos por los suyos.':
-    C.fuente==='manual'?'Tus costes para <b>'+esc(C.simbolo||'tu activo')+'</b>. El tester ya los usa.':
+    C.fuente==='manual'&&rt!=null?'Tus costes para <b>'+esc(C.simbolo||'tu activo')+'</b>. El tester ya los usa.':
+    C.fuente==='manual'?'<b class="c-red">Falta spread, comisión o deslizamiento.</b> Hasta que los completes, el tester sigue con los costes anteriores.':
     '<b class="c-red">PENDIENTE:</b> no tengo los costes de <b>'+esc(C.simbolo||'tu activo')+'</b>. Míralos en tu plataforma (especificación del símbolo) y escríbelos.';
   return `<section class="m1t-ficha m1t-costes" id="m1-costes-in"><header class="m1t-hh"><div><p class="m1p-eyebrow mono">05 · LO QUE COBRA TU BRÓKER · REGLA DEL 10 %</p><p class="c-dim">${dic}</p></div>
     ${rt==null?'<span class="m1t-ver gold">PENDIENTE</span>':`<span class="m1t-ver ${ok?'ok':'bad'}">${ok?'PASA EL 10 %':'NO PASA EL 10 %'}</span>`}</header>
@@ -1557,8 +1563,8 @@ function m1TecExtra(p,fila,sec){const H=p.hallazgos,out=[];
   if(H&&H.media&&H.media.filas.length){out.push(sec('¿Funciona gestionar con una media? · '+esc(H.media.veredicto.toUpperCase())));
     H.media.filas.forEach(f=>out.push(fila('Media de '+f.n,'PF '+nf(f.pf,2),nf(f.ops_anio,1)+' ops/año · '+m1P(f.acierto,0)+' acierto',esc(f.lectura))))}
   const{C,rt,mov,ratio}=m1CostCalc(p);out.push(sec('Costes del bróker'+(C.fuente==='pendiente'?' · PENDIENTE':'')));
-  const v=x=>x==null?'pendiente':nf(x,3);
-  out.push(fila('Spread',v(C.spread_pb)+' pb','ida y vuelta','—'),fila('Comisión',v(C.comision_pb_lado)+' pb','por lado','—'),fila('Deslizamiento',v(C.deslizamiento_pb_lado)+' pb','por lado','—'),
+  const v=x=>x==null?'pendiente':nf(x,3)+' pb';
+  out.push(fila('Spread',v(C.spread_pb),'ida y vuelta','—'),fila('Comisión',v(C.comision_pb_lado),'por lado','—'),fila('Deslizamiento',v(C.deslizamiento_pb_lado),'por lado','—'),
     fila('Swap compras / ventas',(C.swap_largo_pct_anual==null?'—':nf(C.swap_largo_pct_anual,2))+' / '+(C.swap_corto_pct_anual==null?'—':nf(C.swap_corto_pct_anual,2))+' %/año','—','—'),
     fila('Regla del 10 %',rt==null?'pendiente':nf(rt,1)+' pb de '+(mov==null?'—':nf(mov,0))+' pb','≤ 10 % de una vela',ratio==null?'—':nf(ratio*100,1)+' % · '+(ratio<=0.1?'PASA':'NO PASA')));
   return out.join('')}
@@ -1589,10 +1595,10 @@ function m1Pintar(p,quieto){m1Ultimo=p;const c=m1Clasificar(p);m1CostesIni();m1C
   $('#m1-arbol').innerHTML=m1Arbol(c);$('#m1-docs').innerHTML=m1Docs(c,p);
   $('#m1-res').hidden=false;$('#m1-nota').textContent='';m1Vista='facil';$('#m1-facil').hidden=false;$('#m1-tecnica').hidden=true;
   $$('#m1-vista button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.m1v==='facil')));
-  m1FichaGuarda();document.dispatchEvent(new CustomEvent('m1-listo'));
+  $('#mision1').classList.add('con-res');m1FichaGuarda();document.dispatchEvent(new CustomEvent('m1-listo'));
   if(!quieto)$('#m1-calidad').scrollIntoView({behavior:RM?'auto':'smooth',block:'start'})}
-function m1CostesCambio(el){const C=m1CostesIni(),v=el.value.trim().replace(',','.');C[el.dataset.m1c]=v===''||!isFinite(+v)?null:+v;C.fuente='manual';
-  const ap=m1AplicarCostes();$('#m1-ficha-tis').innerHTML=m1Hallazgos(m1Ultimo)+m1Media(m1Ultimo)+m1Costes(m1Ultimo);$('#m1-tecnica').innerHTML=m1Tecnica(m1Ultimo,m1Clasificar(m1Ultimo));
+function m1CostesCambio(el){const C=m1CostesIni(),v=el.value.trim().replace(',','.'),k=el.dataset.m1c,neg=!k.startsWith('swap')&&v!==''&&+v<0;C[k]=v===''||!isFinite(+v)||neg?null:+v;C.fuente='manual';if(neg)toast('Un coste no puede ser negativo: escríbelo en positivo');
+  const ap=!neg&&m1AplicarCostes();$('#m1-ficha-tis').innerHTML=m1Hallazgos(m1Ultimo)+m1Media(m1Ultimo)+m1Costes(m1Ultimo);$('#m1-tecnica').innerHTML=m1Tecnica(m1Ultimo,m1Clasificar(m1Ultimo));
   m1FichaGuarda();if(ap)toast('Costes guardados en tu ficha y aplicados al tester');const n=$('#m1-costes-in [data-m1c="'+el.dataset.m1c+'"]');if(n)n.focus()}
 
 function m1Probar(fam,i){const e=M1_FAM[fam]&&M1_FAM[fam].e[i];if(!e||!e.s)return;
@@ -1603,7 +1609,7 @@ function m1Probar(fam,i){const e=M1_FAM[fam]&&M1_FAM[fam].e[i];if(!e||!e.s)retur
 let m1Ultimo=null;
 async function m1Analizar(){if($('#m1-analizar').disabled)return;const movil=bxMovil()&&!m1Forzar;
   $('#m1-movil').hidden=!movil;$('#m1-analizar').hidden=movil;$('#m1-progwrap').style.display=movil?'none':'';if(movil)return;
-  $('#m1-res').hidden=true;$('#m1-calidad').innerHTML='';$('#m1-nota').textContent='Preparando…';$('#m1-analizar').disabled=true;$('#m1-analizar').textContent='ANALIZANDO…';
+  $('#m1-res').hidden=true;$('#m1-calidad').innerHTML='';$('#mision1').classList.add('analizando');$('#m1-nota').textContent='Preparando… la primera vez el motor tarda un poco en cargar; las siguientes, no.';$('#m1-analizar').disabled=true;$('#m1-analizar').textContent='ANALIZANDO…';
   const progPrev=window.MCT_MOTOR&&window.MCT_MOTOR.progreso;
   if(window.MCT_MOTOR)window.MCT_MOTOR.progreso=(etapa,pct)=>{$('#m1-prog').style.width=Math.max(3,Math.min(100,pct||0))+'%';if(etapa)$('#m1-nota').textContent=etapa};
   try{const p=await perfilMotor(CSV?CSV.texto:CSV_EJEMPLO);
@@ -1614,8 +1620,8 @@ async function m1Analizar(){if($('#m1-analizar').disabled)return;const movil=bxM
     if(!p.fig){$('#m1-nota').innerHTML='<b class="c-red">El motor no devolvió las figuras.</b> Recarga la página (Ctrl+Mayús+R).';return}
     m1Pintar(p)}
   catch(e){$('#m1-nota').innerHTML='<b class="c-red">Error inesperado.</b> '+esc(e&&e.message||String(e))}
-  finally{if(window.MCT_MOTOR)window.MCT_MOTOR.progreso=progPrev;$('#m1-analizar').disabled=false;$('#m1-analizar').textContent='▶ ANALIZAR ESTE ACTIVO';$('#m1-prog').style.width='0'}}
-function m1Subido(){m1Simbolo=(SPEC.activo&&SPEC.activo.simbolo)||m1Simbolo;m1Sync();$('#m1-res').hidden=true;$('#m1-calidad').innerHTML=''}
+  finally{$('#mision1').classList.remove('analizando');if(window.MCT_MOTOR)window.MCT_MOTOR.progreso=progPrev;$('#m1-analizar').disabled=false;$('#m1-analizar').textContent='▶ ANALIZAR ESTE ACTIVO';$('#m1-prog').style.width='0'}}
+function m1Subido(){m1Simbolo=(SPEC.activo&&SPEC.activo.simbolo)||m1Simbolo;m1Sync();if(m1CostMap[String(m1Simbolo).toUpperCase()])m1AplicarCostes();$('#m1-res').hidden=true;$('#m1-calidad').innerHTML='';$('#mision1').classList.remove('con-res')}
 function m1Abrir(){m1Sync();if(window.MCT_LAB_ABRIR){setNivel('lab');window.MCT_LAB_ABRIR('aed')}else setNivel('mision1')}
 function initLanding(){
   $('#land-tester').onclick=()=>setNivel('basic');
@@ -1631,7 +1637,7 @@ function initMision1(){$('#bx-mision1').onclick=m1Abrir;$('#m1-volver').onclick=
   const z=$('#m1-csvz');if(z){['dragover','dragenter'].forEach(t=>z.addEventListener(t,e=>{e.preventDefault();z.classList.add('sobre')}));
     ['dragleave','drop'].forEach(t=>z.addEventListener(t,()=>z.classList.remove('sobre')));
     z.addEventListener('drop',e=>{e.preventDefault();const x=e.dataTransfer.files[0];if(x)leerCSV(x,m1Subido)})}
-  $('#m1-analizar').onclick=m1Analizar;$('#m1-movil-si').onclick=()=>{m1Forzar=true;m1Analizar()};
+  $('#m1-analizar').onclick=m1Analizar;$('#m1-cambiar').onclick=()=>{$('#mision1').classList.remove('con-res');$('#m1-ejs').scrollIntoView({behavior:RM?'auto':'smooth',block:'center'})};$('#m1-movil-si').onclick=()=>{m1Forzar=true;m1Analizar()};
   $$('#m1-vista button').forEach(b=>b.onclick=()=>{m1Vista=b.dataset.m1v;$$('#m1-vista button').forEach(x=>x.setAttribute('aria-pressed',x===b));
     $('#m1-facil').hidden=m1Vista!=='facil';$('#m1-tecnica').hidden=m1Vista!=='tecnica'});
   $('#m1-res').addEventListener('click',e=>{const nd=e.target.closest('[data-m1-nada]');if(nd){const t=$('.m1t-nada');if(t){t.hidden=!t.hidden;nd.textContent=t.hidden?nd.textContent.replace('ocultar','ver'):nd.textContent.replace('ver','ocultar')}return}const b=e.target.closest('[data-m1-probar]');if(b){const[f,i]=b.dataset.m1Probar.split('|');m1Probar(f,+i)}});

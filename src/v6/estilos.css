@@ -1263,3 +1263,34 @@ table.m1t-t{width:100%;border-collapse:collapse;font-size:.92rem}
 #m1-cargar,#bx-ficha-b{flex-basis:100%;text-align:left;font-size:.84rem}
 @media (max-width:900px){.m1q-l,.m1c-g{grid-template-columns:1fr}.m1p-top .calchip em{display:none}}
 @media print{.calchip,#m1-cargar,#m1-guardar,.m1c-in{display:none!important}.m1q,.m1q-l li{background:#fff!important;color:#111!important}}
+
+/* ---------- revisión de diseño (lanzamiento Reto): menos scroll, conclusión arriba, móvil legible ---------- */
+#m1-cambiar{display:none}#mision1.con-res #m1-cambiar{display:inline}
+#mision1.con-res .m1p-datos-in{display:none}
+#m1-progwrap{visibility:hidden}#mision1.analizando #m1-progwrap{visibility:visible}
+#mision1.analizando #m1-calidad{min-height:14rem;border-radius:12px;background:linear-gradient(90deg,var(--pan2),var(--pan) 50%,var(--pan2));background-size:200% 100%;animation:m1sk 1.2s linear infinite}
+@keyframes m1sk{to{background-position:-200% 0}}
+@media (prefers-reduced-motion:reduce){#mision1.analizando #m1-calidad{animation:none}}
+.m1p-datos .prog{height:6px}
+#m1-calidad,#m1-perfil,#m1-ficha-tis,#m1-vista,#m1-arbol,#m1-docs,.m1p-pie{scroll-margin-top:6.5rem}
+/* 00 calidad: si todo está bien, solo chips */
+.m1q.ok .m1q-l{grid-template-columns:repeat(auto-fill,minmax(12rem,1fr))}
+.m1q.ok .m1q-l li{padding:.35rem .5rem;align-items:center}.m1q.ok .m1q-l li small{display:none}
+/* figuras: la conclusión arriba, la explicación como texto secundario */
+.m1p-fig>header{order:-3}.m1p-fig>.preg{order:-2}.m1p-fig>.m1p-ind{order:-1}
+.m1p-lee{font-size:.86rem;color:var(--dim)}
+#mis-2,#mis-2 *{text-decoration:none}
+@media (max-width:900px){
+  .m1t-t th:nth-child(6),.m1t-t td:nth-child(6){display:revert}
+  .m1t-ficha:not(.m1t-media) .m1t-t :is(th,td):is(:nth-child(3),:nth-child(4),:nth-child(5)){display:none}
+  .m1t-media .m1t-t :is(th,td):is(:nth-child(4),:nth-child(5),:nth-child(6)){display:none}
+  .m1t-t{font-size:.85rem}.m1t-t td:first-child{white-space:nowrap}}
+@media (max-width:640px){.m1p-fig.ancha{overflow-x:auto}.m1p-fig svg[viewBox^="0 0 920"]{min-width:760px}}
+
+/* QA alumno: móvil sin desborde, aviso de choque */
+@media (max-width:900px){.m1p-perfil-w,.m1t-cols{grid-template-columns:minmax(0,1fr)}.m1p-perfil-w>*{min-width:0}
+  .m1t-barra{flex-wrap:wrap}.m1t-seg{min-width:7rem;flex:1 1 auto;width:auto!important}.m1t-seg b,.m1t-seg span{white-space:normal}
+  .m1p-rasgos{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+.m1p-choque{margin:.6rem 0 0;padding:.55rem .7rem;border-left:3px solid var(--gold);background:rgba(var(--gold-rgb),.08);border-radius:6px;font-size:.88rem}
+
+@media (max-width:640px){.m1p-t th:nth-child(3),.m1p-t td:nth-child(3){display:none}.m1p-t{width:100%;table-layout:auto}.m1p-t td{white-space:normal;word-break:break-word}.m1p-ficha{overflow-x:auto}}

@@ -2643,13 +2643,9 @@ def calidad_datos(df: pd.DataFrame):
     # 4 · huecos
     h = cal.get("huecos", 0)
     poner("hue", "Huecos", "ok" if not h else "aviso", "Sin huecos grandes." if not h else f"{h} hueco(s) grandes (p. ej. {cal.get('hueco_ej', '')}). No se rellenan nunca.")
-    # 5 · saltos raros
-    r = df.close.pct_change().dropna()
-    sd = float(r.std()) if len(r) > 2 else 0.0
-    raros = r[(r - r.mean()).abs() > 10 * sd] if sd > 0 else r.iloc[:0]
-    poner("sal", "Saltos raros", "ok" if raros.empty else "aviso",
-          "Ningún movimiento de más de 10 desviaciones." if raros.empty else
-          f"{len(raros)} vela(s) con un salto de más de 10 desviaciones (p. ej. {raros.index[0].date()}: {raros.iloc[0]:+.1%}). Míralas en el gráfico: ¿reales o error?")
+    # 5 · saltos raros (se calcula al final, sobre el tramo que se usa)
+    r = None
+
     # 6 · fines de semana
     fu = cal.get("finde_fundidas", 0)
     # en intradía, la vela del domingo por la tarde es la apertura normal de índices y divisas: solo se mira el sábado
@@ -2680,6 +2676,14 @@ def calidad_datos(df: pd.DataFrame):
             poner("dis", "Intradía disfrazado", "ok", "Todos los años tienen varias velas por día.")
     else:
         poner("dis", "Intradía disfrazado", "ok", "No aplica a velas diarias.")
+    r = usar.close.pct_change().dropna()
+    sd = float(r.std()) if len(r) > 2 else 0.0
+    raros = r[(r - r.mean()).abs() > 10 * sd] if sd > 0 else r.iloc[:0]
+    poner("sal", "Saltos raros", "ok" if raros.empty else "aviso",
+          "Ningún movimiento de más de 10 desviaciones." if raros.empty else
+          f"{len(raros)} vela(s) con un salto de más de 10 desviaciones (p. ej. {raros.index[0].date()}: {raros.iloc[0]:+.1%}). Míralas en el gráfico: ¿reales o error?")
+    orden = ["zona", "dup", "imp", "hue", "sal", "fin", "dis"]
+    C.sort(key=lambda x: orden.index(x["id"]) if x["id"] in orden else 99)
     # 8 · años de historia
     anios = (usar.index[-1] - usar.index[0]).days / 365.25
     poner("ani", "Años de historia", "falla" if anios < 3 else "aviso" if anios < 5 else "ok",
