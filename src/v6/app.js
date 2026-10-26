@@ -1393,7 +1393,7 @@ function m1Figuras(p,c){const f=p.fig,out=[];
     s+=`<text class="ax" x="${W-pr}" y="${sy(hi)+12}" text-anchor="end">régimen alto</text><text class="ax" x="${W-pr}" y="${sy(0)-6}" text-anchor="end">régimen bajo</text>`+m1Ticks(V.t,sx,H-4);
     const ult=[...V.v].reverse().findIndex(v=>v!=null);if(ult>=0){const i=n-1-ult;s+=`<circle class="pt-hoy" cx="${sx(i)}" cy="${sy(V.v[i])}" r="4.5"/>`}
     out.push(m1Fig(6,'Régimen de volatilidad','¿Cuándo se agita y en qué momento está ahora?',m1Svg(W,H,s,'Volatilidad anualizada rodante con sus terciles'),
-      `volatilidad anualizada en ventanas de ${V.ventana} velas. Su mediana es <b>${m1P(V.mediana,0)}</b>; ahora está en <b>${m1P(V.hoy,0)}</b> (punto dorado): <b>régimen ${c.regimen}</b>.`,
+      `volatilidad anualizada en ventanas de ${V.ventana} velas. Su mediana es <b>${m1P(V.mediana,0)}</b>; al final del tramo de diseño estaba en <b>${m1P(V.hoy,0)}</b> (punto dorado): <b>régimen ${c.regimen}</b>.`,
       'La volatilidad viene en rachas. En régimen alto los stops fijos saltan más y una misma posición arriesga más: dimensionar por volatilidad (ATR) en vez de lotes fijos mantiene el riesgo constante.'))}
   /* 7 · eficiencia rodante */
   {const E=f.er,W=460,H=240,pl=46,pr=8,pt=12,pb=24,n=E.e.length,sx=m1Sx(n,W,pl,pr),sy=v=>pt+(H-pt-pb)*(1-v);
@@ -1408,6 +1408,36 @@ function m1Figuras(p,c){const f=p.fig,out=[];
 
 /* ---------- personalidad, árbol, estrategias documentadas, ficha ---------- */
 const M1_TXT={fondo:{alcista:'Alcista',bajista:'Bajista',lateral:'Lateral'},corto:{sigue:'Sigue (momentum)',revierte:'Revierte',mixto:'Sin patrón claro'},colas:{gordas:'Gordas',normales:'Normales'},regimen:{alto:'Alta',medio:'Media',bajo:'Baja','—':'—'}};
+/* ---------- la ficha del Reto: partición sellada, línea base, temperamento y hallazgos con semáforo (solo DISEÑO) ---------- */
+const M1_SEM={CLARA:'clara','SE INSINÚA':'insinua',NADA:'nada'};
+function m1Particion(P){if(!P)return'';const t=P.diseno.velas+P.examen.velas+P.validacion.velas,w=x=>(100*x/t).toFixed(1)+'%';
+  const seg=(k,lbl,o,cl)=>`<div class="m1t-seg ${cl}" style="width:${w(o.velas)}"><b>${lbl}</b><span>${esc(o.desde.slice(0,7))} → ${esc(o.hasta.slice(0,7))}</span><small>${nf(o.velas,0)} velas</small></div>`;
+  return `<section class="m1t-part"><header><p class="m1p-eyebrow mono">PARTICIÓN SELLADA</p><p class="c-dim">El AED se hace <b>solo con el diseño</b>. El examen es la fase 04; la validación no se abre hasta el final.</p></header>
+    <div class="m1t-barra">${seg('d','DISEÑO · aquí miras',P.diseno,'dis')}${seg('e','EXAMEN · fase 04',P.examen,'exa')}${seg('v','VALIDACIÓN · sellada',P.validacion,'val')}</div></section>`}
+function m1Hallazgos(p){const H=p.hallazgos;if(!H)return'';const B=H.base,T=H.temperamento;
+  const tile=(k,v,d)=>`<div class="m1t-tile"><span>${k}</span><b>${v}</b><small>${d}</small></div>`;
+  const orden={CLARA:0,'SE INSINÚA':1,NADA:2},L=[...H.lista].sort((a,b)=>orden[a.semaforo]-orden[b.semaforo]||Math.abs(b.t||0)-Math.abs(a.t||0));
+  const fila=x=>`<tr class="${M1_SEM[x.semaforo]}"><td><span class="sem ${M1_SEM[x.semaforo]}">${x.semaforo}</span></td><td>${esc(x.h)}</td>
+    <td class="v">${x.efecto==null?'—':(x.efecto>0?'+':'')+nf(x.efecto*100,3)+' %'}</td><td class="v">${x.t==null?'—':nf(x.t,1)}</td><td class="v">${x.epocas}/3</td><td class="c-dim">${esc(x.que)}</td></tr>`;
+  const vis=L.filter(x=>x.semaforo!=='NADA'),nada=L.filter(x=>x.semaforo==='NADA');
+  return `<section class="m1t-ficha"><div class="m1t-cols">
+    <div><p class="m1p-eyebrow mono">01 · QUIÉN ES · LÍNEA BASE</p><div class="m1t-tiles">
+      ${tile('Velas que suben',m1P(B.pct_sube,1),'una señal que «acierta» esto no ha descubierto nada')}
+      ${tile('Rango de una vela normal',m1P(B.rango_medio,2),'del máximo al mínimo')}
+      ${tile('Movimiento medio',m1P(B.mov_medio,2),'de cierre a cierre')}</div></div>
+    <div><p class="m1p-eyebrow mono">03 · TEMPERAMENTO</p><div class="m1t-tiles">
+      ${tile('Volatilidad en racimos',nf(T.racimos,2),T.racimos>0.2?'tras una vela movida suele venir otra: el stop, en volatilidad':'poco agrupada')}
+      ${tile('Colas gordas',nf(T.curtosis,1),T.curtosis>1?'una normal es 0: cuenta con días que no salen en la teoría':'cerca de una campana normal')}
+      ${tile('Peor / mejor vela',m1P(T.peor,1)+' / '+m1P(T.mejor,1),esc(T.peor_f)+' · '+esc(T.mejor_f))}</div></div></div>
+    <p class="m1p-eyebrow mono" style="margin-top:1.2rem">02 · CÓMO SE COMPORTA · LA VELA SIGUIENTE, FRENTE A UNA CUALQUIERA</p>
+    <p class="c-dim m1t-leyenda"><span class="sem clara">CLARA</span> se separa del ruido (t ≥ 2) y se repite en las 3 épocas ·
+      <span class="sem insinua">SE INSINÚA</span> asoma (t ≥ 1,5) o se repite con poca fuerza · <span class="sem nada">NADA</span> no se distingue del azar: ahí no se busca.</p>
+    <table class="m1t-t"><thead><tr><th>Semáforo</th><th>Hallazgo</th><th>Efecto</th><th>t</th><th>Épocas</th><th>Sirve para</th></tr></thead>
+      <tbody>${vis.map(fila).join('')||'<tr><td colspan="6" class="c-dim">Ningún hallazgo asoma en este diseño.</td></tr>'}</tbody>
+      ${nada.length?`<tbody class="m1t-nada" hidden>${nada.map(fila).join('')}</tbody>`:''}</table>
+    ${nada.length?`<button type="button" class="link" data-m1-nada>ver los ${nada.length} hallazgos en NADA →</button>`:''}
+    <p class="c-dim m1t-nota">Son pistas sobre el pasado: ninguna está aprobada hasta pasar el examen. Del calendario, solo te crees lo que el semáforo marque.</p></section>`}
+
 function m1Activo(){const e=CSV?libFich(CSV.nombre):libId('oro_d1');return e?e.b_t+' · '+e.b_s:(CSV?CSV.nombre:m1Simbolo)}
 function m1Perfil(p,c){const F=M1_FAM[c.fam],x=F.e.find(e=>e.s),veces=p.fig.dist.pct_3sd/p.fig.dist.pct_3sd_normal;
   const rasgo=(lbl,val,det,cl)=>`<div class="m1p-rasgo ${cl}"><span>${lbl}</span><b>${val}</b><small>${det}</small></div>`;
@@ -1418,7 +1448,7 @@ function m1Perfil(p,c){const F=M1_FAM[c.fam],x=F.e.find(e=>e.s),veces=p.fig.dist
     ${rasgo('Tendencia de fondo',M1_TXT.fondo[c.fondo],nf(p.ret_anual_pct,1)+' % al año',c.fondo==='alcista'?'ok':c.fondo==='bajista'?'bad':'dim')}
     ${rasgo('Día a día',M1_TXT.corto[c.corto],'memoria a 1 vela: '+nf(p.autocorr_lag1,3),c.corto==='revierte'?'cy':c.corto==='sigue'?'ok':'dim')}
     ${rasgo('Colas',M1_TXT.colas[c.colas],nf(veces,1)+'× más extremos que una normal',c.colas==='gordas'?'bad':'ok')}
-    ${rasgo('Volatilidad hoy',M1_TXT.regimen[c.regimen],m1P(p.fig.vol.hoy,0)+' anual · mediana '+m1P(p.fig.vol.mediana,0),c.regimen==='alto'?'bad':c.regimen==='bajo'?'ok':'gold')}</div>`}
+    ${rasgo('Volatilidad al final del diseño',M1_TXT.regimen[c.regimen],m1P(p.fig.vol.hoy,0)+' anual · mediana '+m1P(p.fig.vol.mediana,0),c.regimen==='alto'?'bad':c.regimen==='bajo'?'ok':'gold')}</div>`}
 function m1Arbol(c){const nodo=(on,t,d)=>`<div class="m1p-nodo${on?' on':''}"><b>${t}</b>${d?`<small>${d}</small>`:''}</div>`;
   const famOn=k=>c.fam===k;
   return `<section class="m1p-arbol panel"><div class="m1p-h"><span class="bx-n" aria-hidden="true">2</span><h2>Árbol de decisión</h2></div>
@@ -1456,7 +1486,7 @@ function m1Tecnica(p,c){const D=p.fig.dist,V=p.fig.vol,b=c.banda,veces=D.pct_3sd
     ${fila('Peor / mejor vela',m1P(D.peor,1)+' / '+m1P(D.mejor,1),'—','—')}
     ${sec('Riesgo')}
     ${fila('Volatilidad anualizada',nf(p.vol_anual_pct,1)+' %','—','—')}
-    ${fila('Volatilidad hoy ('+V.ventana+' velas)',m1P(V.hoy,1),'tercios: '+m1P(V.q33,0)+' / '+m1P(V.q66,0),'Régimen '+c.regimen)}
+    ${fila('Volatilidad al final del diseño ('+V.ventana+' velas)',m1P(V.hoy,1),'tercios: '+m1P(V.q33,0)+' / '+m1P(V.q66,0),'Régimen '+c.regimen)}
     </tbody></table>
     <p class="c-dim m1p-nota">Autocorrelación: correlación entre el retorno de una vela y el de la siguiente. Eficiencia de Kaufman (Smarter Trading, 1995): desplazamiento neto / suma de los pasos. Curtosis en exceso &gt; 0: colas más gordas que una campana normal. Son pistas de un AED; una idea solo queda validada cuando pasa las 5 fases del protocolo.</p></section>`}
 
@@ -1475,7 +1505,7 @@ async function m1Analizar(){if($('#m1-analizar').disabled)return;const movil=bxM
     if(p&&p.error){$('#m1-nota').innerHTML='<b class="c-red">No se pudo analizar.</b> '+esc(p.error);return}
     if(!p.fig){$('#m1-nota').innerHTML='<b class="c-red">El motor no devolvió las figuras.</b> Recarga la página (Ctrl+Mayús+R).';return}
     m1Ultimo=p;const c=m1Clasificar(p);
-    $('#m1-perfil').innerHTML=m1Perfil(p,c);$('#m1-facil').innerHTML=m1Figuras(p,c);$('#m1-tecnica').innerHTML=m1Tecnica(p,c);
+    $('#m1-perfil').innerHTML=m1Particion(p.particion)+m1Perfil(p,c);$('#m1-ficha-tis').innerHTML=m1Hallazgos(p);$('#m1-facil').innerHTML=m1Figuras(p,c);$('#m1-tecnica').innerHTML=m1Tecnica(p,c);
     $('#m1-arbol').innerHTML=m1Arbol(c);$('#m1-docs').innerHTML=m1Docs(c,p);
     $('#m1-res').hidden=false;$('#m1-nota').textContent='';m1Vista='facil';$('#m1-facil').hidden=false;$('#m1-tecnica').hidden=true;
     $$('#m1-vista button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.m1v==='facil')));
@@ -1501,7 +1531,7 @@ function initMision1(){$('#bx-mision1').onclick=m1Abrir;$('#m1-volver').onclick=
   $('#m1-analizar').onclick=m1Analizar;$('#m1-movil-si').onclick=()=>{m1Forzar=true;m1Analizar()};
   $$('#m1-vista button').forEach(b=>b.onclick=()=>{m1Vista=b.dataset.m1v;$$('#m1-vista button').forEach(x=>x.setAttribute('aria-pressed',x===b));
     $('#m1-facil').hidden=m1Vista!=='facil';$('#m1-tecnica').hidden=m1Vista!=='tecnica'});
-  $('#m1-res').addEventListener('click',e=>{const b=e.target.closest('[data-m1-probar]');if(b){const[f,i]=b.dataset.m1Probar.split('|');m1Probar(f,+i)}});
+  $('#m1-res').addEventListener('click',e=>{const nd=e.target.closest('[data-m1-nada]');if(nd){const t=$('.m1t-nada');if(t){t.hidden=!t.hidden;nd.textContent=t.hidden?nd.textContent.replace('ocultar','ver'):nd.textContent.replace('ver','ocultar')}return}const b=e.target.closest('[data-m1-probar]');if(b){const[f,i]=b.dataset.m1Probar.split('|');m1Probar(f,+i)}});
   $('#m1-imprimir').onclick=()=>window.print()}
 
 function bxResHTML(){const N=[['¿Gana más de lo que pierde?',nf(OOS.pf,2),OOS.pf>=1.3,`Por cada 1 USD que pierde, gana ${nf(OOS.pf,2)}. Pide 1,30 o más.`],

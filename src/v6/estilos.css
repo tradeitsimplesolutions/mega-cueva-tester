@@ -1194,3 +1194,29 @@ body.basic .toast{left:50%;max-width:calc(100vw - 32px)}
 .lab-card .fuente-sello{margin-top:auto;align-self:flex-start}
 @media (max-width:1100px){#landing .landing-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:640px){#landing .landing-cards{grid-template-columns:1fr}}
+
+/* ---------- Misión 1: partición sellada y ficha con semáforo (método del Reto) ---------- */
+.m1p-perfil-w{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:1rem}
+.m1p-perfil-w>.m1t-part{grid-column:1/-1}
+.m1t-part{background:var(--pan2);border:1px solid var(--line2);border-radius:calc(var(--rad) + 2px);padding:1rem 1.2rem;display:flex;flex-direction:column;gap:.7rem}
+.m1t-part header{display:flex;align-items:baseline;gap:1rem;flex-wrap:wrap}.m1t-part header p{margin:0}
+.m1t-barra{display:flex;width:100%;border-radius:8px;overflow:hidden;border:1px solid var(--line2)}
+.m1t-seg{display:flex;flex-direction:column;gap:.1rem;padding:.55rem .7rem;min-width:0;border-right:1px solid var(--bg)}
+.m1t-seg b{font-family:var(--f-mono);font-size:.7rem;letter-spacing:.1em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.m1t-seg span{font-family:var(--f-head);font-size:1rem;white-space:nowrap}.m1t-seg small{color:var(--dim);font-size:.74rem}
+.m1t-seg.dis{background:rgba(var(--gold-rgb),.16)}.m1t-seg.dis b{color:var(--gold)}
+.m1t-seg.exa{background:var(--pan)}.m1t-seg.val{background:repeating-linear-gradient(135deg,var(--pan) 0 8px,var(--pan2) 8px 16px);color:var(--dim)}
+.m1t-ficha{background:var(--pan2);border:1px solid var(--line2);border-radius:calc(var(--rad) + 2px);padding:1.1rem 1.3rem}
+.m1t-cols{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem}
+.m1t-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.6rem;margin-top:.5rem}
+.m1t-tile{background:var(--pan);border:1px solid var(--line);border-top:3px solid var(--line2);border-radius:var(--rad);padding:.6rem .75rem;display:flex;flex-direction:column;gap:.15rem}
+.m1t-tile span{font-size:.78rem;color:var(--dim)}.m1t-tile b{font-family:var(--f-head);font-size:1.45rem;line-height:1.05}.m1t-tile small{font-size:.74rem;color:var(--dim);line-height:1.3}
+.sem{display:inline-block;font-family:var(--f-mono);font-size:.66rem;font-weight:700;letter-spacing:.06em;padding:.18rem .5rem;border-radius:999px;white-space:nowrap}
+.sem.clara{background:var(--ok);color:#06140d}.sem.insinua{background:var(--gold);color:#161200}.sem.nada{background:transparent;border:1px solid var(--line2);color:var(--dim)}
+.m1t-leyenda{font-size:.84rem;margin:.4rem 0 .6rem;line-height:1.9}
+table.m1t-t{width:100%;border-collapse:collapse;font-size:.92rem}
+.m1t-t th{text-align:left;font-family:var(--f-mono);font-size:.68rem;letter-spacing:.1em;color:var(--dim);text-transform:uppercase;border-bottom:1px solid var(--line2);padding:.45rem .55rem}
+.m1t-t td{padding:.5rem .55rem;border-bottom:1px solid var(--line)}.m1t-t td.v{font-family:var(--f-mono);white-space:nowrap}
+.m1t-t tr.nada td{color:var(--dim)}
+.m1t-nota{font-size:.84rem;margin:.7rem 0 0}
+@media (max-width:900px){.m1p-perfil-w,.m1t-cols{grid-template-columns:1fr}.m1t-tiles{grid-template-columns:1fr 1fr}.m1t-t th:nth-child(6),.m1t-t td:nth-child(6){display:none}}

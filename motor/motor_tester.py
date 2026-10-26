@@ -2399,6 +2399,88 @@ def _eficiencia_kaufman(c: np.ndarray, n: int) -> np.ndarray:
         return np.where(suma_pasos > 0, cambio / suma_pasos, np.nan)
 
 
+def _particion_tis(df: pd.DataFrame):
+    """(resumen de la partición, tramo de DISEÑO). Validación = último 20 % (mínimo 1 año); el resto, 70/30."""
+    idx = df.index
+    n = len(idx)
+    i_val = int(n * 0.8)
+    i_1a = int(np.searchsorted(idx.values, (idx[-1] - pd.Timedelta(days=365)).to_datetime64()))
+    i_val = max(1, min(i_val, i_1a))
+    i_ex = max(1, int(i_val * 0.7))
+    f = lambda i: str(idx[i].date())  # noqa: E731
+    part = {"diseno": {"desde": f(0), "hasta": f(i_ex - 1), "velas": i_ex},
+            "examen": {"desde": f(i_ex), "hasta": f(i_val - 1), "velas": i_val - i_ex},
+            "validacion": {"desde": f(i_val), "hasta": f(n - 1), "velas": n - i_val}}
+    d = df.iloc[:i_ex] if i_ex >= 250 else df.iloc[:i_val]
+    part["solo_diseno"] = bool(i_ex >= 250)
+    return part, d
+
+
+def _hallazgos_tis(df, c, ret, tf) -> dict:
+    """La ficha del Reto: línea base, temperamento y hallazgos con semáforo, SOLO sobre el diseño.
+    Hallazgo = retorno de la vela siguiente cuando se cumple algo, MENOS el de una vela cualquiera.
+    Semáforo (slides del día 2): CLARA = t ≥ 2 y mismo signo en las 3 épocas · SE INSINÚA = t ≥ 1,5, o mismo
+    signo en las 3 épocas con poca fuerza · NADA = no se distingue del azar (también es información)."""
+    idx = df.index
+    h, l = df.high.to_numpy(float), df.low.to_numpy(float)
+    n = len(ret)
+    sig = np.r_[ret[1:], np.nan]                      # retorno de la vela siguiente a la vela t
+    ok = np.isfinite(sig)
+    base_m = float(np.nanmean(sig))
+    sma200 = pd.Series(c).rolling(200).mean().to_numpy()[1:]
+    q10, q90 = np.quantile(ret, [0.10, 0.90])
+    t_ret = idx[1:]
+    sig_dia = np.r_[t_ret[1:].dayofweek.to_numpy(), -1]     # día de la semana de la vela siguiente
+    intradia = tf not in ("D1", "W1", "MN")
+    epocas = np.array_split(np.arange(n), 3)
+
+    def medir(nombre, mask, que):
+        m = mask & ok
+        k = int(m.sum())
+        if k < 30:
+            return {"h": nombre, "que": que, "n": k, "efecto": None, "t": None, "epocas": 0, "semaforo": "NADA", "nota": "pocas velas"}
+        x = sig[m]
+        ef = float(x.mean() - base_m)
+        sd = float(x.std(ddof=1))
+        t = ef / (sd / math.sqrt(k)) if sd > 0 else 0.0
+        e = 0
+        for ep in epocas:
+            mm = m[ep]
+            if mm.sum() >= 8:
+                d = float(sig[ep][mm].mean() - np.nanmean(sig[ep][ok[ep]]))
+                e += int(np.sign(d) == np.sign(ef) and d != 0)
+        sem = "CLARA" if abs(t) >= 2 and e == 3 else "SE INSINÚA" if abs(t) >= 1.5 or (e == 3 and abs(t) >= 1) else "NADA"
+        return {"h": nombre, "que": que, "n": k, "efecto": ef, "t": float(t), "epocas": e, "semaforo": sem,
+                "pos": float((x > 0).mean())}
+
+    H = [medir("Bajo su media de 200", np.r_[c[1:] < sma200] & np.isfinite(sma200), "contexto"),
+         medir("Sobre su media de 200", np.r_[c[1:] > sma200] & np.isfinite(sma200), "contexto"),
+         medir("Tras una caída fuerte (10 % peor)", ret <= q10, "disparador"),
+         medir("Tras una subida fuerte (10 % mejor)", ret >= q90, "disparador"),
+         medir("Tras una vela de alza", ret > 0, "disparador"),
+         medir("Tras una vela de baja", ret < 0, "disparador"),
+         medir("Tras 3 velas seguidas de baja", np.r_[False, False, (ret[2:] < 0) & (ret[1:-1] < 0) & (ret[:-2] < 0)], "disparador"),
+         medir("Tras 3 velas seguidas de alza", np.r_[False, False, (ret[2:] > 0) & (ret[1:-1] > 0) & (ret[:-2] > 0)], "disparador")]
+    for k_, nom in [(0, "lunes"), (1, "martes"), (2, "miércoles"), (3, "jueves"), (4, "viernes")]:
+        H.append(medir(f"La vela del {nom}", sig_dia == k_, "horario"))
+    if intradia:
+        hh = np.r_[t_ret[1:].hour.to_numpy(), -1]
+        for hr in sorted(set(hh[hh >= 0].tolist())):
+            H.append(medir(f"La vela de las {hr:02d}h", hh == hr, "horario"))
+    absr = np.abs(ret)
+    racimos = float(np.corrcoef(absr[:-1], absr[1:])[0, 1]) if n > 3 else 0.0
+    mu, sd = float(ret.mean()), float(ret.std(ddof=1))
+    i_peor, i_mejor = int(np.argmin(ret)), int(np.argmax(ret))
+    rango = (h[1:] - l[1:]) / c[1:]
+    return {"base": {"pct_sube": float((ret > 0).mean()), "rango_medio": float(np.nanmean(rango)),
+                     "mov_medio": float(absr.mean()), "sig_media": base_m},
+            "temperamento": {"racimos": racimos,
+                             "curtosis": float(((ret - mu) ** 4).mean() / sd ** 4 - 3.0) if sd > 0 else 0.0,
+                             "peor": float(ret[i_peor]), "peor_f": str(t_ret[i_peor].date()),
+                             "mejor": float(ret[i_mejor]), "mejor_f": str(t_ret[i_mejor].date())},
+            "lista": H}
+
+
 def _muestra(n: int, k: int = 420) -> np.ndarray:
     return np.unique(np.linspace(0, n - 1, min(n, k)).astype(int)) if n else np.zeros(0, int)
 
@@ -2482,6 +2564,9 @@ def perfil_activo(df: pd.DataFrame) -> dict:
     Un activo puede ser alcista de fondo Y revertir día a día a la vez (es lo normal: compra en caídas dentro de
     una tendencia). También mide si tiene colas más gordas que una campana normal. Son PISTAS para orientar qué
     familia de estrategia probar primero, no un veredicto: solo el protocolo completo (las 5 fases) valida una idea."""
+    # método TIS (Reto Cueva, día 2): se sella la VALIDACIÓN (último 20 %, mínimo 1 año) y lo que queda se parte
+    # 70 % DISEÑO / 30 % EXAMEN. El AED y la hipótesis usan SOLO el diseño.
+    part, df = _particion_tis(df)
     c = df.close.to_numpy(float)
     n = len(c)
     ret = c[1:] / c[:-1] - 1.0
@@ -2505,8 +2590,9 @@ def perfil_activo(df: pd.DataFrame) -> dict:
     ret_total = float(c[-1] / c[0] - 1.0)
     ret_anual_cagr = float((c[-1] / c[0]) ** (1.0 / anios) - 1.0) if c[0] > 0 and anios > 0 else float("nan")
     fig = _figuras_aed(df, c, ret, sma, media_larga, ventana, er, barras_anio, tf)
+    hall = _hallazgos_tis(df, c, ret, tf)
     return _limpio({
-        "fig": fig,
+        "fig": fig, "particion": part, "hallazgos": hall,
         "n_velas": n, "tf": tf, "desde": str(df.index[0].date()), "hasta": str(df.index[-1].date()), "anios": round(anios, 1),
         "ret_total_pct": round(ret_total * 100, 1), "ret_anual_pct": round(ret_anual_cagr * 100, 2),
         "media_larga_velas": media_larga, "pct_tiempo_sobre_media": None if pct_sobre_media != pct_sobre_media else round(pct_sobre_media * 100, 1),
