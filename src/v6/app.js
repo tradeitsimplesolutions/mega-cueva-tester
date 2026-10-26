@@ -1175,7 +1175,7 @@ window.cargarResultados=cargarResultados;
 /* ---------- nivel LANDING / MISIONES / BASIC / COMPLETO (AVANZADO retirado del repo público: la terminal vive
    en sentinel/reportes/oro_rsi4) ---------- */
 let nivel='completo';
-function setNivel(n){if(n==='entender')n='completo';if(!['basic','completo','landing','misiones','mision1','lab'].includes(n))n='basic';if(n==='landing'&&window.MCT_LAB)n='lab';const prev=nivel;nivel=n;
+function setNivel(n){if(n==='entender')n='completo';if(!['basic','completo','landing','misiones','mision1','lab'].includes(n))n='basic';if((n==='landing'||n==='mision1'||n==='misiones')&&window.MCT_LAB)n='lab';const prev=nivel;nivel=n;
   $$('.nivel button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.n===n));
   document.body.classList.toggle('basic',n==='basic');
   document.body.classList.toggle('landing',n==='landing');
@@ -1483,7 +1483,7 @@ async function m1Analizar(){if($('#m1-analizar').disabled)return;const movil=bxM
   catch(e){$('#m1-nota').innerHTML='<b class="c-red">Error inesperado.</b> '+esc(e&&e.message||String(e))}
   finally{if(window.MCT_MOTOR)window.MCT_MOTOR.progreso=progPrev;$('#m1-analizar').disabled=false;$('#m1-analizar').textContent='▶ ANALIZAR ESTE ACTIVO';$('#m1-prog').style.width='0'}}
 function m1Subido(){m1Simbolo=(SPEC.activo&&SPEC.activo.simbolo)||m1Simbolo;m1Sync();$('#m1-res').hidden=true}
-function m1Abrir(){m1Sync();setNivel('mision1')}
+function m1Abrir(){m1Sync();if(window.MCT_LAB_ABRIR){setNivel('lab');window.MCT_LAB_ABRIR('aed')}else setNivel('mision1')}
 function initLanding(){
   $('#land-tester').onclick=()=>setNivel('basic');
   $('#land-misiones').onclick=()=>setNivel('misiones');
