@@ -106,15 +106,59 @@ def main():
                if nas_spec.exists() else "\nconst NAS_SPEC = null;")
     js_csv += "\n" + libreria_js()
     plantilla = (SRC / "cuerpo.html").read_text(encoding="utf-8")
-    html = (plantilla
-            .replace("/*__CSS__*/", (SRC / "estilos.css").read_text(encoding="utf-8"))
-            .replace("<!--__MOTOR__-->", motor_js)
-            .replace("/*__DATOS__*/", seguro(js_datos))
-            .replace("/*__CSV__*/", seguro(js_csv))
-            .replace("/*__JS__*/", ((SRC / "ia_remota.js").read_text(encoding="utf-8") if (SRC / "ia_remota.js").exists() else "") + (SRC / "app.js").read_text(encoding="utf-8")))
+    ia = (SRC / "ia_remota.js").read_text(encoding="utf-8") if (SRC / "ia_remota.js").exists() else ""
+    app_js = (SRC / "app.js").read_text(encoding="utf-8")
+    css = (SRC / "estilos.css").read_text(encoding="utf-8")
+
+    def montar(lab: bool) -> str:
+        """Pública (app/index.html) o laboratorio (src/lab/* dentro; luego se cifra en reto/index.html)."""
+        L = RAIZ / "src" / "lab"
+        lab_html = (L / "lab.html").read_text(encoding="utf-8") if lab else ""
+        lab_css = (L / "lab.css").read_text(encoding="utf-8") if lab else ""
+        lab_js = (L / "lab.js").read_text(encoding="utf-8") if lab else ""
+        js = ("window.MCT_LAB=true;\n" if lab else "") + ia + app_js.replace("/*__LAB_JS__*/", lab_js)
+        return (plantilla
+                .replace("/*__CSS__*/", css + lab_css)
+                .replace("<!--__LAB__-->", lab_html)
+                .replace("<!--__MOTOR__-->", motor_js)
+                .replace("/*__DATOS__*/", seguro(js_datos))
+                .replace("/*__CSV__*/", seguro(js_csv))
+                .replace("/*__JS__*/", js))
+
+    html = montar(False)
     out = RAIZ / "app" / "index.html"
     out.write_text(html, encoding="utf-8")
     print(f"{out} · {len(html)/1e6:.2f} MB · datos {datos.name} · motor {'sí' if motor_js else 'no'}")
+
+    # Laboratorio Reto Cueva: el repo es público, así que src/lab/ y la clave NO se versionan (.gitignore);
+    # a GitHub solo va reto/index.html cifrado (AES-GCM, clave derivada con PBKDF2) — sin la clave es ilegible.
+    clave_f = RAIZ / "herramientas" / "clave_reto.txt"
+    clave = (clave_f.read_text(encoding="utf-8").strip() if clave_f.exists() else "")
+    if not (RAIZ / "src" / "lab" / "lab.html").exists() or not clave:
+        print("  laboratorio: sin src/lab/ o sin herramientas/clave_reto.txt → no se monta reto/index.html")
+        return
+    cifrado = cifrar_pagina(montar(True), clave)
+    out_lab = RAIZ / "reto" / "index.html"
+    out_lab.parent.mkdir(exist_ok=True)
+    out_lab.write_text(cifrado, encoding="utf-8")
+    print(f"{out_lab} · {len(cifrado)/1e6:.2f} MB · cifrado con la clave del reto")
+
+
+def _norm_clave(c: str) -> str:
+    return "".join(c.split()).upper()
+
+
+def cifrar_pagina(html: str, clave: str) -> str:
+    import os
+    from cryptography.hazmat.primitives import hashes
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+    from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+    sal, iv, it = os.urandom(16), os.urandom(12), 310_000
+    k = PBKDF2HMAC(algorithm=hashes.SHA256(), length=32, salt=sal, iterations=it).derive(_norm_clave(clave).encode())
+    ct = AESGCM(k).encrypt(iv, html.encode("utf-8"), None)
+    b = lambda x: base64.b64encode(x).decode("ascii")  # noqa: E731
+    return (SRC.parent / "lab_puerta.html").read_text(encoding="utf-8").replace(
+        "/*__CIFRADO__*/", json.dumps({"s": b(sal), "i": b(iv), "it": it, "c": b(ct)}))
 
 
 if __name__ == "__main__":

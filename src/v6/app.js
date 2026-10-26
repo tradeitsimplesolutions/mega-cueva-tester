@@ -1175,23 +1175,25 @@ window.cargarResultados=cargarResultados;
 /* ---------- nivel LANDING / MISIONES / BASIC / COMPLETO (AVANZADO retirado del repo público: la terminal vive
    en sentinel/reportes/oro_rsi4) ---------- */
 let nivel='completo';
-function setNivel(n){if(n==='entender')n='completo';if(!['basic','completo','landing','misiones','mision1'].includes(n))n='basic';const prev=nivel;nivel=n;
+function setNivel(n){if(n==='entender')n='completo';if(!['basic','completo','landing','misiones','mision1','lab'].includes(n))n='basic';if(n==='landing'&&window.MCT_LAB)n='lab';const prev=nivel;nivel=n;
   $$('.nivel button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.n===n));
   document.body.classList.toggle('basic',n==='basic');
   document.body.classList.toggle('landing',n==='landing');
   document.body.classList.toggle('misiones',n==='misiones');
   document.body.classList.toggle('mision1',n==='mision1');
+  document.body.classList.toggle('lab',n==='lab');
   if(n==='basic'||n==='completo')store.set('nivel',n);
   hideTip();
   if(n==='basic'){mesaActiva(false);bxEntrar();try{history.replaceState(null,'','#basic')}catch(e){}window.scrollTo(0,0)}
   else if(n==='landing'){try{history.replaceState(null,'','#inicio')}catch(e){}window.scrollTo(0,0)}
   else if(n==='misiones'){try{history.replaceState(null,'','#misiones')}catch(e){}window.scrollTo(0,0)}
   else if(n==='mision1'){try{history.replaceState(null,'','#mision1')}catch(e){}window.scrollTo(0,0)}
+  else if(n==='lab'){try{history.replaceState(null,'','#lab')}catch(e){}window.scrollTo(0,0)}
   else{if(prev==='basic'){mesaActiva(VIEWS[cur]==='mesa');try{history.replaceState(null,'','#'+VIEWS[cur])}catch(e){}}
     requestAnimationFrame(()=>{fijarHdr();renderAll();renderTree()})}}
 /* nivel al abrir: #basic → BASIC · #vista → COMPLETO · #misiones → MISIONES · si no, LANDING (portada) */
 function nivelInicial(){const h=location.hash.slice(1);
-  if(h==='basic')return 'basic';if(VIEWS.includes(h))return 'completo';if(h==='misiones')return 'misiones';if(h==='mision1')return 'mision1';return 'landing'}
+  if(h==='basic')return 'basic';if(VIEWS.includes(h))return 'completo';if(h==='misiones')return 'misiones';if(h==='mision1')return 'mision1';if(window.MCT_LAB&&(h==='lab'||!h||h==='inicio'))return 'lab';return 'landing'}
 
 /* ---------- BASIC: la prueba en 3 pasos ----------
    Reutiliza TODO: traductor (#pi-trad), IA (#pi-ia), agente 03/04, datos (usarLib/quitarCSV/cargarNAS/leerCSV),
@@ -1490,7 +1492,7 @@ function initLanding(){
   $('#mis-1').onclick=m1Abrir;
   $('#b-inicio-rail').onclick=()=>setNivel('landing');
   $('#b-inicio-bx').onclick=()=>setNivel('landing')}
-function initMision1(){$('#bx-mision1').onclick=m1Abrir;$('#m1-volver').onclick=()=>setNivel('misiones');
+function initMision1(){$('#bx-mision1').onclick=m1Abrir;$('#m1-volver').onclick=()=>setNivel(window.MCT_LAB?'lab':'misiones');
   $('#m1-csv-b').onclick=()=>$('#m1-csv').click();
   $('#m1-csv').onchange=e=>{const x=e.target.files[0];if(x)leerCSV(x,m1Subido);e.target.value=''};
   const z=$('#m1-csvz');if(z){['dragover','dragenter'].forEach(t=>z.addEventListener(t,e=>{e.preventDefault();z.classList.add('sobre')}));
@@ -2201,5 +2203,6 @@ function init(){const nivel0=nivelInicial();
 }
 function syncFilt(){$$('#o-filt button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.f===opState.filter))}
 (document.fonts&&document.fonts.ready?document.fonts.ready:Promise.resolve()).then(()=>{renderAll();renderTree();fitNombre()});
+/*__LAB_JS__*/
 init();
 })();

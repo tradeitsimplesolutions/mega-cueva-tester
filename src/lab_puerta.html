@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Laboratorio · Reto Cueva</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders:opsz,wght@10..72,600..900&family=Atkinson+Hyperlegible+Next:wght@400;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#0D1012;--pan:#161C1F;--pan2:#1C2327;--line:#2B353A;--gold:#FFD23F;--txt:#ECE8DF;--dim:#B9B5AB;--red:#FF6B5E;
+    --h:"Big Shoulders","Arial Narrow",sans-serif;--b:"Atkinson Hyperlegible Next","Segoe UI",system-ui,sans-serif;--m:"IBM Plex Mono",Consolas,monospace}
+  *{box-sizing:border-box}
+  html,body{margin:0;min-height:100%;background:var(--bg);color:var(--txt);font-family:var(--b)}
+  body{display:grid;place-items:center;min-height:100vh;padding:24px 16px;
+    background-image:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(255,210,63,.08),transparent 70%)}
+  main{width:100%;max-width:30rem;background:var(--pan2);border:1px solid var(--gold);border-radius:12px;padding:2rem 1.8rem;
+    box-shadow:0 0 0 5px rgba(255,210,63,.06),0 30px 60px -30px rgba(0,0,0,.9)}
+  .brand b{display:block;font-family:var(--h);font-weight:800;font-size:1.5rem;letter-spacing:.02em;text-transform:uppercase}
+  .brand b i{color:var(--gold);font-style:normal}
+  .brand span{font-family:var(--m);font-size:.78rem;color:var(--dim)}
+  .brand span em{color:#3ecf8e;font-style:normal}
+  .tag{margin:1.6rem 0 .3rem;font-family:var(--m);font-size:.75rem;letter-spacing:.16em;color:var(--gold)}
+  h1{margin:0;font-family:var(--h);font-weight:900;text-transform:uppercase;font-size:2.5rem;line-height:.95}
+  p{color:var(--dim);line-height:1.5;margin:.7rem 0 0}
+  form{display:flex;flex-direction:column;gap:.7rem;margin-top:1.4rem}
+  label{font-family:var(--m);font-size:.74rem;letter-spacing:.12em;color:var(--dim)}
+  input{font:inherit;font-family:var(--m);font-size:1.1rem;letter-spacing:.08em;padding:.8rem .9rem;border-radius:8px;
+    border:1px solid var(--line);background:var(--pan);color:var(--txt)}
+  input:focus{outline:3px solid var(--gold);outline-offset:1px;border-color:var(--gold)}
+  button{font:inherit;font-family:var(--h);font-weight:800;font-size:1.2rem;letter-spacing:.12em;text-transform:uppercase;
+    padding:.8rem 1rem;border:0;border-radius:8px;background:var(--gold);color:#161200;cursor:pointer}
+  button:hover{background:#ffe27a} button[disabled]{opacity:.6;cursor:wait}
+  #e{min-height:1.4em;margin:.2rem 0 0;color:var(--red);font-weight:600}
+  .pie{margin-top:1.6rem;padding-top:1rem;border-top:1px solid var(--line);font-size:.92rem}
+  .pie a{color:var(--gold);font-weight:700;text-decoration:none} .pie a:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+<main>
+  <div class="brand"><b>MEGA CUEVA<i>·</i>TESTER</b><span><em>TIS</em> · Trade It Simple</span></div>
+  <p class="tag">LABORATORIO · RETO CUEVA</p>
+  <h1>El método completo, en un solo sitio</h1>
+  <p>De la AED a la paridad con MT5, con todas las herramientas. Es solo para participantes del Reto Cueva: entra con la clave que
+    recibiste en el curso.</p>
+  <form id="f" autocomplete="off">
+    <label for="k">CLAVE DEL RETO</label>
+    <input id="k" type="password" autocomplete="current-password" spellcheck="false" autofocus required>
+    <button id="b" type="submit">ENTRAR AL LABORATORIO</button>
+    <p id="e" role="alert" aria-live="assertive"></p>
+  </form>
+  <p class="pie">¿No estás en el reto? <a href="../index.html">Prueba el Mega Cueva Tester gratis →</a></p>
+</main>
+<script>
+(function(){
+  var D=/*__CIFRADO__*/;
+  var bytes=function(s){var a=atob(s),u=new Uint8Array(a.length);for(var i=0;i<a.length;i++)u[i]=a.charCodeAt(i);return u};
+  var norm=function(c){return String(c||'').replace(/\s+/g,'').toUpperCase()};
+  async function abrir(pw){
+    var k0=await crypto.subtle.importKey('raw',new TextEncoder().encode(norm(pw)),'PBKDF2',false,['deriveKey']);
+    var k=await crypto.subtle.deriveKey({name:'PBKDF2',salt:bytes(D.s),iterations:D.it,hash:'SHA-256'},k0,{name:'AES-GCM',length:256},false,['decrypt']);
+    return new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:bytes(D.i)},k,bytes(D.c)));
+  }
+  async function entrar(pw,auto){
+    var b=document.getElementById('b'),e=document.getElementById('e');
+    if(!window.crypto||!crypto.subtle){e.textContent='Este navegador no puede abrir el laboratorio. Usa Chrome, Edge, Firefox o Safari actualizados.';return}
+    b.disabled=true;b.textContent='ABRIENDO…';e.textContent='';
+    try{var html=await abrir(pw);try{sessionStorage.setItem('reto_cueva_k',norm(pw))}catch(_){}
+      document.open();document.write(html);document.close();}
+    catch(_){b.disabled=false;b.textContent='ENTRAR AL LABORATORIO';if(!auto){e.textContent='Esa clave no es. Revísala en el curso del reto.';document.getElementById('k').select()}
+      try{sessionStorage.removeItem('reto_cueva_k')}catch(_){}}
+  }
+  document.getElementById('f').addEventListener('submit',function(ev){ev.preventDefault();entrar(document.getElementById('k').value,false)});
+  try{var g=sessionStorage.getItem('reto_cueva_k');if(g)entrar(g,true)}catch(_){}
+})();
+</script>
+</body>
+</html>

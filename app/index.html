@@ -1198,6 +1198,13 @@ body.basic .toast{left:50%;max-width:calc(100vw - 32px)}
 .fb-l{font-size:max(13px,.85rem)}.fb-acc{display:flex;gap:.8rem;align-items:center;flex-wrap:wrap}
 @media (max-width:760px){.fb-btn{bottom:calc(16px + env(safe-area-inset-bottom,0px))}}
 
+/* ---------- tarjeta del Laboratorio Reto Cueva en la portada (ancha, con candado) ---------- */
+.landing-card.lab-card{grid-column:1/-1;flex-direction:row;align-items:center;gap:1.1rem;text-decoration:none;border-color:var(--gold);
+  background:linear-gradient(90deg,rgba(var(--gold-rgb),.10),transparent 70%),var(--pan2)}
+.lab-card .lab-card-t{display:flex;flex-direction:column;gap:.3rem;flex:1;min-width:0}
+.lab-card .fuente-sello{flex:none}
+@media (max-width:640px){.landing-card.lab-card{flex-direction:column;align-items:flex-start}}
+
 </style>
 </head>
 <body>
@@ -1680,6 +1687,11 @@ body.basic .toast{left:50%;max-width:calc(100vw - 32px)}
       <button type="button" class="landing-card" id="land-mesa">
         <span class="landing-ic"><svg class="ic"><use href="#i-varita"/></svg></span><b>MONTA TU PROPIA CUEVA</b>
         <small>Instala tu propia mesa de 4 agentes: VS Code + Claude Code, en unos minutos.</small></button>
+      <a class="landing-card lab-card" id="land-lab" href="../reto/index.html">
+        <span class="landing-ic"><svg class="ic"><use href="#i-candado"/></svg></span>
+        <span class="lab-card-t"><b>LABORATORIO RETO CUEVA</b>
+        <small>El método completo, de la AED a la paridad con MT5, con todas sus herramientas en un solo sitio. Solo para participantes del reto.</small></span>
+        <span class="fuente-sello tuyo">CON CLAVE →</span></a>
     </div>
   </div>
 </div>
@@ -1700,6 +1712,7 @@ body.basic .toast{left:50%;max-width:calc(100vw - 32px)}
     </div>
   </div>
 </div>
+
 
 <!-- ============ MISIÓN 1 · CONOCE TU ACTIVO (página propia, AED estilo Asset Lab) ============ -->
 <div id="mision1" class="m1p">
@@ -3364,23 +3377,25 @@ window.cargarResultados=cargarResultados;
 /* ---------- nivel LANDING / MISIONES / BASIC / COMPLETO (AVANZADO retirado del repo público: la terminal vive
    en sentinel/reportes/oro_rsi4) ---------- */
 let nivel='completo';
-function setNivel(n){if(n==='entender')n='completo';if(!['basic','completo','landing','misiones','mision1'].includes(n))n='basic';const prev=nivel;nivel=n;
+function setNivel(n){if(n==='entender')n='completo';if(!['basic','completo','landing','misiones','mision1','lab'].includes(n))n='basic';if(n==='landing'&&window.MCT_LAB)n='lab';const prev=nivel;nivel=n;
   $$('.nivel button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.n===n));
   document.body.classList.toggle('basic',n==='basic');
   document.body.classList.toggle('landing',n==='landing');
   document.body.classList.toggle('misiones',n==='misiones');
   document.body.classList.toggle('mision1',n==='mision1');
+  document.body.classList.toggle('lab',n==='lab');
   if(n==='basic'||n==='completo')store.set('nivel',n);
   hideTip();
   if(n==='basic'){mesaActiva(false);bxEntrar();try{history.replaceState(null,'','#basic')}catch(e){}window.scrollTo(0,0)}
   else if(n==='landing'){try{history.replaceState(null,'','#inicio')}catch(e){}window.scrollTo(0,0)}
   else if(n==='misiones'){try{history.replaceState(null,'','#misiones')}catch(e){}window.scrollTo(0,0)}
   else if(n==='mision1'){try{history.replaceState(null,'','#mision1')}catch(e){}window.scrollTo(0,0)}
+  else if(n==='lab'){try{history.replaceState(null,'','#lab')}catch(e){}window.scrollTo(0,0)}
   else{if(prev==='basic'){mesaActiva(VIEWS[cur]==='mesa');try{history.replaceState(null,'','#'+VIEWS[cur])}catch(e){}}
     requestAnimationFrame(()=>{fijarHdr();renderAll();renderTree()})}}
 /* nivel al abrir: #basic → BASIC · #vista → COMPLETO · #misiones → MISIONES · si no, LANDING (portada) */
 function nivelInicial(){const h=location.hash.slice(1);
-  if(h==='basic')return 'basic';if(VIEWS.includes(h))return 'completo';if(h==='misiones')return 'misiones';if(h==='mision1')return 'mision1';return 'landing'}
+  if(h==='basic')return 'basic';if(VIEWS.includes(h))return 'completo';if(h==='misiones')return 'misiones';if(h==='mision1')return 'mision1';if(window.MCT_LAB&&(h==='lab'||!h||h==='inicio'))return 'lab';return 'landing'}
 
 /* ---------- BASIC: la prueba en 3 pasos ----------
    Reutiliza TODO: traductor (#pi-trad), IA (#pi-ia), agente 03/04, datos (usarLib/quitarCSV/cargarNAS/leerCSV),
@@ -3679,7 +3694,7 @@ function initLanding(){
   $('#mis-1').onclick=m1Abrir;
   $('#b-inicio-rail').onclick=()=>setNivel('landing');
   $('#b-inicio-bx').onclick=()=>setNivel('landing')}
-function initMision1(){$('#bx-mision1').onclick=m1Abrir;$('#m1-volver').onclick=()=>setNivel('misiones');
+function initMision1(){$('#bx-mision1').onclick=m1Abrir;$('#m1-volver').onclick=()=>setNivel(window.MCT_LAB?'lab':'misiones');
   $('#m1-csv-b').onclick=()=>$('#m1-csv').click();
   $('#m1-csv').onchange=e=>{const x=e.target.files[0];if(x)leerCSV(x,m1Subido);e.target.value=''};
   const z=$('#m1-csvz');if(z){['dragover','dragenter'].forEach(t=>z.addEventListener(t,e=>{e.preventDefault();z.classList.add('sobre')}));
@@ -4390,6 +4405,7 @@ function init(){const nivel0=nivelInicial();
 }
 function syncFilt(){$$('#o-filt button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.f===opState.filter))}
 (document.fonts&&document.fonts.ready?document.fonts.ready:Promise.resolve()).then(()=>{renderAll();renderTree();fitNombre()});
+
 init();
 })();
 

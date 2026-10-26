@@ -8,3 +8,7 @@ node_modules/
 .dev.vars
 servidor_ia/.wrangler/
 servidor_ia/__pycache__/
+
+# Laboratorio Reto Cueva: el repo es público; su código y la clave solo viven en local (a GitHub va reto/index.html cifrado)
+src/lab/
+herramientas/clave_reto.txt
