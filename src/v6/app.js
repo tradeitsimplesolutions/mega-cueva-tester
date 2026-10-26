@@ -976,9 +976,9 @@ function mostrarResPI(real,err){
   $('#pi-volver').onclick=()=>{$('#pi-res').hidden=true;$('#pi-form').hidden=false;$('#pi-mesa').hidden=false;$('#f-nombre').focus()};
   const c=chart('cv-pieq',drawEq);c.compact=true;requestAnimationFrame(()=>c.render());$('#pi-izq').scrollTop=0}
 /* fechas de cada vela en una pasada: si la línea empieza por AAAA-MM-DD se corta sin regex; si no, regex sobre los 40 primeros caracteres */
-function fechasCSV(txt){const F=[],n=txt.length,RE=/(\d{4})[.\-/](\d{2})[.\-/](\d{2})/;let i=0;
+function fechasCSV(txt){const F=[],n=txt.length,RE=/(\d{4})[.\-/](\d{2})[.\-/](\d{2})/,RD=/(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{4})/,p2=x=>String(x).padStart(2,'0');let i=0;
   while(i<n){let j=txt.indexOf('\n',i);if(j<0)j=n;const c=txt.charCodeAt(i);
-    if(c>=48&&c<=57&&txt.charCodeAt(i+4)===45&&txt.charCodeAt(i+7)===45)F.push(txt.slice(i,i+10));else if(j-i>6){const m=RE.exec(txt.slice(i,Math.min(j,i+40)));if(m)F.push(m[1]+'-'+m[2]+'-'+m[3])}
+    if(c>=48&&c<=57&&txt.charCodeAt(i+4)===45&&txt.charCodeAt(i+7)===45)F.push(txt.slice(i,i+10));else if(j-i>6){const t=txt.slice(i,Math.min(j,i+40)),m=RE.exec(t);if(m)F.push(m[1]+'-'+m[2]+'-'+m[3]);else if(/^\d{9,13}(\.\d+)?[,;	]/.test(t)){const u=parseFloat(t);F.push(new Date(u>1e11?u:u*1000).toISOString().slice(0,10))}else{const d=RD.exec(t);if(d){const a=+d[1],b=+d[2];F.push(d[3]+'-'+p2(b>12?a:b)+'-'+p2(b>12?b:a))}}}
     i=j+1}return F}
 async function gunzipB64(b64){if(typeof DecompressionStream==='undefined')throw new Error('este navegador no descomprime (usa Chrome, Edge o Firefox recientes)');
   const a=atob(b64),bin=new Uint8Array(a.length);for(let i=0;i<a.length;i++)bin[i]=a.charCodeAt(i);return await new Response(new Blob([bin]).stream().pipeThrough(new DecompressionStream('gzip'))).text()}
@@ -1019,7 +1019,7 @@ async function cargarNAS(soloDatos){const b=$('#pi-nas');if(!NAS||typeof CSV_NAS
   catch(e){toast('No se pudo abrir el ejemplo NAS100: '+e.message);if(!CSV)$('#pi-csv-n').textContent='Datos de ejemplo del oro (XAUUSD D1)'}finally{b.disabled=false;b.textContent=bt;if(window.MCT_T_NAS&&window.MCT_T_NAS.datos!=null)window.MCT_T_NAS.total=Math.round(performance.now()-T00)}}
 function leerCSV(file,listo){const r=new FileReader();r.onload=()=>{const txt=String(r.result||'');
     const F=fechasCSV(txt);
-    if(F.length<300){toast('Ese CSV tiene '+F.length+' velas con fecha legible; el motor pide al menos 300.');return}
+    if(F.length<300){toast(F.length?'Ese CSV tiene '+F.length+' velas con fecha legible; el motor pide al menos 300.':'No leo las fechas de ese CSV. Formatos válidos: 2024-03-15, 2024.03.15 o 15/03/2024 (con o sin hora). NO se ha cargado: sigues con los datos anteriores.');return}
     CSV={nombre:file.name,texto:txt,n:F.length};csvFechas=F;SPEC.datos.fuente='csv_propio';SPEC.datos.desde=F[0];SPEC.datos.hasta=F[F.length-1];
     $('#pi-csv-n').innerHTML='<b class="c-ink">'+esc(file.name)+'</b> · '+nf(F.length,0)+' velas · '+fd(F[0])+' → '+fd(F[F.length-1]);$('#pi-csv-x').hidden=false;rellenarForm();toast('CSV cargado: '+nf(F.length,0)+' velas');if(listo)listo()};
   r.onerror=()=>toast('No se pudo leer el fichero');r.readAsText(file)}

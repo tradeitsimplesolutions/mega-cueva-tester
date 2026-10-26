@@ -128,7 +128,8 @@ def _es_numero(x: str) -> bool:
 
 
 def _a_numero(s: pd.Series, decimal_coma: bool) -> pd.Series:
-    s = s.astype(str).str.strip().str.strip("\"'")
+    # Excel / Google Sheets en formato moneda: « $43.97 », «43,97 €», con espacios (también los duros  )
+    s = s.astype(str).str.strip().str.strip("\"'").str.replace(r"[$€£\s ]", "", regex=True)
     if decimal_coma:
         s = s.str.replace(".", "", regex=False).str.replace(",", ".", regex=False)
     else:
@@ -326,7 +327,7 @@ def cargar_csv(texto) -> pd.DataFrame:
         raise ErrorDatos(f"El fichero tiene {filas:,} velas; el máximo en el navegador es {MAX_VELAS:,}. "
                          "Usa una temporalidad mayor o recorta el periodo.".replace(",", "."))
     # decimal con coma (Excel en español: 1234,56 con separador ;)
-    muestra_px = cuerpo[col["close"]].astype(str).head(200)
+    muestra_px = cuerpo[col["close"]].astype(str).head(200).str.replace(r"[$€£\s ]", "", regex=True)
     decimal_coma = sep != "," and muestra_px.str.fullmatch(r"-?\d+,\d+").mean() > 0.5
     if decimal_coma:
         avisos.append("Decimales con coma detectados (formato español).")
