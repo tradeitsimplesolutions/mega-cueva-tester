@@ -978,7 +978,7 @@ function mostrarResPI(real,err){
 /* fechas de cada vela en una pasada: si la línea empieza por AAAA-MM-DD se corta sin regex; si no, regex sobre los 40 primeros caracteres */
 function fechasCSV(txt){const F=[],n=txt.length,RE=/(\d{4})[.\-/](\d{2})[.\-/](\d{2})/,RD=/(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{4})/,p2=x=>String(x).padStart(2,'0');let i=0;
   while(i<n){let j=txt.indexOf('\n',i);if(j<0)j=n;const c=txt.charCodeAt(i);
-    if(c>=48&&c<=57&&txt.charCodeAt(i+4)===45&&txt.charCodeAt(i+7)===45)F.push(txt.slice(i,i+10));else if(j-i>6){const t=txt.slice(i,Math.min(j,i+40)),m=RE.exec(t);if(m)F.push(m[1]+'-'+m[2]+'-'+m[3]);else{const d=RD.exec(t);if(d){const a=+d[1],b=+d[2];F.push(d[3]+'-'+p2(b>12?a:b)+'-'+p2(b>12?b:a))}}}
+    if(c>=48&&c<=57&&txt.charCodeAt(i+4)===45&&txt.charCodeAt(i+7)===45)F.push(txt.slice(i,i+10));else if(j-i>6){const t=txt.slice(i,Math.min(j,i+40)),m=RE.exec(t);if(m)F.push(m[1]+'-'+m[2]+'-'+m[3]);else if(/^\d{9,13}(\.\d+)?[,;	]/.test(t)){const u=parseFloat(t);F.push(new Date(u>1e11?u:u*1000).toISOString().slice(0,10))}else{const d=RD.exec(t);if(d){const a=+d[1],b=+d[2];F.push(d[3]+'-'+p2(b>12?a:b)+'-'+p2(b>12?b:a))}}}
     i=j+1}return F}
 async function gunzipB64(b64){if(typeof DecompressionStream==='undefined')throw new Error('este navegador no descomprime (usa Chrome, Edge o Firefox recientes)');
   const a=atob(b64),bin=new Uint8Array(a.length);for(let i=0;i<a.length;i++)bin[i]=a.charCodeAt(i);return await new Response(new Blob([bin]).stream().pipeThrough(new DecompressionStream('gzip'))).text()}
