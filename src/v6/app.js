@@ -1188,12 +1188,12 @@ function setNivel(n){if(n==='entender')n='completo';if(!['basic','completo','lan
   else if(n==='landing'){try{history.replaceState(null,'','#inicio')}catch(e){}window.scrollTo(0,0)}
   else if(n==='misiones'){try{history.replaceState(null,'','#misiones')}catch(e){}window.scrollTo(0,0)}
   else if(n==='mision1'){try{history.replaceState(null,'','#mision1')}catch(e){}window.scrollTo(0,0)}
-  else if(n==='lab'){try{history.replaceState(null,'','#lab')}catch(e){}window.scrollTo(0,0)}
+  else if(n==='lab'){try{history.replaceState(null,'',window.MCT_LAB_HASH?window.MCT_LAB_HASH():'#lab')}catch(e){}window.scrollTo(0,0)}
   else{if(prev==='basic'){mesaActiva(VIEWS[cur]==='mesa');try{history.replaceState(null,'','#'+VIEWS[cur])}catch(e){}}
     requestAnimationFrame(()=>{fijarHdr();renderAll();renderTree()})}}
 /* nivel al abrir: #basic → BASIC · #vista → COMPLETO · #misiones → MISIONES · si no, LANDING (portada) */
 function nivelInicial(){const h=location.hash.slice(1);
-  if(h==='basic')return 'basic';if(VIEWS.includes(h))return 'completo';if(h==='misiones')return 'misiones';if(h==='mision1')return 'mision1';if(window.MCT_LAB&&(h==='lab'||!h||h==='inicio'))return 'lab';return 'landing'}
+  if(h==='basic')return 'basic';if(VIEWS.includes(h))return 'completo';if(h==='misiones')return 'misiones';if(h==='mision1')return 'mision1';if(window.MCT_LAB&&(h==='lab'||!h||h==='inicio'||/^f\d$/.test(h)))return 'lab';return 'landing'}
 
 /* ---------- BASIC: la prueba en 3 pasos ----------
    Reutiliza TODO: traductor (#pi-trad), IA (#pi-ia), agente 03/04, datos (usarLib/quitarCSV/cargarNAS/leerCSV),
@@ -1451,8 +1451,8 @@ function m1Perfil(p,c){const F=M1_FAM[c.fam],x=F.e.find(e=>e.s),veces=p.fig.dist
     ${rasgo('Volatilidad al final del diseño',M1_TXT.regimen[c.regimen],m1P(p.fig.vol.hoy,0)+' anual · mediana '+m1P(p.fig.vol.mediana,0),c.regimen==='alto'?'bad':c.regimen==='bajo'?'ok':'gold')}</div>`}
 function m1Arbol(c){const nodo=(on,t,d)=>`<div class="m1p-nodo${on?' on':''}"><b>${t}</b>${d?`<small>${d}</small>`:''}</div>`;
   const famOn=k=>c.fam===k;
-  return `<section class="m1p-arbol panel"><div class="m1p-h"><span class="bx-n" aria-hidden="true">2</span><h2>Árbol de decisión</h2></div>
-    <p class="c-dim">Tres preguntas, en orden. En dorado, el camino de tu activo.</p>
+  return `<section class="m1p-arbol panel"><div class="m1p-h"><span class="bx-n" aria-hidden="true">2</span><h2>Mapa del activo</h2></div>
+    <p class="c-dim">Tres preguntas que clasifican tu activo. En dorado, su camino. No es tu estrategia: el <b>árbol de decisión</b> (entradas, salidas, filtros) lo construyes en la Misión 2.</p>
     <div class="m1p-niveles">
       <div><h4>1 · ¿Tendencia de fondo?</h4>${nodo(c.fondo==='alcista','Alcista','más de +5 % al año')}${nodo(c.fondo==='lateral','Lateral','entre −5 % y +5 %')}${nodo(c.fondo==='bajista','Bajista','menos de −5 % al año')}</div>
       <div><h4>2 · ¿Día a día?</h4>${nodo(c.corto==='sigue','Sigue','lo que se mueve, continúa')}${nodo(c.corto==='mixto','Sin patrón claro','dentro del ruido')}${nodo(c.corto==='revierte','Revierte','lo que se mueve, vuelve')}</div>
@@ -1487,8 +1487,113 @@ function m1Tecnica(p,c){const D=p.fig.dist,V=p.fig.vol,b=c.banda,veces=D.pct_3sd
     ${sec('Riesgo')}
     ${fila('Volatilidad anualizada',nf(p.vol_anual_pct,1)+' %','—','—')}
     ${fila('Volatilidad al final del diseño ('+V.ventana+' velas)',m1P(V.hoy,1),'tercios: '+m1P(V.q33,0)+' / '+m1P(V.q66,0),'Régimen '+c.regimen)}
+    ${m1TecExtra(p,fila,sec)}
     </tbody></table>
     <p class="c-dim m1p-nota">Autocorrelación: correlación entre el retorno de una vela y el de la siguiente. Eficiencia de Kaufman (Smarter Trading, 1995): desplazamiento neto / suma de los pasos. Curtosis en exceso &gt; 0: colas más gordas que una campana normal. Son pistas de un AED; una idea solo queda validada cuando pasa las 5 fases del protocolo.</p></section>`}
+
+/* ---------- 00 · calidad de los datos (antes del AED): 8 preguntas, veredicto y medidor arriba a la izquierda ---------- */
+const M1_CAL={'APTA':'ok','APTA CON AVISOS':'aviso','NO APTA':'falla'};
+let m1Cal=null;
+function m1CalChip(cal){m1Cal=cal;$$('[data-cal-chip]').forEach(el=>{const av=cal?cal.checks.filter(x=>x.estado!=='ok').length:0;
+  ['ok','aviso','falla','nd'].forEach(k=>el.classList.remove(k));el.classList.add(cal?M1_CAL[cal.veredicto]:'nd');el.hidden=false;
+  el.innerHTML=`<span class="calchip-d" aria-hidden="true"></span><span class="calchip-t"><small>CALIDAD DE DATOS</small><b>${cal?esc(cal.veredicto):'SIN ANALIZAR'}</b><em>${cal?esc(m1Activo())+(cal.veredicto==='NO APTA'?' · no se sigue':av?' · '+av+' aviso'+(av>1?'s':''):' · 8/8 bien'):'analiza tu activo en la fase 01'}</em></span>`;
+  el.title=cal?'Ver las 8 comprobaciones':'Todavía no has analizado ningún activo'})}
+function m1Calidad(cal){if(!cal)return'';const ic={ok:'✓',aviso:'!',falla:'✕'};
+  const msg={'APTA':'Los datos están limpios: sigue con el AED.','APTA CON AVISOS':'Se puede seguir, pero lee los avisos: pueden cambiar lo que ves en las figuras.',
+    'NO APTA':'Con NO APTA no se sigue: arregla los datos (o elige otro archivo) y vuelve a analizar.'};
+  return `<section class="m1q ${M1_CAL[cal.veredicto]}"><header><div><p class="m1p-eyebrow mono">00 · CALIDAD DE LOS DATOS · ANTES DEL AED</p>
+    <h2>${esc(cal.veredicto)}</h2><p>${msg[cal.veredicto]}</p></div>
+    <p class="mono c-dim">${esc(cal.tf)} · ${nf(cal.velas,0)} velas usadas · ${esc(cal.desde)} → ${esc(cal.hasta)}</p></header>
+    <ol class="m1q-l">${cal.checks.map(x=>`<li class="${x.estado}"><span class="m1q-i" aria-hidden="true">${ic[x.estado]}</span><span><b>${esc(x.t)}</b><small>${esc(x.txt)}</small></span></li>`).join('')}</ol></section>`}
+/* ---------- 04 · ¿funciona gestionar con una media móvil? (tendencial / whipsaw / mixto) ---------- */
+function m1Media(p){const M=p.hallazgos&&p.hallazgos.media;if(!M||!M.filas||!M.filas.length)return'';const rt=m1CostCalc(p).rt;
+  const V={tendencial:['ok','TENDENCIAL','Seguir la media paga: el activo deja correr sus tendencias. Las familias de seguimiento tienen base.'],
+    whipsaw:['bad','WHIPSAW','La media te mete y te saca a pérdidas: zigzag. Seguir tendencias aquí sale caro; mira la reversión.'],
+    mixto:['gold','MIXTO','Funciona con unos plazos y con otros no. El plazo se elige con datos, no a ojo.']}[M.veredicto]||['gold',M.veredicto,''];
+  const SC={funciona:'clara','a medias':'insinua',whipsaw:'bad'};
+  const fila=f=>{const pb=f.media_op*1e4;return `<tr><td>Media de ${f.n}</td><td class="v">${nf(f.ops_anio,1)}</td><td class="v">${nf(f.pf,2)}</td><td class="v">${m1P(f.acierto,0)}</td><td class="v">${nf(f.dur_media,0)} velas</td>
+    <td class="v">${(pb>=0?'+':'')+nf(pb,1)} pb${rt!=null?` <small class="${pb>3*rt?'c-ok':'c-red'}">coste ${nf(rt,1)}</small>`:''}</td><td><span class="sem ${SC[f.lectura]||'nada'}">${esc(f.lectura.toUpperCase())}</span></td></tr>`};
+  return `<section class="m1t-ficha m1t-media"><header class="m1t-hh"><div><p class="m1p-eyebrow mono">04 · ¿FUNCIONA GESTIONAR CON UNA MEDIA MÓVIL?</p>
+    <p class="c-dim">Dentro mientras el cierre esté sobre su media: decide al cierre, entra y sale en la apertura siguiente. Sin costes, solo en el diseño.</p></div>
+    <span class="m1t-ver ${V[0]}">${V[1]}</span></header><p class="m1t-lect">${V[2]}</p>
+    <table class="m1t-t"><thead><tr><th>Media</th><th>Ops/año</th><th>PF</th><th>Acierto</th><th>Duración</th><th>Gana por op.</th><th>Lectura</th></tr></thead><tbody>${M.filas.map(fila).join('')}</tbody></table>
+    <p class="c-dim m1t-nota">Comprar y aguantar en el mismo tramo: ${(M.comprar_mantener>=0?'+':'')+nf(M.comprar_mantener*100,1)} %. PF ≥ 1,3 = funciona · PF &lt; 1 = whipsaw.${rt!=null?' «Coste» = lo que te cobra el bróker por entrar y salir (bloque 05): si una operación media no gana 3 veces eso, el bróker se lleva la ventaja.':''}</p></section>`}
+/* ---------- 05 · lo que cobra tu bróker: spread, comisión, deslizamiento, swap y la regla del 10 % ---------- */
+let m1Cost=null;
+const M1_CK=['spread_pb','comision_pb_lado','deslizamiento_pb_lado','swap_largo_pct_anual','swap_corto_pct_anual'];
+function m1CostesIni(){const s=String(m1Simbolo||'').toUpperCase();if(m1Cost&&m1Cost.simbolo===s)return m1Cost;const P=PERFILES[s];
+  m1Cost=P?Object.assign({simbolo:s,fuente:'darwinex'},clone(P.costes)):{simbolo:s,fuente:'pendiente'};M1_CK.forEach(k=>{if(m1Cost[k]===undefined)m1Cost[k]=null});delete m1Cost.perfil;return m1Cost}
+function m1CostCalc(p){const C=m1CostesIni();if(['spread_pb','comision_pb_lado','deslizamiento_pb_lado'].some(k=>C[k]==null||!isFinite(C[k])))return{C,rt:null};
+  const rt=C.spread_pb+2*(C.comision_pb_lado+C.deslizamiento_pb_lado),mov=p&&p.hallazgos?p.hallazgos.base.mov_medio*1e4:null;return{C,rt,mov,ratio:mov?rt/mov:null}}
+function m1AplicarCostes(){const C=m1Cost;if(!C||m1CostCalc(m1Ultimo).rt==null)return false;const n=v=>v==null||!isFinite(v)?0:+v;
+  if(C.simbolo&&SPEC.activo&&simNorm(SPEC.activo.simbolo)!==simNorm(C.simbolo))SPEC.activo=Object.assign({},SPEC.activo,{simbolo:C.simbolo});
+  SPEC.costes={perfil:'manual',spread_pb:n(C.spread_pb),comision_pb_lado:n(C.comision_pb_lado),deslizamiento_pb_lado:n(C.deslizamiento_pb_lado),
+    swap_largo_pct_anual:n(C.swap_largo_pct_anual),swap_corto_pct_anual:n(C.swap_corto_pct_anual)};
+  try{rellenarForm();bxSync(false)}catch(e){}return true}
+function m1Costes(p){const{C,rt,mov,ratio}=m1CostCalc(p),ok=rt!=null&&ratio!=null&&ratio<=0.10;
+  const inp=(k,lbl,u,st)=>`<label class="m1c-f"><span>${lbl}</span><input type="number" step="${st}" inputmode="decimal" data-m1c="${k}" value="${C[k]==null?'':C[k]}" placeholder="pendiente"><small>${u}</small></label>`;
+  const sw=v=>v==null||!isFinite(v)?'—':(v>=0?'+':'')+nf(v*100/365,2)+' pb por noche';
+  const dic=C.fuente==='darwinex'?'Precargado con el perfil Darwinex de <b>'+esc(C.simbolo)+'</b>. Si tu bróker es otro, cámbialos por los suyos.':
+    C.fuente==='manual'?'Tus costes para <b>'+esc(C.simbolo||'tu activo')+'</b>. El tester ya los usa.':
+    '<b class="c-red">PENDIENTE:</b> no tengo los costes de <b>'+esc(C.simbolo||'tu activo')+'</b>. Míralos en tu plataforma (especificación del símbolo) y escríbelos.';
+  return `<section class="m1t-ficha m1t-costes" id="m1-costes-in"><header class="m1t-hh"><div><p class="m1p-eyebrow mono">05 · LO QUE COBRA TU BRÓKER · REGLA DEL 10 %</p><p class="c-dim">${dic}</p></div>
+    ${rt==null?'<span class="m1t-ver gold">PENDIENTE</span>':`<span class="m1t-ver ${ok?'ok':'bad'}">${ok?'PASA EL 10 %':'NO PASA EL 10 %'}</span>`}</header>
+    <div class="m1c-g"><div class="m1c-in">${inp('spread_pb','Spread','pb · ida y vuelta',0.001)}${inp('comision_pb_lado','Comisión','pb por lado',0.01)}${inp('deslizamiento_pb_lado','Deslizamiento','pb por lado',0.1)}
+      ${inp('swap_largo_pct_anual','Swap compras','% al año',0.01)}${inp('swap_corto_pct_anual','Swap ventas','% al año',0.01)}</div>
+    <div class="m1c-r">${rt==null?'<p class="c-dim">Escribe spread, comisión y deslizamiento y te digo si el coste se come el movimiento.</p>':`
+      <div class="m1t-tiles"><div class="m1t-tile"><span>Entrar y salir cuesta</span><b>${nf(rt,1)} pb</b><small>spread + 2 × (comisión + deslizamiento)</small></div>
+        <div class="m1t-tile"><span>Una vela normal mueve</span><b>${mov==null?'—':nf(mov,0)+' pb'}</b><small>movimiento medio de cierre a cierre</small></div>
+        <div class="m1t-tile ${ok?'ok':'bad'}"><span>El coste se come</span><b>${ratio==null?'—':nf(ratio*100,1)+' %'}</b><small>de una vela · el límite es 10 %</small></div></div>
+      <div class="m1c-bar" role="img" aria-label="Coste frente al límite del 10 %"><i class="${ok?'ok':'bad'}" style="width:${ratio==null?0:Math.min(100,ratio*500).toFixed(1)}%"></i><b style="left:50%"><span>10 %</span></b></div>
+      <p class="m1c-lect">${ok?'El coste es pequeño frente a lo que se mueve: puedes operar incluso a una vela.':'Las operaciones de una vela trabajan para el bróker: busca operaciones más largas (que ganen varias velas) o un activo que se mueva más.'}</p>
+      <p class="c-dim m1c-sw">Swap · dormir comprado: <b>${sw(C.swap_largo_pct_anual)}</b> · dormir vendido: <b>${sw(C.swap_corto_pct_anual)}</b>. En operaciones de muchas noches suma.</p>`}</div></div>
+    <p class="c-dim m1t-nota">1 pb (punto básico) = 0,01 % del precio. Regla del 10 %: lo que pagas por entrar y salir no debería pasar del 10 % de lo que se mueve una vela normal.</p></section>`}
+/* filas extra de la ficha técnica imprimible: calidad, hallazgos con semáforo, media y costes */
+function m1TecExtra(p,fila,sec){const H=p.hallazgos,out=[];
+  if(p.calidad){out.push(sec('Calidad de los datos'),fila('Veredicto',esc(p.calidad.veredicto),'8 comprobaciones',p.calidad.checks.filter(x=>x.estado!=='ok').map(x=>esc(x.t)).join(' · ')||'Todo bien'))}
+  if(H&&H.lista){out.push(sec('Hallazgos · la vela siguiente frente a una cualquiera'));
+    H.lista.filter(x=>x.semaforo!=='NADA').forEach(x=>out.push(fila(esc(x.h),x.efecto==null?'—':(x.efecto>0?'+':'')+nf(x.efecto*100,3)+' %','t '+(x.t==null?'—':nf(x.t,1))+' · '+x.epocas+'/3 épocas',`<span class="sem ${M1_SEM[x.semaforo]}">${x.semaforo}</span>`)));
+    if(!H.lista.some(x=>x.semaforo!=='NADA'))out.push(fila('Ningún hallazgo asoma','—','—','Todo en NADA'))}
+  if(H&&H.media&&H.media.filas.length){out.push(sec('¿Funciona gestionar con una media? · '+esc(H.media.veredicto.toUpperCase())));
+    H.media.filas.forEach(f=>out.push(fila('Media de '+f.n,'PF '+nf(f.pf,2),nf(f.ops_anio,1)+' ops/año · '+m1P(f.acierto,0)+' acierto',esc(f.lectura))))}
+  const{C,rt,mov,ratio}=m1CostCalc(p);out.push(sec('Costes del bróker'+(C.fuente==='pendiente'?' · PENDIENTE':'')));
+  const v=x=>x==null?'pendiente':nf(x,3);
+  out.push(fila('Spread',v(C.spread_pb)+' pb','ida y vuelta','—'),fila('Comisión',v(C.comision_pb_lado)+' pb','por lado','—'),fila('Deslizamiento',v(C.deslizamiento_pb_lado)+' pb','por lado','—'),
+    fila('Swap compras / ventas',(C.swap_largo_pct_anual==null?'—':nf(C.swap_largo_pct_anual,2))+' / '+(C.swap_corto_pct_anual==null?'—':nf(C.swap_corto_pct_anual,2))+' %/año','—','—'),
+    fila('Regla del 10 %',rt==null?'pendiente':nf(rt,1)+' pb de '+(mov==null?'—':nf(mov,0))+' pb','≤ 10 % de una vela',ratio==null?'—':nf(ratio*100,1)+' % · '+(ratio<=0.1?'PASA':'NO PASA')));
+  return out.join('')}
+/* ---------- la ficha guardable: AED + costes + Misión 2, en un .json que se sube en el tester o al volver ---------- */
+const M1_FICHA_K='mct_ficha';
+function m1FichaObj(){let m2=null;try{m2=JSON.parse(localStorage.getItem('lab_m2')||'null')}catch(e){}
+  return{tipo:'mega-cueva-ficha',v:1,fecha:new Date().toISOString().slice(0,10),activo:m1Activo(),simbolo:m1Simbolo,
+    datos:CSV?((libFich(CSV.nombre)||{}).id||null):'oro_d1',csv:CSV?CSV.nombre:null,perfil:m1Ultimo,costes:m1Cost,m2}}
+function m1FichaGuarda(){if(!m1Ultimo)return;try{localStorage.setItem(M1_FICHA_K,JSON.stringify(m1FichaObj()))}catch(e){}}
+function m1FichaBajar(){if(!m1Ultimo){toast('Analiza tu activo primero');return}m1FichaGuarda();const o=m1FichaObj(),a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(o)],{type:'application/json'}));a.download='ficha_'+String(o.simbolo||'activo').toLowerCase().replace(/\W+/g,'_')+'_'+o.fecha+'.json';
+  document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},800);toast('Ficha guardada: súbela en el tester o aquí cuando vuelvas')}
+async function m1FichaCargar(o,dest){if(!o||o.tipo!=='mega-cueva-ficha'||!o.perfil||!o.perfil.fig){toast('Ese archivo no es una ficha del Mega Cueva Tester');return false}
+  m1Simbolo=o.simbolo||m1Simbolo;m1Cost=o.costes||null;const lib=o.datos&&libId(o.datos);
+  if(lib){if(dest==='tester')await usarLib(o.datos);else await usarLib(o.datos,true);m1Sync()}
+  if(o.m2){try{localStorage.setItem('lab_m2',JSON.stringify(o.m2))}catch(e){}if(window.MCT_LAB_M2)window.MCT_LAB_M2(o.m2)}
+  m1Pintar(o.perfil,true);const cos=m1AplicarCostes();
+  toast('Ficha de '+(o.activo||o.simbolo)+' cargada'+(cos?' · costes aplicados al tester':'')+(lib?'':' · vuelve a subir tu CSV ('+(o.csv||'tus datos')+') para probar'));return true}
+function m1FichaLeer(f,dest){const r=new FileReader();r.onload=()=>{let o=null;try{o=JSON.parse(r.result)}catch(e){}m1FichaCargar(o,dest)};r.readAsText(f)}
+async function m1Restaurar(){let o=null;try{o=JSON.parse(localStorage.getItem(M1_FICHA_K)||'null')}catch(e){}
+  if(!o||!o.perfil||!o.perfil.fig||m1Ultimo)return;m1Simbolo=o.simbolo||m1Simbolo;m1Cost=o.costes||null;
+  if(o.datos&&libId(o.datos))await usarLib(o.datos,true);m1Sync();m1Pintar(o.perfil,true);if(m1Cost&&m1Cost.fuente==='manual')m1AplicarCostes();
+  const n=$('#m1-nota');if(n)n.innerHTML='Has vuelto: tu última ficha (<b>'+esc(o.activo||o.simbolo)+'</b>, '+esc(o.fecha)+') sigue aquí. Para otro activo, elígelo y pulsa ANALIZAR.'}
+function m1Pintar(p,quieto){m1Ultimo=p;const c=m1Clasificar(p);m1CostesIni();m1CalChip(p.calidad||null);
+  $('#m1-calidad').innerHTML=m1Calidad(p.calidad);
+  $('#m1-perfil').innerHTML=m1Particion(p.particion)+m1Perfil(p,c);$('#m1-ficha-tis').innerHTML=m1Hallazgos(p)+m1Media(p)+m1Costes(p);
+  $('#m1-facil').innerHTML=m1Figuras(p,c);$('#m1-tecnica').innerHTML=m1Tecnica(p,c);
+  $('#m1-arbol').innerHTML=m1Arbol(c);$('#m1-docs').innerHTML=m1Docs(c,p);
+  $('#m1-res').hidden=false;$('#m1-nota').textContent='';m1Vista='facil';$('#m1-facil').hidden=false;$('#m1-tecnica').hidden=true;
+  $$('#m1-vista button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.m1v==='facil')));
+  m1FichaGuarda();document.dispatchEvent(new CustomEvent('m1-listo'));
+  if(!quieto)$('#m1-calidad').scrollIntoView({behavior:RM?'auto':'smooth',block:'start'})}
+function m1CostesCambio(el){const C=m1CostesIni(),v=el.value.trim().replace(',','.');C[el.dataset.m1c]=v===''||!isFinite(+v)?null:+v;C.fuente='manual';
+  const ap=m1AplicarCostes();$('#m1-ficha-tis').innerHTML=m1Hallazgos(m1Ultimo)+m1Media(m1Ultimo)+m1Costes(m1Ultimo);$('#m1-tecnica').innerHTML=m1Tecnica(m1Ultimo,m1Clasificar(m1Ultimo));
+  m1FichaGuarda();if(ap)toast('Costes guardados en tu ficha y aplicados al tester');const n=$('#m1-costes-in [data-m1c="'+el.dataset.m1c+'"]');if(n)n.focus()}
 
 function m1Probar(fam,i){const e=M1_FAM[fam]&&M1_FAM[fam].e[i];if(!e||!e.s)return;
   const tf=(m1Ultimo&&m1Ultimo.tf)||'D1',texto=e.s(m1Simbolo,M1_TF_FRASE[tf]||'');
@@ -1498,21 +1603,19 @@ function m1Probar(fam,i){const e=M1_FAM[fam]&&M1_FAM[fam].e[i];if(!e||!e.s)retur
 let m1Ultimo=null;
 async function m1Analizar(){if($('#m1-analizar').disabled)return;const movil=bxMovil()&&!m1Forzar;
   $('#m1-movil').hidden=!movil;$('#m1-analizar').hidden=movil;$('#m1-progwrap').style.display=movil?'none':'';if(movil)return;
-  $('#m1-res').hidden=true;$('#m1-nota').textContent='Preparando…';$('#m1-analizar').disabled=true;$('#m1-analizar').textContent='ANALIZANDO…';
+  $('#m1-res').hidden=true;$('#m1-calidad').innerHTML='';$('#m1-nota').textContent='Preparando…';$('#m1-analizar').disabled=true;$('#m1-analizar').textContent='ANALIZANDO…';
   const progPrev=window.MCT_MOTOR&&window.MCT_MOTOR.progreso;
   if(window.MCT_MOTOR)window.MCT_MOTOR.progreso=(etapa,pct)=>{$('#m1-prog').style.width=Math.max(3,Math.min(100,pct||0))+'%';if(etapa)$('#m1-nota').textContent=etapa};
   try{const p=await perfilMotor(CSV?CSV.texto:CSV_EJEMPLO);
     if(p&&p.error){$('#m1-nota').innerHTML='<b class="c-red">No se pudo analizar.</b> '+esc(p.error);return}
+    if(p&&p.no_apta){m1Ultimo=null;m1CalChip(p.calidad);$('#m1-calidad').innerHTML=m1Calidad(p.calidad);
+      $('#m1-nota').innerHTML='<b class="c-red">NO APTA: con estos datos no se sigue.</b> Mira abajo qué falla, arregla el archivo y vuelve a analizar.';
+      $('#m1-calidad').scrollIntoView({behavior:RM?'auto':'smooth',block:'start'});document.dispatchEvent(new CustomEvent('m1-listo'));return}
     if(!p.fig){$('#m1-nota').innerHTML='<b class="c-red">El motor no devolvió las figuras.</b> Recarga la página (Ctrl+Mayús+R).';return}
-    m1Ultimo=p;const c=m1Clasificar(p);
-    $('#m1-perfil').innerHTML=m1Particion(p.particion)+m1Perfil(p,c);$('#m1-ficha-tis').innerHTML=m1Hallazgos(p);$('#m1-facil').innerHTML=m1Figuras(p,c);$('#m1-tecnica').innerHTML=m1Tecnica(p,c);
-    $('#m1-arbol').innerHTML=m1Arbol(c);$('#m1-docs').innerHTML=m1Docs(c,p);
-    $('#m1-res').hidden=false;$('#m1-nota').textContent='';m1Vista='facil';$('#m1-facil').hidden=false;$('#m1-tecnica').hidden=true;
-    $$('#m1-vista button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.m1v==='facil')));
-    $('#m1-perfil').scrollIntoView({behavior:RM?'auto':'smooth',block:'start'})}
+    m1Pintar(p)}
   catch(e){$('#m1-nota').innerHTML='<b class="c-red">Error inesperado.</b> '+esc(e&&e.message||String(e))}
   finally{if(window.MCT_MOTOR)window.MCT_MOTOR.progreso=progPrev;$('#m1-analizar').disabled=false;$('#m1-analizar').textContent='▶ ANALIZAR ESTE ACTIVO';$('#m1-prog').style.width='0'}}
-function m1Subido(){m1Simbolo=(SPEC.activo&&SPEC.activo.simbolo)||m1Simbolo;m1Sync();$('#m1-res').hidden=true}
+function m1Subido(){m1Simbolo=(SPEC.activo&&SPEC.activo.simbolo)||m1Simbolo;m1Sync();$('#m1-res').hidden=true;$('#m1-calidad').innerHTML=''}
 function m1Abrir(){m1Sync();if(window.MCT_LAB_ABRIR){setNivel('lab');window.MCT_LAB_ABRIR('aed')}else setNivel('mision1')}
 function initLanding(){
   $('#land-tester').onclick=()=>setNivel('basic');
@@ -1532,7 +1635,12 @@ function initMision1(){$('#bx-mision1').onclick=m1Abrir;$('#m1-volver').onclick=
   $$('#m1-vista button').forEach(b=>b.onclick=()=>{m1Vista=b.dataset.m1v;$$('#m1-vista button').forEach(x=>x.setAttribute('aria-pressed',x===b));
     $('#m1-facil').hidden=m1Vista!=='facil';$('#m1-tecnica').hidden=m1Vista!=='tecnica'});
   $('#m1-res').addEventListener('click',e=>{const nd=e.target.closest('[data-m1-nada]');if(nd){const t=$('.m1t-nada');if(t){t.hidden=!t.hidden;nd.textContent=t.hidden?nd.textContent.replace('ocultar','ver'):nd.textContent.replace('ver','ocultar')}return}const b=e.target.closest('[data-m1-probar]');if(b){const[f,i]=b.dataset.m1Probar.split('|');m1Probar(f,+i)}});
-  $('#m1-imprimir').onclick=()=>window.print()}
+  $('#m1-res').addEventListener('change',e=>{const i=e.target.closest('[data-m1c]');if(i)m1CostesCambio(i)});
+  $('#m1-imprimir').onclick=()=>window.print();$('#m1-guardar').onclick=m1FichaBajar;
+  let fdest='m1';$('#m1-cargar').onclick=()=>{fdest='m1';$('#ficha-in').click()};const bf=$('#bx-ficha-b');if(bf)bf.onclick=()=>{fdest='tester';$('#ficha-in').click()};
+  $('#ficha-in').onchange=e=>{const x=e.target.files[0];if(x)m1FichaLeer(x,fdest);e.target.value=''};
+  $$('[data-cal-chip]').forEach(el=>el.onclick=()=>{if(window.MCT_LAB_ABRIR)window.MCT_LAB_ABRIR('aed',true);const t=$('#m1-calidad');if(t&&t.firstElementChild)t.scrollIntoView({behavior:RM?'auto':'smooth',block:'start'});else{const a=$('#m1-analizar');if(a)a.scrollIntoView({behavior:RM?'auto':'smooth',block:'center'})}});
+  m1CalChip(null);setTimeout(()=>{m1Restaurar().catch(()=>{})},0)}
 
 function bxResHTML(){const N=[['¿Gana más de lo que pierde?',nf(OOS.pf,2),OOS.pf>=1.3,`Por cada 1 USD que pierde, gana ${nf(OOS.pf,2)}. Pide 1,30 o más.`],
     ['¿Hay operaciones suficientes?',String(OOS.n),OOS.n>=30,`${OOS.n} operaciones en la prueba honesta. Pide 30 o más para no fiarse de la suerte.`],

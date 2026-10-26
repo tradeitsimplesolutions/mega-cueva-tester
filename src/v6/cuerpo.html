@@ -509,7 +509,9 @@
       <button type="button" class="landing-card primary" id="mis-1">
         <span class="landing-ic"><svg class="ic"><use href="#i-brujula"/></svg></span><b>MISIÓN 1 · CONOCE TU ACTIVO</b>
         <small>¿Tu activo tiende a seguir su movimiento o a devolverse? Pistas para elegir qué probar primero.</small></button>
-      <div class="landing-card landing-pronto" aria-disabled="true"><span class="landing-ic"><svg class="ic"><use href="#i-candado"/></svg></span><b>MISIÓN 2</b><small class="fuente-sello tuyo">Próximamente</small></div>
+      <a class="landing-card" id="mis-2" href="../reto/index.html#f2">
+        <span class="landing-ic"><svg class="ic"><use href="#i-varita"/></svg></span><b>MISIÓN 2 · TU HIPÓTESIS</b>
+        <small>De lo que viste en el AED a tu árbol de decisión, con pseudocódigo y prueba de objetividad. Se hace en el Laboratorio Reto Cueva (con clave).</small></a>
       <div class="landing-card landing-pronto" aria-disabled="true"><span class="landing-ic"><svg class="ic"><use href="#i-candado"/></svg></span><b>MISIÓN 3</b><small class="fuente-sello tuyo">Próximamente</small></div>
       <div class="landing-card landing-pronto" aria-disabled="true"><span class="landing-ic"><svg class="ic"><use href="#i-candado"/></svg></span><b>MISIÓN 4</b><small class="fuente-sello tuyo">Próximamente</small></div>
       <div class="landing-card landing-pronto" aria-disabled="true"><span class="landing-ic"><svg class="ic"><use href="#i-candado"/></svg></span><b>MISIÓN 5</b><small class="fuente-sello tuyo">Próximamente</small></div>
@@ -523,6 +525,7 @@
   <header class="m1p-top">
     <button type="button" class="link" id="m1-volver">← misiones</button>
     <div class="brand"><b>MEGA CUEVA<i>·</i>TESTER</b><span><em>TIS</em> · Trade It Simple</span></div>
+    <button type="button" class="calchip nd" data-cal-chip hidden></button>
     <span class="m1p-paso mono">MISIÓN 1 DE 5</span>
   </header>
   <section class="m1p-hero">
@@ -539,6 +542,8 @@
         <button type="button" class="btn" id="m1-csv-b"><svg class="ic"><use href="#i-subir"/></svg> SUBIR MI CSV</button>
         <span class="c-dim">o arrástralo aquí</span>
         <input type="file" id="m1-csv" accept=".csv,.txt,text/csv" class="sr" tabindex="-1" aria-hidden="true">
+        <button type="button" class="link" id="m1-cargar">o carga una ficha guardada (.json)</button>
+        <input type="file" id="ficha-in" accept=".json,application/json" class="sr" tabindex="-1" aria-hidden="true">
       </div>
     </div>
     <div class="m1p-run">
@@ -549,6 +554,7 @@
     <div class="prog" aria-hidden="true" id="m1-progwrap"><i id="m1-prog"></i></div>
     <p class="bx-nota" id="m1-nota" aria-live="polite"></p>
   </section>
+  <div id="m1-calidad"></div>
   <div id="m1-res" hidden>
     <section class="m1p-perfil-w" id="m1-perfil"></section>
     <div id="m1-ficha-tis"></div>
@@ -561,6 +567,7 @@
     <section id="m1-arbol"></section>
     <section id="m1-docs"></section>
     <div class="m1p-pie">
+      <button type="button" class="btn gold" id="m1-guardar">💾 GUARDAR MI FICHA (.json)</button>
       <button type="button" class="btn" id="m1-imprimir">🖨 IMPRIMIR / GUARDAR PDF</button>
       <p class="c-dim">Pistas de un AED, no un veredicto: una idea solo queda validada cuando pasa las 5 fases del protocolo.</p>
     </div>
@@ -599,6 +606,7 @@
           <button type="button" class="btn" id="bx-csv-b"><svg class="ic"><use href="#i-subir"/></svg> SUBIR MI CSV</button>
           <span class="c-dim">o arrástralo aquí</span>
           <input type="file" id="bx-csv" accept=".csv,.txt,text/csv" class="sr" tabindex="-1" aria-hidden="true">
+          <button type="button" class="link" id="bx-ficha-b">o carga tu ficha de la Misión 1 (datos + costes)</button>
         </div>
         <p class="bx-h">O usa un ejemplo</p>
         <div class="bx-ejs" id="bx-ejs" role="group" aria-label="Librería de datos"></div>

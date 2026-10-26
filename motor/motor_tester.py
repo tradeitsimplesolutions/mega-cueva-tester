@@ -279,6 +279,7 @@ def cargar_csv(texto) -> pd.DataFrame:
     if len(lineas) < 2:
         raise ErrorDatos("El fichero está vacío o tiene una sola línea.")
     avisos: list[str] = []
+    cal: dict = {}     # cuentas de la limpieza, para el informe de calidad (calidad_datos)
     muestra = lineas[:30] if len(lineas) > 30 else lineas
     sep = _detectar_separador(muestra[1:] if len(muestra) > 2 else muestra)
     try:
@@ -337,6 +338,7 @@ def cargar_csv(texto) -> pd.DataFrame:
     df = pd.DataFrame({k: _a_numero(cuerpo[col[k]], decimal_coma).to_numpy() for k in ("open", "high", "low", "close")},
                       index=pd.DatetimeIndex(fechas.to_numpy()))
     utc = _fechas_utc(fechas_txt, fechas)
+    cal["con_zona"] = utc is not None
     if utc is not None:
         df["_utc"] = utc
     for extra in ("spread", "volumen"):
@@ -350,14 +352,17 @@ def cargar_csv(texto) -> pd.DataFrame:
                          f"(primera: fila {i + 1 + int(tiene_cabecera)}). Revisa el separador decimal y que no haya texto en los precios.")
     if malos.any():
         avisos.append(f"{int(malos.sum())} fila(s) con precios vacíos o no numéricos descartadas.")
+        cal["no_numericas"] = int(malos.sum())
         df = df[~malos.to_numpy()]
     df = df[df.index.notna()]
     if not df.index.is_monotonic_increasing:
         avisos.append("Las velas no estaban en orden cronológico; se han ordenado (de la más antigua a la más reciente).")
+        cal["desordenadas"] = True
         df = df.sort_index(kind="mergesort")
     dup = df.index.duplicated(keep="last")
     if dup.any():
         avisos.append(f"{int(dup.sum())} vela(s) con fecha repetida; se conserva la última.")
+        cal["duplicadas"] = int(dup.sum())
         df = df[~dup]
     # coherencia OHLC: si el máximo casi nunca es el máximo, las columnas están cambiadas
     o, h, l, c = (df[k].to_numpy() for k in ("open", "high", "low", "close"))
@@ -369,6 +374,7 @@ def cargar_csv(texto) -> pd.DataFrame:
     malas = (h < l) | (c <= 0) | (o <= 0)
     if malas.any():
         avisos.append(f"{int(malas.sum())} vela(s) imposibles (máximo < mínimo o precio ≤ 0) descartadas.")
+        cal["imposibles"] = int(malas.sum())
         df = df[~malas]
     if incoh.any():
         avisos.append(f"{int(incoh.sum())} vela(s) con apertura/cierre fuera del rango máximo-mínimo (se conservan).")
@@ -380,6 +386,7 @@ def cargar_csv(texto) -> pd.DataFrame:
             n0 = len(df)
             df = _fusionar_fin_de_semana(df)
             avisos.append(f"{n0 - len(df)} vela(s) de sábado/domingo (sesiones sueltas del broker) fundidas con el día hábil contiguo.")
+            cal["finde_fundidas"] = int(n0 - len(df))
     if len(df) < MIN_VELAS:
         raise ErrorDatos(f"Tras limpiar el fichero quedan {len(df)} velas; hacen falta al menos {MIN_VELAS}.")
     dif = np.diff(df.index.values.astype("datetime64[s]").astype(np.int64)) / 60.0
@@ -389,9 +396,11 @@ def cargar_csv(texto) -> pd.DataFrame:
         if huecos.size:
             k = huecos[0]
             avisos.append(f"{huecos.size} hueco(s) grandes en el histórico (p. ej. de {df.index[k].date()} a {df.index[k + 1].date()}).")
+            cal["huecos"] = int(huecos.size); cal["hueco_ej"] = f"{df.index[k].date()} → {df.index[k + 1].date()}"
     df.attrs["tf"] = tf
     df.attrs["avisos"] = avisos
     df.attrs["filas_leidas"] = int(filas)
+    df.attrs["calidad_raw"] = cal
     return df
 
 
@@ -2591,6 +2600,7 @@ def perfil_activo(df: pd.DataFrame) -> dict:
     ret_anual_cagr = float((c[-1] / c[0]) ** (1.0 / anios) - 1.0) if c[0] > 0 and anios > 0 else float("nan")
     fig = _figuras_aed(df, c, ret, sma, media_larga, ventana, er, barras_anio, tf)
     hall = _hallazgos_tis(df, c, ret, tf)
+    hall["media"] = _prueba_media(df, tf)
     return _limpio({
         "fig": fig, "particion": part, "hallazgos": hall,
         "n_velas": n, "tf": tf, "desde": str(df.index[0].date()), "hasta": str(df.index[-1].date()), "anios": round(anios, 1),
@@ -2604,12 +2614,132 @@ def perfil_activo(df: pd.DataFrame) -> dict:
     })
 
 
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+# 8c. CALIDAD DE LOS DATOS (Reto Cueva, día 2): ocho preguntas antes de mirar un gráfico
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+def calidad_datos(df: pd.DataFrame):
+    """(informe, df a usar). Veredicto APTA / APTA CON AVISOS / NO APTA. Con NO APTA no se sigue.
+    El «intradía disfrazado» (años de velas diarias dentro de un archivo horario) se recorta solo y se avisa:
+    con él, el AED por hora diría que lo que más se mueve es la hora del cierre diario (p. ej. las 17:00)."""
+    cal = dict(df.attrs.get("calidad_raw", {}))
+    tf = df.attrs.get("tf") or _detectar_tf(df.index)[0]
+    intradia = tf not in ("D1", "W1", "MN")
+    C = []
+    def poner(id_, t, estado, txt):
+        C.append({"id": id_, "t": t, "estado": estado, "txt": txt})
+    # 1 · fecha y zona horaria
+    if intradia:
+        poner("zona", "Fecha y zona horaria", "ok" if cal.get("con_zona") else "aviso",
+              "Cada vela trae su zona horaria." if cal.get("con_zona") else
+              "Las fechas no traen zona horaria: comprueba en qué hora viene (servidor del bróker o Nueva York) antes de mirar horas.")
+    else:
+        poner("zona", "Fecha y zona horaria", "ok", "Velas diarias: la zona solo decide qué día es cada vela." + (" Orden corregido." if cal.get("desordenadas") else ""))
+    # 2 · duplicados
+    d = cal.get("duplicadas", 0)
+    poner("dup", "Duplicados", "ok" if not d else "aviso", "Ninguna vela repetida." if not d else f"{d} vela(s) repetidas: se conservó la última.")
+    # 3 · velas imposibles
+    m = cal.get("imposibles", 0) + cal.get("no_numericas", 0)
+    poner("imp", "Velas imposibles", "ok" if not m else "aviso", "Ningún precio en cero ni mínimo por encima del máximo." if not m else f"{m} vela(s) imposibles o sin número, descartadas.")
+    # 4 · huecos
+    h = cal.get("huecos", 0)
+    poner("hue", "Huecos", "ok" if not h else "aviso", "Sin huecos grandes." if not h else f"{h} hueco(s) grandes (p. ej. {cal.get('hueco_ej', '')}). No se rellenan nunca.")
+    # 5 · saltos raros
+    r = df.close.pct_change().dropna()
+    sd = float(r.std()) if len(r) > 2 else 0.0
+    raros = r[(r - r.mean()).abs() > 10 * sd] if sd > 0 else r.iloc[:0]
+    poner("sal", "Saltos raros", "ok" if raros.empty else "aviso",
+          "Ningún movimiento de más de 10 desviaciones." if raros.empty else
+          f"{len(raros)} vela(s) con un salto de más de 10 desviaciones (p. ej. {raros.index[0].date()}: {raros.iloc[0]:+.1%}). Míralas en el gráfico: ¿reales o error?")
+    # 6 · fines de semana
+    fu = cal.get("finde_fundidas", 0)
+    # en intradía, la vela del domingo por la tarde es la apertura normal de índices y divisas: solo se mira el sábado
+    sab = int((df.index.dayofweek == 5).sum()) if intradia else int((df.index.dayofweek >= 5).sum())
+    if fu:
+        poner("fin", "Fines de semana", "aviso", f"{fu} vela(s) de domingo o sábado (mini-sesiones del bróker) fundidas con el día hábil contiguo.")
+    elif sab and sab / len(df) < 0.10:
+        poner("fin", "Fines de semana", "aviso", f"{sab} vela(s) en sábado o domingo con el mercado cerrado: revísalas.")
+    else:
+        poner("fin", "Fines de semana", "ok", "Sin velas sueltas de fin de semana." if not sab else "Opera también en fin de semana (cripto): es normal.")
+    # 7 · intradía disfrazado: días con una sola vela dentro de un archivo horario
+    usar = df
+    if intradia:
+        por_dia = pd.Series(1, index=df.index.normalize()).groupby(level=0).size()
+        unica = por_dia == 1
+        if unica.mean() > 0.05:
+            # último día con una sola vela dentro de un tramo «diario»: se usa desde el primer día con varias velas después
+            racha = unica.rolling(20, min_periods=1).mean()
+            ult = racha[racha > 0.8].index.max() if (racha > 0.8).any() else None
+            if ult is not None and ult < df.index[-1]:
+                usar = df[df.index.normalize() > ult]
+                poner("dis", "Intradía disfrazado", "aviso",
+                      f"{int(unica.sum())} días con una sola vela: hasta {ult.date()} el archivo trae velas DIARIAS dentro del horario. "
+                      f"Se usa solo desde {usar.index[0].date()} (velas horarias de verdad).")
+            else:
+                poner("dis", "Intradía disfrazado", "falla", f"El {unica.mean():.0%} de los días tiene una sola vela: no es un archivo intradía de verdad.")
+        else:
+            poner("dis", "Intradía disfrazado", "ok", "Todos los años tienen varias velas por día.")
+    else:
+        poner("dis", "Intradía disfrazado", "ok", "No aplica a velas diarias.")
+    # 8 · años de historia
+    anios = (usar.index[-1] - usar.index[0]).days / 365.25
+    poner("ani", "Años de historia", "falla" if anios < 3 else "aviso" if anios < 5 else "ok",
+          f"{anios:.1f} años." + (" Menos de 3: el examen queda corto." if anios < 3 else " Pocos para tres épocas sólidas." if anios < 5 else ""))
+    ver = "NO APTA" if any(c["estado"] == "falla" for c in C) else "APTA CON AVISOS" if any(c["estado"] == "aviso" for c in C) else "APTA"
+    usar.attrs = dict(df.attrs)
+    return {"veredicto": ver, "checks": C, "tf": tf, "velas": int(len(usar)), "desde": str(usar.index[0].date()), "hasta": str(usar.index[-1].date())}, usar
+
+
+def _prueba_media(df: pd.DataFrame, tf: str) -> dict:
+    """¿Funciona gestionar con una media móvil? Dentro mientras el cierre esté sobre su media (decide al cierre,
+    entra/sale en la apertura siguiente), sin costes, solo en el DISEÑO. Muchos cruces cortos y perdedores =
+    whipsaw (zigzag que te saca y te mete); pocas operaciones largas que pagan = el activo deja seguir tendencias."""
+    o, c = df.open.to_numpy(float), df.close.to_numpy(float)
+    anios = max((df.index[-1] - df.index[0]).days / 365.25, 1e-9)
+    bh = float(c[-1] / c[0] - 1)
+    filas = []
+    for N in (20, 50, 100, 200):
+        if len(c) < N + 30:
+            continue
+        sma = pd.Series(c).rolling(N).mean().to_numpy()
+        dentro = np.r_[False, (c > sma)[:-1]]       # señal al cierre t-1 → posición en la vela t
+        trades, i, n = [], 0, len(c)
+        while i < n:
+            if dentro[i] and (i == 0 or not dentro[i - 1]):
+                j = i
+                while j + 1 < n and dentro[j + 1]:
+                    j += 1
+                px_in = o[i]
+                px_out = o[j + 1] if j + 1 < n else c[-1]
+                trades.append((px_out / px_in - 1, j - i + 1))
+                i = j + 1
+            else:
+                i += 1
+        if not trades:
+            continue
+        rr = np.array([t[0] for t in trades]); dur = np.array([t[1] for t in trades])
+        g, p = rr[rr > 0].sum(), -rr[rr <= 0].sum()
+        pf_ = float(g / p) if p > 0 else PF_INF
+        perd_cortas = float(((rr <= 0) & (dur <= 5)).mean())
+        tot = float(np.prod(1 + rr) - 1)
+        lect = "funciona" if pf_ >= 1.3 else "whipsaw" if pf_ < 1.0 else "a medias"
+        filas.append({"n": N, "ops": len(rr), "ops_anio": len(rr) / anios, "pf": pf_, "acierto": float((rr > 0).mean()),
+                      "perd_cortas": perd_cortas, "dur_media": float(dur.mean()), "ret": tot, "media_op": float(rr.mean()), "tiempo_dentro": float(dentro.mean()),
+                      "lectura": lect})
+    tend = sum(f["lectura"] == "funciona" for f in filas); whip = sum(f["lectura"] == "whipsaw" for f in filas)
+    ver = "tendencial" if tend >= max(2, len(filas) - 1) else "whipsaw" if whip >= 2 else "mixto"
+    return {"filas": filas, "comprar_mantener": bh, "veredicto": ver}
+
+
 def perfil_activo_json(texto_csv) -> str:
     """Atajo para la interfaz (Pyodide): CSV en texto → JSON de perfil_activo() o error legible."""
     try:
         df = cargar_csv(texto_csv)
+        cal, df = calidad_datos(df)
+        if cal["veredicto"] == "NO APTA":
+            return json.dumps(_limpio({"calidad": cal, "no_apta": True}), ensure_ascii=False)
         p = perfil_activo(df)
         p["avisos"] = df.attrs.get("avisos", [])
+        p["calidad"] = cal
         return json.dumps(p, ensure_ascii=False)
     except (ErrorDatos, ErrorSpec) as e:
         return json.dumps({"error": str(e), "tipo": type(e).__name__}, ensure_ascii=False)
