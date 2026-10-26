@@ -1187,9 +1187,10 @@ body.basic .toast{left:50%;max-width:calc(100vw - 32px)}
 .fb-l{font-size:max(13px,.85rem)}.fb-acc{display:flex;gap:.8rem;align-items:center;flex-wrap:wrap}
 @media (max-width:760px){.fb-btn{bottom:calc(16px + env(safe-area-inset-bottom,0px))}}
 
-/* ---------- tarjeta del Laboratorio Reto Cueva en la portada (ancha, con candado) ---------- */
-.landing-card.lab-card{grid-column:1/-1;flex-direction:row;align-items:center;gap:1.1rem;text-decoration:none;border-color:var(--gold);
-  background:linear-gradient(90deg,rgba(var(--gold-rgb),.10),transparent 70%),var(--pan2)}
-.lab-card .lab-card-t{display:flex;flex-direction:column;gap:.3rem;flex:1;min-width:0}
-.lab-card .fuente-sello{flex:none}
-@media (max-width:640px){.landing-card.lab-card{flex-direction:column;align-items:flex-start}}
+/* ---------- portada: 4 tarjetas en una fila (el laboratorio, con candado y borde dorado) ---------- */
+#landing .landing-in{max-width:76rem}
+#landing .landing-cards{grid-template-columns:repeat(4,minmax(0,1fr))}
+.landing-card.lab-card{text-decoration:none;border-color:var(--gold);background:linear-gradient(180deg,rgba(var(--gold-rgb),.10),transparent 60%),var(--pan2)}
+.lab-card .fuente-sello{margin-top:auto;align-self:flex-start}
+@media (max-width:1100px){#landing .landing-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:640px){#landing .landing-cards{grid-template-columns:1fr}}
