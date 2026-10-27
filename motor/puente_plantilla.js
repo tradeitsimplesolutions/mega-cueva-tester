@@ -248,6 +248,24 @@
     return tarea;
   };
 
+  /* Laboratorio, fases 03-04: una corrida con la partición del AED; spec._abierto = diseno | examen | validacion */
+  M.backtestLab = function (spec, csv) {
+    var tarea = cola.then(async function () {
+      try {
+        if (typeof csv !== 'string' || !csv.trim()) return { error: 'Faltan los datos: analiza tu activo en la fase 01.', tipo: 'ErrorDatos' };
+        if (!listo) {
+          try { await M.iniciar(); } catch (e) { return { error: e.message, tipo: 'ErrorCarga' }; }
+        }
+        var txt = await correrUna(typeof spec === 'string' ? spec : JSON.stringify(spec), csv, 'mt.backtest_lab_json(MCT_CSV, MCT_SPEC)');
+        try { return JSON.parse(txt); } catch (e) { return { error: 'El motor devolvió una respuesta que no se puede leer.', tipo: 'ErrorInterno' }; }
+      } catch (e) {
+        return { error: 'Error inesperado: ' + String((e && e.message) || e), tipo: 'ErrorInterno' };
+      }
+    });
+    cola = tarea.catch(function () { /* la cola sigue */ });
+    return tarea;
+  };
+
   Object.defineProperty(M, 'listo', { get: function () { return listo; }, enumerable: true });
   Object.defineProperty(M, 'modo', { get: function () { return modo; }, enumerable: true });
   M.progreso = null;

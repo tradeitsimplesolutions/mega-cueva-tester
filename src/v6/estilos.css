@@ -1294,3 +1294,5 @@ table.m1t-t{width:100%;border-collapse:collapse;font-size:.92rem}
 .m1p-choque{margin:.6rem 0 0;padding:.55rem .7rem;border-left:3px solid var(--gold);background:rgba(var(--gold-rgb),.08);border-radius:6px;font-size:.88rem}
 
 @media (max-width:640px){.m1p-t th:nth-child(3),.m1p-t td:nth-child(3){display:none}.m1p-t{width:100%;table-layout:auto}.m1p-t td{white-space:normal;word-break:break-word}.m1p-ficha{overflow-x:auto}}
+
+#mis-3,#mis-3 *{text-decoration:none}

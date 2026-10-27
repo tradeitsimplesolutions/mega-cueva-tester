@@ -2735,6 +2735,68 @@ def _prueba_media(df: pd.DataFrame, tf: str) -> dict:
     return {"filas": filas, "comprar_mantener": bh, "veredicto": ver}
 
 
+def backtest_lab(texto_csv, spec) -> dict:
+    """Fases 03-04 del Laboratorio Reto Cueva: UNA corrida de la regla con la MISMA partición que el AED
+    (diseño · examen · validación). `spec["_abierto"]` = hasta dónde ha abierto el alumno: "diseno" (por defecto),
+    "examen" o "validacion". Lo que no está abierto NI SE SIMULA: los datos se cortan antes de correr la regla,
+    así que no hay forma de que una cifra del tramo cerrado llegue a la pantalla."""
+    spec = json.loads(spec) if isinstance(spec, str) else dict(spec)
+    abierto = str(spec.pop("_abierto", "diseno") or "diseno")
+    if abierto not in ("diseno", "examen", "validacion"):
+        abierto = "diseno"
+    df = cargar_csv(texto_csv)
+    cal, df = calidad_datos(df)
+    if cal["veredicto"] == "NO APTA":
+        raise ErrorDatos("Los datos son NO APTA en la calidad (fase 01): con NO APTA no se sigue.")
+    part, _ = _particion_tis(df)
+    s = normalizar_spec(spec)
+    orden = ["diseno", "examen", "validacion"][: ["diseno", "examen", "validacion"].index(abierto) + 1]
+    fin = {"diseno": part["examen"]["desde"], "examen": part["validacion"]["desde"], "validacion": None}[abierto]
+    d = df[df.index < pd.Timestamp(fin)] if fin else df
+    d = d[[c for c in ("open", "high", "low", "close", "volumen", "spread") if c in d.columns]].astype(float)
+    D = _Datos(d)
+    c = _correr(D, s, dict(s["parametros"]), {})
+    un_dia = pd.Timedelta(days=1)
+    tramos = {}
+    for t in orden:
+        ini = pd.Timestamp(part[t]["desde"]); hasta = pd.Timestamp(part[t]["hasta"]) + un_dia
+        tramos[t] = {**_tramo(c, ini, hasta), "desde": part[t]["desde"], "hasta": part[t]["hasta"]}
+    juez = orden[-1]
+    J = tramos[juez]
+    crit = {"pf": bool(J["pf"] >= UMBRAL["pf_oos"]), "n": bool(J["n"] >= UMBRAL["n_oos"]),
+            "dd": bool(J["maxdd"] < UMBRAL["dd_oos"]), "pf_sin_mejor": bool(J["pf_sin_mejor"] > UMBRAL["pf_sin_mejor"])}
+    # curva y caídas, reducidas a ≤ 700 puntos (el último siempre dentro)
+    cp = c.cp[1:]
+    pico = np.maximum.accumulate(cp)
+    dd = cp / pico - 1.0
+    paso = max(1, int(np.ceil(len(cp) / 700)))
+    sel = np.r_[np.arange(0, len(cp), paso), len(cp) - 1] if len(cp) else np.zeros(0, int)
+    sel = np.unique(sel)
+    bh = d.close.to_numpy(float); bh = bh / bh[0]
+    eq = {"f": [str(c.idx[i].date()) for i in sel], "v": [float(cp[i]) for i in sel], "dd": [float(dd[i]) for i in sel],
+          "bh": [float(bh[i]) for i in sel]}
+    T = c.trades
+    tramo_de = lambda f: next((t for t in reversed(orden) if pd.Timestamp(f) >= pd.Timestamp(part[t]["desde"])), "diseno")  # noqa: E731
+    ops = [{"in": str(pd.Timestamp(r.fecha_in).date()), "out": str(pd.Timestamp(r.fecha_out).date()), "lado": "largo" if r.lado == 1 else "corto",
+            "ret": float(r.ret), "velas": int(r.barras), "motivo": str(r.motivo), "tramo": tramo_de(r.fecha_in)} for r in T.itertuples()]
+    anual = {}
+    if len(T):
+        for r in T.itertuples():
+            y = str(pd.Timestamp(r.fecha_in).year)
+            a = anual.setdefault(y, [0, 0.0]); a[0] += 1; a[1] += float(r.ret)
+    return _limpio({"particion": part, "abierto": abierto, "juez": juez, "tramos": tramos, "criterios": crit,
+                    "pasa": all(crit.values()), "frontera": bool(1.25 <= J["pf"] <= 1.35), "eq": eq,
+                    "operaciones": ops[-300:], "n_operaciones": len(ops), "anual": anual,
+                    "pseudocodigo": pseudocodigo(s), "tf": cal["tf"], "calidad": cal["veredicto"]})
+
+
+def backtest_lab_json(texto_csv, spec_json) -> str:
+    try:
+        return json.dumps(backtest_lab(texto_csv, spec_json), ensure_ascii=False)
+    except (ErrorDatos, ErrorSpec) as e:
+        return json.dumps({"error": str(e), "tipo": type(e).__name__}, ensure_ascii=False)
+
+
 def perfil_activo_json(texto_csv) -> str:
     """Atajo para la interfaz (Pyodide): CSV en texto → JSON de perfil_activo() o error legible."""
     try:
