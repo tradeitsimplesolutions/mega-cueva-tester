@@ -2709,10 +2709,25 @@ def calidad_datos(df: pd.DataFrame):
         poner("dis", "Intradía disfrazado", "ok", "No aplica a velas diarias.")
     r = usar.close.pct_change().dropna()
     sd = float(r.std()) if len(r) > 2 else 0.0
-    raros = r[(r - r.mean()).abs() > 10 * sd] if sd > 0 else r.iloc[:0]
+    # un salto «raro» es el que parece un error de datos: enorme (> 10 desviaciones) y que se deshace en la vela
+    # siguiente (pico y vuelta). Un crash real (marzo de 2020) también es enorme, pero no se deshace: es mercado.
+    ext = (r - r.mean()).abs() > 10 * sd if sd > 0 else r.astype(bool) & False
+    sig_r = r.shift(-1)
+    # solo entre velas seguidas: tras una noche o un fin de semana, un giro brusco es mercado (13-mar-2020), no un error
+    paso_sig = pd.Series(r.index, index=r.index).diff().shift(-1)
+    med = pd.Series(r.index).diff().median()
+    seguida = paso_sig <= (pd.Timedelta(days=4) if not intradia else 2 * med)
+    # y la vuelta es un SALTO entre velas (la siguiente abre ya lejos del pico): un error no cotiza en medio.
+    # Un rumor que sube y se deshace (7-abr-2025) se opera vela a vela: la siguiente abre donde cerró el pico.
+    ab_sig = (usar.open.shift(-1) / usar.close - 1.0).reindex(r.index)
+    vuelta = ext & seguida & (np.sign(sig_r) == -np.sign(r)) & (sig_r.abs() >= 0.7 * r.abs()) & (ab_sig.abs() >= 0.5 * r.abs())
+    raros, reales = r[vuelta], r[ext & ~vuelta]
     poner("sal", "Saltos raros", "ok" if raros.empty else "aviso",
-          "Ningún movimiento de más de 10 desviaciones." if raros.empty else
-          f"{len(raros)} vela(s) con un salto de más de 10 desviaciones (p. ej. {raros.index[0].date()}: {raros.iloc[0]:+.1%}). Míralas en el gráfico: ¿reales o error?")
+          (("Ningún pico que se deshaga en la vela siguiente (el patrón típico de un error de datos)."
+            + (f" Hay {len(reales)} movimiento(s) extremo(s) que no se deshacen (p. ej. {reales.index[0].date()}: {reales.iloc[0]:+.1%}): son mercado, no errores." if len(reales) else ""))
+           if raros.empty else
+           f"{len(raros)} pico(s) de más de 10 desviaciones que se deshacen en la vela siguiente (p. ej. {raros.index[0].date()}: {raros.iloc[0]:+.1%}). "
+           "Ese patrón suele ser un error de datos: míralos en el gráfico."))
     orden = ["zona", "dup", "imp", "hue", "sal", "fin", "dis"]
     C.sort(key=lambda x: orden.index(x["id"]) if x["id"] in orden else 99)
     # 8 · años de historia
@@ -2721,12 +2736,12 @@ def calidad_datos(df: pd.DataFrame):
     # solo calma) no dice nada del otro. Cuantos más años, mejor: más regímenes y un examen más largo.
     i_ex_, _ = _cortes_tis(usar.index)
     a_dis = (usar.index[max(i_ex_ - 1, 0)] - usar.index[0]).days / 365.25
-    poner("ani", "Años de historia", "falla" if a_dis < 5 else "aviso" if a_dis < 10 else "ok",
+    poner("ani", "Años de historia", "falla" if a_dis < 5 else "ok",
           f"{anios:.1f} años en total; tu diseño (lo que miras) cubre {a_dis:.1f}. " +
           ("El mínimo son 5 años de diseño: con menos, tu regla puede haber visto un solo régimen (solo subidas, solo calma) "
            "y no sabrás cómo se porta en el otro. Sube más historia: hacen falta más años, no más velas."
            if a_dis < 5 else
-           "Vale, pero cuantos más años mejor: que el diseño incluya alguna crisis y algún mercado lateral. Lo ideal, 10 o más."
+           "Cumple el mínimo de 5. Aun así, cuantos más años mejor: que el diseño incluya alguna crisis y algún mercado lateral (lo ideal, 10 o más)."
            if a_dis < 10 else "Bien: varios regímenes dentro del diseño."))
     ver = "NO APTA" if any(c["estado"] == "falla" for c in C) else "APTA CON AVISOS" if any(c["estado"] == "aviso" for c in C) else "APTA"
     usar.attrs = dict(df.attrs)

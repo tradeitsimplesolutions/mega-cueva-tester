@@ -987,7 +987,7 @@ const LIB_CACHE={};   /* el CSV descomprimido y sus fechas, por id: la 2.ª vez 
 function pintarLib(){
   const z=$('#pi-lib');if(z)z.innerHTML=LIB.map(e=>`<button type="button" class="btn mini" data-lib="${e.id}" title="${esc(e.nombre+' · '+nf(e.velas,0)+' velas · '+e.desde+' → '+e.hasta)}">${esc(libEtiq(e))}</button>`).join('');
   const x=$('#bx-ejs');if(x)x.innerHTML=LIB.map(e=>`<button type="button" class="bx-ej" data-ej="${e.id}" aria-pressed="false"><b>${esc(e.b_t)}</b><small>${esc(e.b_s)}</small><small class="bx-ej-r">${esc(yr(e.desde)+'–'+yr(e.hasta))}</small></button>`).join('');
-  const m=$('#m1-ejs');if(m)m.innerHTML=LIB.filter(e=>e.id!=='nas100_m15').map(e=>`<button type="button" class="bx-ej" data-ej="${e.id}" aria-pressed="false"><b>${esc(e.b_t)}</b><small>${esc(e.b_s)}</small><small class="bx-ej-r">${esc(yr(e.desde)+'–'+yr(e.hasta))}</small></button>`).join('');
+  const m=$('#m1-ejs');if(m)m.innerHTML=LIB.map(e=>`<button type="button" class="bx-ej" data-ej="${e.id}" aria-pressed="false"><b>${esc(e.b_t)}</b><small>${esc(e.b_s)}</small><small class="bx-ej-r">${esc(yr(e.desde)+'–'+yr(e.hasta))}</small></button>`).join('');
   $$('#pi-lib [data-lib]').forEach(b=>b.onclick=()=>usarLib(b.dataset.lib,false));
   $$('#bx-ejs [data-ej]').forEach(b=>b.onclick=()=>bxDato(b.dataset.ej));
   $$('#m1-ejs [data-ej]').forEach(b=>b.onclick=()=>m1Dato(b.dataset.ej))}
