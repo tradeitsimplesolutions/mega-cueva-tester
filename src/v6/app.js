@@ -1602,6 +1602,7 @@ function m1CostesCambio(el){const C=m1CostesIni(),v=el.value.trim().replace(',',
   m1FichaGuarda();if(ap)toast('Costes guardados en tu ficha y aplicados al tester');const n=$('#m1-costes-in [data-m1c="'+el.dataset.m1c+'"]');if(n)n.focus()}
 
 function m1Probar(fam,i){const e=M1_FAM[fam]&&M1_FAM[fam].e[i];if(!e||!e.s)return;
+  if(window.MCT_LAB&&!confirm('Ojo: el Cueva Tester mira TODA la historia, examen y validación incluidos. Para tu Misión 3 usa las fases 03 y 04 del laboratorio.\n\n¿Abrir el tester igualmente?'))return;
   const tf=(m1Ultimo&&m1Ultimo.tf)||'D1',texto=e.s(m1Simbolo,M1_TF_FRASE[tf]||'');
   setNivel('basic');const ta=$('#bx-idea');ta.value=texto;ta.dispatchEvent(new Event('input'));
   ta.scrollIntoView({behavior:RM?'auto':'smooth',block:'center'});ta.focus();
@@ -1621,7 +1622,8 @@ async function m1Analizar(){if($('#m1-analizar').disabled)return;const movil=bxM
     m1Pintar(p)}
   catch(e){$('#m1-nota').innerHTML='<b class="c-red">Error inesperado.</b> '+esc(e&&e.message||String(e))}
   finally{$('#mision1').classList.remove('analizando');if(window.MCT_MOTOR)window.MCT_MOTOR.progreso=progPrev;$('#m1-analizar').disabled=false;$('#m1-analizar').textContent='▶ ANALIZAR ESTE ACTIVO';$('#m1-prog').style.width='0'}}
-function m1Subido(){m1Simbolo=(SPEC.activo&&SPEC.activo.simbolo)||m1Simbolo;m1Sync();if(m1CostMap[String(m1Simbolo).toUpperCase()])m1AplicarCostes();$('#m1-res').hidden=true;$('#m1-calidad').innerHTML='';$('#mision1').classList.remove('con-res')}
+function m1Subido(){const nom=String(CSV&&CSV.nombre||'').toUpperCase().replace(/\.(CSV|TXT)$/,''),k=Object.keys(PERFILES).sort((x,y)=>y.length-x.length).find(x=>nom.includes(x));
+  m1Simbolo=k||nom.replace(/[^A-Z0-9]+/g,' ').trim().split(' ').pop()||'MI ACTIVO';m1Sync();if(m1CostMap[String(m1Simbolo).toUpperCase()])m1AplicarCostes();$('#m1-res').hidden=true;$('#m1-calidad').innerHTML='';$('#mision1').classList.remove('con-res')}
 function m1Abrir(){m1Sync();if(window.MCT_LAB_ABRIR){setNivel('lab');window.MCT_LAB_ABRIR('aed')}else setNivel('mision1')}
 function initLanding(){
   $('#land-tester').onclick=()=>setNivel('basic');
