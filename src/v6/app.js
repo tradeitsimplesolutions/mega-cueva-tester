@@ -1602,7 +1602,7 @@ function m1CostesCambio(el){const C=m1CostesIni(),v=el.value.trim().replace(',',
   m1FichaGuarda();if(ap)toast('Costes guardados en tu ficha y aplicados al tester');const n=$('#m1-costes-in [data-m1c="'+el.dataset.m1c+'"]');if(n)n.focus()}
 
 function m1Probar(fam,i){const e=M1_FAM[fam]&&M1_FAM[fam].e[i];if(!e||!e.s)return;
-  if(window.MCT_LAB&&!confirm('Ojo: el Cueva Tester mira TODA la historia, examen y validación incluidos. Para tu Misión 3 usa las fases 03 y 04 del laboratorio.\n\n¿Abrir el tester igualmente?'))return;
+  if(window.MCT_LAB){if(window.MCT_LAB_PLANTILLA)window.MCT_LAB_PLANTILLA(e.n);return}
   const tf=(m1Ultimo&&m1Ultimo.tf)||'D1',texto=e.s(m1Simbolo,M1_TF_FRASE[tf]||'');
   setNivel('basic');const ta=$('#bx-idea');ta.value=texto;ta.dispatchEvent(new Event('input'));
   ta.scrollIntoView({behavior:RM?'auto':'smooth',block:'center'});ta.focus();

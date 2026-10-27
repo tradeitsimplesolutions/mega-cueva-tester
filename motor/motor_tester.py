@@ -2712,8 +2712,17 @@ def calidad_datos(df: pd.DataFrame):
     C.sort(key=lambda x: orden.index(x["id"]) if x["id"] in orden else 99)
     # 8 · años de historia
     anios = (usar.index[-1] - usar.index[0]).days / 365.25
-    poner("ani", "Años de historia", "falla" if anios < 3 else "aviso" if anios < 5 else "ok",
-          f"{anios:.1f} años." + (" Menos de 3: el examen queda corto." if anios < 3 else " Pocos para tres épocas sólidas." if anios < 5 else ""))
+    # el DISEÑO (lo que se mira, el IS) pide al menos 5 años: una regla que solo ha visto un régimen (solo subidas,
+    # solo calma) no dice nada del otro. Cuantos más años, mejor: más regímenes y un examen más largo.
+    i_ex_, _ = _cortes_tis(usar.index)
+    a_dis = (usar.index[max(i_ex_ - 1, 0)] - usar.index[0]).days / 365.25
+    poner("ani", "Años de historia", "falla" if a_dis < 5 else "aviso" if a_dis < 10 else "ok",
+          f"{anios:.1f} años en total; tu diseño (lo que miras) cubre {a_dis:.1f}. " +
+          ("El mínimo son 5 años de diseño: con menos, tu regla puede haber visto un solo régimen (solo subidas, solo calma) "
+           "y no sabrás cómo se porta en el otro. Sube más historia (o una temporalidad menor no lo arregla: hacen falta AÑOS)."
+           if a_dis < 5 else
+           "Vale, pero cuantos más años mejor: que el diseño incluya alguna crisis y algún mercado lateral. Lo ideal, 10 o más."
+           if a_dis < 10 else "Bien: varios regímenes dentro del diseño."))
     ver = "NO APTA" if any(c["estado"] == "falla" for c in C) else "APTA CON AVISOS" if any(c["estado"] == "aviso" for c in C) else "APTA"
     usar.attrs = dict(df.attrs)
     return {"veredicto": ver, "checks": C, "tf": tf, "velas": int(len(usar)), "desde": str(usar.index[0].date()), "hasta": str(usar.index[-1].date())}, usar
@@ -2762,14 +2771,15 @@ def _prueba_media(df: pd.DataFrame, tf: str) -> dict:
 
 def backtest_lab(texto_csv, spec) -> dict:
     """Fases 03-04 del Laboratorio Reto Cueva: la regla con la MISMA partición que el AED (diseño · examen · validación).
-    `spec["_abierto"]` = hasta dónde ha abierto el alumno: "diseno" (por defecto), "examen" o "validacion".
-    Lo que no está abierto NI SE SIMULA: los datos se cortan, por posición, antes de correr la regla.
-    Cada tramo se mide en la corrida cortada al final de ESE tramo (la operación viva se cierra en su última vela),
-    así la cifra del diseño que el alumno ya vio no cambia al abrir el examen."""
+    `spec["_abierto"]` = tramos que el alumno ha abierto además del diseño: "examen", "validacion", ambos (lista) o "diseno".
+    Lo que no está abierto NO llega a la pantalla: los datos se cortan antes de correr la regla y, si se abre la validación
+    sin el examen, el examen se simula (hace falta para llegar a la validación) pero no se devuelve ni una cifra, vela u
+    operación suya, y la curva de la validación se reescala para que no delate cuánto ganó o perdió en el examen.
+    Cada tramo se mide en la corrida cortada al final de ESE tramo: la cifra del diseño no cambia al abrir el examen."""
     spec = json.loads(spec) if isinstance(spec, str) else dict(spec)
-    abierto = str(spec.pop("_abierto", "diseno") or "diseno")
-    if abierto not in ("diseno", "examen", "validacion"):
-        abierto = "diseno"
+    ab = spec.pop("_abierto", "diseno") or "diseno"
+    ab = set([ab] if isinstance(ab, str) else ab)
+    abiertos = ["diseno"] + [t for t in ("examen", "validacion") if t in ab]
     df = cargar_csv(texto_csv)
     cal, df = calidad_datos(df)
     if cal["veredicto"] == "NO APTA":
@@ -2777,16 +2787,18 @@ def backtest_lab(texto_csv, spec) -> dict:
     part, _ = _particion_tis(df)
     i_ex, i_val = _cortes_tis(df.index)
     s = normalizar_spec(spec)
-    orden = ["diseno", "examen", "validacion"][: ["diseno", "examen", "validacion"].index(abierto) + 1]
     lim = {"diseno": (0, i_ex), "examen": (i_ex, i_val), "validacion": (i_val, len(df))}
     df = df[[c for c in ("open", "high", "low", "close", "volumen", "spread") if c in df.columns]].astype(float)
     corr = {}
-    for t in orden:
-        D = _Datos(df.iloc[: lim[t][1]])
-        corr[t] = _correr(D, s, dict(s["parametros"]), {})
-    c = corr[orden[-1]]
+    for t in abiertos:
+        corr[t] = _correr(_Datos(df.iloc[: lim[t][1]]), s, dict(s["parametros"]), {})
+    c = corr[abiertos[-1]]
+    fin_vis = lim[abiertos[-1]][1]
+    oculto = np.zeros(fin_vis, bool)
+    if "validacion" in abiertos and "examen" not in abiertos:
+        oculto[i_ex:i_val] = True
     tramos = {}
-    for t in orden:
+    for t in abiertos:
         a, b = lim[t]
         ct = corr[t]
         m = (ct.i_in >= a) & (ct.i_in < b)
@@ -2798,33 +2810,53 @@ def backtest_lab(texto_csv, spec) -> dict:
             return {"pf": False, "n": False, "dd": False, "pf_sin_mejor": False}
         return {"pf": bool(J["pf"] >= UMBRAL["pf_oos"]), "n": bool(J["n"] >= UMBRAL["n_oos"]),
                 "dd": bool(J["maxdd"] < UMBRAL["dd_oos"]), "pf_sin_mejor": bool(J["pf_sin_mejor"] > UMBRAL["pf_sin_mejor"])}
-    juez = orden[-1]
+    juez = abiertos[-1]
     crit = juzgar(tramos[juez])
     crit_ex = juzgar(tramos["examen"]) if "examen" in tramos else None
-    # la validación no rescata un examen suspendido
-    pasa = all(crit.values()) and (juez != "validacion" or all(crit_ex.values()))
-    # curva y caídas: el pico se reinicia al empezar cada tramo (como la cifra), reducidas a ≤ 700 puntos
-    cp = c.cp[1:]
-    dd = np.zeros(len(cp))
-    for t in orden:
+    # la validación no rescata un examen suspendido (protocolo: el tramo sellado no entra en el veredicto)
+    pasa = all(crit.values()) and (crit_ex is None or all(crit_ex.values()))
+    # curva: retorno vela a vela de la corrida visible; el examen oculto no suma (la curva de la validación arranca donde acabó el diseño)
+    r = c.r[:fin_vis].copy()
+    r[oculto] = 0.0
+    cp = np.cumprod(1.0 + r)
+    dd = np.zeros(fin_vis)
+    for t in abiertos:
         a, b = lim[t]
         if b > a:
             seg = cp[a:b] / (cp[a - 1] if a > 0 else 1.0)
             pico = np.maximum.accumulate(np.r_[1.0, seg])[1:]
             dd[a:b] = seg / pico - 1.0
-    paso = max(1, int(np.ceil(len(cp) / 700)))
-    sel = np.unique(np.r_[np.arange(0, len(cp), paso), [lim[t][0] for t in orden if lim[t][0] < len(cp)], len(cp) - 1]).astype(int)
+    cl = df.close.to_numpy(float)[:fin_vis]
+    bh = cl / cl[0]
+    if oculto.any():                       # comprar y mantener: tampoco delata el examen
+        bh = bh.copy(); bh[i_val:] = bh[i_val:] / (cl[i_val - 1] / cl[i_ex - 1]); bh[oculto] = np.nan
+    paso = max(1, int(np.ceil(fin_vis / 700)))
+    cortes = [lim[t][0] for t in abiertos] + ([i_ex, i_val] if oculto.any() else [])
+    sel = np.unique(np.r_[np.arange(0, fin_vis, paso), cortes, fin_vis - 1]).astype(int)
+    sel = sel[sel < fin_vis]
     dd_min = np.minimum.reduceat(dd, sel) if len(sel) else dd[:0]
-    bh = df.close.to_numpy(float)[: len(cp)]; bh = bh / bh[0]
-    eq = {"f": [str(c.idx[i].date()) for i in sel], "v": [float(cp[i]) for i in sel], "dd": [float(x) for x in dd_min],
-          "bh": [float(bh[i]) for i in sel], "cortes": {t: str(c.idx[lim[t][0]].date()) for t in orden}}
+    nul = lambda i, v: None if oculto[i] else float(v)  # noqa: E731
+    eq = {"f": [str(c.idx[i].date()) for i in sel], "v": [nul(i, cp[i]) for i in sel], "dd": [nul(i, dd_min[k]) for k, i in enumerate(sel)],
+          "bh": [nul(i, bh[i]) for i in sel]}
+    # velas visibles (para ver cada operación sobre el precio); el examen oculto va vacío
+    intradia = cal["tf"] not in ("D1", "W1", "MN")
+    fmt = (lambda x: str(x)[:16]) if intradia else (lambda x: str(x.date()))  # noqa: E731
+    sig = lambda v: float(f"{v:.6g}")  # noqa: E731
+    O_, H_, L_ = (df[k].to_numpy(float)[:fin_vis] for k in ("open", "high", "low"))
+    velas = None
+    if fin_vis <= 60000:
+        velas = {"f": [fmt(x) for x in c.idx[:fin_vis]],
+                 "o": [None if oculto[i] else sig(O_[i]) for i in range(fin_vis)], "h": [None if oculto[i] else sig(H_[i]) for i in range(fin_vis)],
+                 "l": [None if oculto[i] else sig(L_[i]) for i in range(fin_vis)], "c": [None if oculto[i] else sig(cl[i]) for i in range(fin_vis)]}
     T = c.trades
     tramo_de = lambda i: "validacion" if i >= i_val else "examen" if i >= i_ex else "diseno"  # noqa: E731
-    ops = [{"in": str(pd.Timestamp(x.fecha_in).date()), "out": str(pd.Timestamp(x.fecha_out).date()), "lado": "largo" if x.lado == 1 else "corto",
-            "ret": float(x.ret), "velas": int(x.barras), "motivo": str(x.motivo), "tramo": tramo_de(int(x.i_in))} for x in T.itertuples()]
-    return _limpio({"particion": part, "abierto": abierto, "juez": juez, "tramos": tramos, "criterios": crit,
+    ops = [{"in": fmt(pd.Timestamp(x.fecha_in)), "out": fmt(pd.Timestamp(x.fecha_out)), "lado": "largo" if x.lado == 1 else "corto",
+            "ret": float(x.ret), "velas": int(x.barras), "motivo": str(x.motivo), "tramo": tramo_de(int(x.i_in)),
+            "i": int(x.i_in), "o": int(x.i_out), "px_in": sig(x.px_in), "px_out": sig(x.px_out)}
+           for x in T.itertuples() if not (oculto[int(x.i_in)] or (int(x.i_out) < fin_vis and oculto[int(x.i_out)]))]
+    return _limpio({"particion": part, "abierto": abiertos, "juez": juez, "tramos": tramos, "criterios": crit,
                     "criterios_examen": crit_ex, "pasa": pasa, "frontera": bool(1.25 <= tramos[juez]["pf"] <= 1.35), "eq": eq,
-                    "operaciones": ops[-300:], "n_operaciones": len(ops),
+                    "velas": velas, "operaciones": ops[-400:], "n_operaciones": len(ops), "examen_oculto": bool(oculto.any()),
                     "pseudocodigo": pseudocodigo(s), "tf": cal["tf"], "calidad": cal["veredicto"]})
 
 
