@@ -987,7 +987,7 @@ const LIB_CACHE={};   /* el CSV descomprimido y sus fechas, por id: la 2.ª vez 
 function pintarLib(){
   const z=$('#pi-lib');if(z)z.innerHTML=LIB.map(e=>`<button type="button" class="btn mini" data-lib="${e.id}" title="${esc(e.nombre+' · '+nf(e.velas,0)+' velas · '+e.desde+' → '+e.hasta)}">${esc(libEtiq(e))}</button>`).join('');
   const x=$('#bx-ejs');if(x)x.innerHTML=LIB.map(e=>`<button type="button" class="bx-ej" data-ej="${e.id}" aria-pressed="false"><b>${esc(e.b_t)}</b><small>${esc(e.b_s)}</small><small class="bx-ej-r">${esc(yr(e.desde)+'–'+yr(e.hasta))}</small></button>`).join('');
-  const m=$('#m1-ejs');if(m)m.innerHTML=LIB.map(e=>`<button type="button" class="bx-ej" data-ej="${e.id}" aria-pressed="false"><b>${esc(e.b_t)}</b><small>${esc(e.b_s)}</small><small class="bx-ej-r">${esc(yr(e.desde)+'–'+yr(e.hasta))}</small></button>`).join('');
+  const m=$('#m1-ejs');if(m)m.innerHTML=LIB.filter(e=>e.id!=='nas100_m15').map(e=>`<button type="button" class="bx-ej" data-ej="${e.id}" aria-pressed="false"><b>${esc(e.b_t)}</b><small>${esc(e.b_s)}</small><small class="bx-ej-r">${esc(yr(e.desde)+'–'+yr(e.hasta))}</small></button>`).join('');
   $$('#pi-lib [data-lib]').forEach(b=>b.onclick=()=>usarLib(b.dataset.lib,false));
   $$('#bx-ejs [data-ej]').forEach(b=>b.onclick=()=>bxDato(b.dataset.ej));
   $$('#m1-ejs [data-ej]').forEach(b=>b.onclick=()=>m1Dato(b.dataset.ej))}
@@ -1623,7 +1623,8 @@ async function m1Analizar(){if($('#m1-analizar').disabled)return;const movil=bxM
   catch(e){$('#m1-nota').innerHTML='<b class="c-red">Error inesperado.</b> '+esc(e&&e.message||String(e))}
   finally{$('#mision1').classList.remove('analizando');if(window.MCT_MOTOR)window.MCT_MOTOR.progreso=progPrev;$('#m1-analizar').disabled=false;$('#m1-analizar').textContent='▶ ANALIZAR ESTE ACTIVO';$('#m1-prog').style.width='0'}}
 function m1Subido(){const nom=String(CSV&&CSV.nombre||'').toUpperCase().replace(/\.(CSV|TXT)$/,''),k=Object.keys(PERFILES).sort((x,y)=>y.length-x.length).find(x=>nom.includes(x));
-  m1Simbolo=k||nom.replace(/[^A-Z0-9]+/g,' ').trim().split(' ').pop()||'MI ACTIVO';m1Sync();if(m1CostMap[String(m1Simbolo).toUpperCase()])m1AplicarCostes();$('#m1-res').hidden=true;$('#m1-calidad').innerHTML='';$('#mision1').classList.remove('con-res')}
+  const tf=/^(M\d+|H\d+|D1|W1|MN\d?|DAILY|DIARIO|WEEKLY|HOURLY|MIN|\d+)$/,pal=nom.replace(/[^A-Z0-9]+/g,' ').trim().split(' ').filter(x=>x&&!tf.test(x));
+  m1Simbolo=k||pal[0]||'MI ACTIVO';m1Sync();if(m1CostMap[String(m1Simbolo).toUpperCase()])m1AplicarCostes();$('#m1-res').hidden=true;$('#m1-calidad').innerHTML='';$('#mision1').classList.remove('con-res')}
 function m1Abrir(){m1Sync();if(window.MCT_LAB_ABRIR){setNivel('lab');window.MCT_LAB_ABRIR('aed')}else setNivel('mision1')}
 function initLanding(){
   $('#land-tester').onclick=()=>setNivel('basic');

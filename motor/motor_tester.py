@@ -1340,6 +1340,11 @@ def _correr_pasos(D: _Datos, s: dict, P: dict, cache: dict, factor_costes: float
                 if t + 1 > (fin if cerrar else n - 1):
                     break
                 e, px_in, k0 = t + 1, o[t + 1], t + 1
+            # con stop u objetivo por ATR, sin ATR calculado no se entra (iría sin stop)
+            if (stop_cfg and stop_cfg["tipo"] == "atr" and not np.isfinite(atr_stop[t])) or \
+               (obj_cfg and obj_cfg["tipo"] == "atr" and not np.isfinite(atr_obj[t])):
+                pos = t + 1
+                continue
             # stop / objetivo
             stop = tgt = np.nan
             if stop_cfg:
@@ -2446,7 +2451,7 @@ def _particion_tis(df: pd.DataFrame):
             "validacion": {"desde": f(i_val), "hasta": f(n - 1), "velas": n - i_val}}
     if i_ex < 250:
         raise ErrorDatos(f"El tramo de diseño tiene solo {i_ex} velas y el AED pide al menos 250 (sin tocar el examen). "
-                         "Sube más historia o usa una temporalidad menor.")
+                         "Sube más historia o, si tienes muchos años en velas semanales, pásalas a diarias.")
     part["solo_diseno"] = True
     return part, df.iloc[:i_ex]
 
@@ -2719,7 +2724,7 @@ def calidad_datos(df: pd.DataFrame):
     poner("ani", "Años de historia", "falla" if a_dis < 5 else "aviso" if a_dis < 10 else "ok",
           f"{anios:.1f} años en total; tu diseño (lo que miras) cubre {a_dis:.1f}. " +
           ("El mínimo son 5 años de diseño: con menos, tu regla puede haber visto un solo régimen (solo subidas, solo calma) "
-           "y no sabrás cómo se porta en el otro. Sube más historia (o una temporalidad menor no lo arregla: hacen falta AÑOS)."
+           "y no sabrás cómo se porta en el otro. Sube más historia: hacen falta más años, no más velas."
            if a_dis < 5 else
            "Vale, pero cuantos más años mejor: que el diseño incluya alguna crisis y algún mercado lateral. Lo ideal, 10 o más."
            if a_dis < 10 else "Bien: varios regímenes dentro del diseño."))
@@ -2778,6 +2783,7 @@ def backtest_lab(texto_csv, spec) -> dict:
     Cada tramo se mide en la corrida cortada al final de ESE tramo: la cifra del diseño no cambia al abrir el examen."""
     spec = json.loads(spec) if isinstance(spec, str) else dict(spec)
     ab = spec.pop("_abierto", "diseno") or "diseno"
+    sin_velas = bool(spec.pop("_sin_velas", False))
     ab = set([ab] if isinstance(ab, str) else ab)
     abiertos = ["diseno"] + [t for t in ("examen", "validacion") if t in ab]
     df = cargar_csv(texto_csv)
@@ -2844,12 +2850,13 @@ def backtest_lab(texto_csv, spec) -> dict:
     sig = lambda v: float(f"{v:.6g}")  # noqa: E731
     O_, H_, L_ = (df[k].to_numpy(float)[:fin_vis] for k in ("open", "high", "low"))
     velas = None
-    if fin_vis <= 60000:
+    if fin_vis <= 60000 and not sin_velas:
         velas = {"f": [fmt(x) for x in c.idx[:fin_vis]],
                  "o": [None if oculto[i] else sig(O_[i]) for i in range(fin_vis)], "h": [None if oculto[i] else sig(H_[i]) for i in range(fin_vis)],
                  "l": [None if oculto[i] else sig(L_[i]) for i in range(fin_vis)], "c": [None if oculto[i] else sig(cl[i]) for i in range(fin_vis)]}
-    T = c.trades
     tramo_de = lambda i: "validacion" if i >= i_val else "examen" if i >= i_ex else "diseno"  # noqa: E731
+    T = pd.concat([corr[t].trades[(corr[t].trades.i_in >= lim[t][0]) & (corr[t].trades.i_in < lim[t][1])] for t in abiertos]) \
+        if any(len(corr[t].trades) for t in abiertos) else c.trades
     ops = [{"in": fmt(pd.Timestamp(x.fecha_in)), "out": fmt(pd.Timestamp(x.fecha_out)), "lado": "largo" if x.lado == 1 else "corto",
             "ret": float(x.ret), "velas": int(x.barras), "motivo": str(x.motivo), "tramo": tramo_de(int(x.i_in)),
             "i": int(x.i_in), "o": int(x.i_out), "px_in": sig(x.px_in), "px_out": sig(x.px_out)}
