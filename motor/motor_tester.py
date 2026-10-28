@@ -2736,14 +2736,17 @@ def calidad_datos(df: pd.DataFrame):
     # solo calma) no dice nada del otro. Cuantos más años, mejor: más regímenes y un examen más largo.
     i_ex_, _ = _cortes_tis(usar.index)
     a_dis = (usar.index[max(i_ex_ - 1, 0)] - usar.index[0]).days / 365.25
-    poner("ani", "Años de historia", "falla" if a_dis < 5 else "ok",
+    # menos de 5 años en total no se analiza; con 5 o más pasa, pero si el diseño no llega a 5 se avisa (pocos datos)
+    a_tot = int(np.ceil(5 * anios / max(a_dis, 0.01)))
+    poner("ani", "Años de historia", "falla" if anios < 5 else "aviso" if a_dis < 5 else "ok",
           f"{anios:.1f} años en total; tu diseño (lo que miras) cubre {a_dis:.1f}. " +
-          ("El mínimo son 5 años de diseño: con menos, tu regla puede haber visto un solo régimen (solo subidas, solo calma) "
-           "y no sabrás cómo se porta en el otro. El diseño es solo una parte de tus datos (el resto es el examen y la validación), "
-           f"así que para 5 años de diseño necesitas unos {np.ceil(5 * anios / max(a_dis, 0.01)):.0f} años en total. "
-           "Sube más historia: hacen falta más años, no más velas."
+          ("El mínimo son 5 años en total: con menos, tu regla habrá visto un solo régimen (solo subidas, solo calma) "
+           "y no sabrás cómo se porta en el otro. Sube más historia: hacen falta más años, no más velas."
+           if anios < 5 else
+           "Son pocos datos: puedes seguir, pero tu diseño no llega a 5 años y tu regla puede haber visto un solo régimen. "
+           f"El diseño es solo una parte de tus datos (el resto es el examen y la validación): para 5 años de diseño harían falta unos {a_tot} años en total."
            if a_dis < 5 else
-           "Cumple el mínimo de 5. Aun así, cuantos más años mejor: que el diseño incluya alguna crisis y algún mercado lateral (lo ideal, 10 o más)."
+           "Cumple el mínimo de 5 años de diseño. Aun así, cuantos más años mejor: que el diseño incluya alguna crisis y algún mercado lateral (lo ideal, 10 o más)."
            if a_dis < 10 else "Bien: varios regímenes dentro del diseño."))
     ver = "NO APTA" if any(c["estado"] == "falla" for c in C) else "APTA CON AVISOS" if any(c["estado"] == "aviso" for c in C) else "APTA"
     usar.attrs = dict(df.attrs)
