@@ -2964,6 +2964,10 @@ def backtest_lab(texto_csv, spec) -> dict:
     ab = set([ab] if isinstance(ab, str) else ab)
     abiertos = ["diseno"] + [t for t in ("examen", "validacion") if t in ab]
     df = cargar_csv(texto_csv)
+    # horario de sesión (bloque «Horario» de la Fase 03): como en validar, las horas pasan a la zona de la sesión
+    ses = normalizar_spec(dict(spec)).get("sesion")
+    if ses:
+        df = _a_zona(df, ses, [])
     cal, df = calidad_datos(df)
     if cal["veredicto"] == "NO APTA":
         raise ErrorDatos("Los datos son NO APTA en la calidad (fase 01): con NO APTA no se sigue.")
@@ -2974,7 +2978,8 @@ def backtest_lab(texto_csv, spec) -> dict:
     df = df[[c for c in ("open", "high", "low", "close", "volumen", "spread") if c in df.columns]].astype(float)
     corr = {}
     for t in abiertos:
-        corr[t] = _correr(_Datos(df.iloc[: lim[t][1]]), s, dict(s["parametros"]), {})
+        Dt = _Datos(df.iloc[: lim[t][1]])
+        corr[t] = _correr(Dt, s, dict(s["parametros"]), {"__sesion__": _InfoSesion(Dt, s["sesion"])} if s.get("sesion") else {})
     c = corr[abiertos[-1]]
     fin_vis = lim[abiertos[-1]][1]
     oculto = np.zeros(fin_vis, bool)
