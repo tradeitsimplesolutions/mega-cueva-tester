@@ -1478,6 +1478,13 @@ def _resumen(rets: np.ndarray, r: np.ndarray, idx: pd.DatetimeIndex) -> dict:
     }
 
 
+def _dd_bh(close, a: int, b: int) -> float:
+    """Peor caída de comprar y mantener entre las posiciones a y b (fracción positiva, como «maxdd»)."""
+    seg = np.asarray(close, float)[a:b]
+    seg = seg[np.isfinite(seg) & (seg > 0)]
+    return float(1.0 - np.min(seg / np.maximum.accumulate(seg))) if seg.size > 1 else 0.0
+
+
 def _tramo(c: Corrida, ini, fin) -> dict:
     a = int(np.searchsorted(c.idx.values, np.datetime64(pd.Timestamp(ini)), "left"))
     b = int(np.searchsorted(c.idx.values, np.datetime64(pd.Timestamp(fin)), "left"))
@@ -1504,11 +1511,17 @@ def _fecha_split(c: Corrida, s: dict) -> pd.Timestamp:
     return c.idx[int(len(c.r) * s["corte"]["valor"] / 100.0)]
 
 
-def fase1(c: Corrida, fs: pd.Timestamp) -> dict:
+def fase1(c: Corrida, fs: pd.Timestamp, close=None) -> dict:
     fin = c.idx[-1] + pd.Timedelta(days=1)
     IS = _tramo(c, c.idx[0], fs); OOS = _tramo(c, fs, fin)
-    crit = {"pf_oos": bool(OOS["pf"] >= UMBRAL["pf_oos"]), "n_oos": bool(OOS["n"] >= UMBRAL["n_oos"]),
-            "dd_oos": bool(OOS["maxdd"] < UMBRAL["dd_oos"]), "pf_sin_mejor": bool(OOS["pf_sin_mejor"] > UMBRAL["pf_sin_mejor"])}
+    # la caída se compara con comprar y mantener en el mismo tramo (el 20 % queda como objetivo, no como suspenso);
+    # las 30 operaciones se cuentan en total (diseño + prueba)
+    if close is not None:
+        a = int(np.searchsorted(c.idx.values, np.datetime64(fs), "left"))
+        IS["maxdd_bh"] = _dd_bh(close, 0, a); OOS["maxdd_bh"] = _dd_bh(close, a, len(c.idx))
+    dd_ref = OOS.get("maxdd_bh", UMBRAL["dd_oos"])
+    crit = {"pf_oos": bool(OOS["pf"] >= UMBRAL["pf_oos"]), "n_oos": bool(IS["n"] + OOS["n"] >= UMBRAL["n_oos"]),
+            "dd_oos": bool(OOS["maxdd"] < dd_ref), "pf_sin_mejor": bool(OOS["pf_sin_mejor"] > UMBRAL["pf_sin_mejor"])}
     return {"fecha_split": str(fs.date()), "IS": IS, "OOS": OOS, "criterios": crit,
             "frontera": bool(1.25 <= OOS["pf"] <= 1.35), "pasa": all(crit.values())}
 
@@ -2086,7 +2099,7 @@ def validar(df: pd.DataFrame, spec, semilla: int = 7, progreso=None) -> dict:
     if len(c.trades) == 0:
         raise ErrorSpec("La regla no genera ninguna operación en este histórico. Revisa las condiciones (¿son demasiado estrictas?).")
     fs = _fecha_split(c, s)
-    f1 = fase1(c, fs); marca("F1", 0.5)
+    f1 = fase1(c, fs, D.df.close.to_numpy(float)); marca("F1", 0.5)
     f2 = fase2(cache, c.idx); marca("F2", 0.6)
     if grid:
         f3 = fase3(cache, grid, P0, fs)
@@ -2830,13 +2843,17 @@ def backtest_lab(texto_csv, spec) -> dict:
         ct = corr[t]
         m = (ct.i_in >= a) & (ct.i_in < b)
         rets = ct.trades.ret.to_numpy(float)[m] if len(ct.trades) else np.zeros(0)
-        tramos[t] = {**_resumen(rets, ct.r[a:b], ct.idx[a:b]), "desde": part[t]["desde"], "hasta": part[t]["hasta"]}
+        tramos[t] = {**_resumen(rets, ct.r[a:b], ct.idx[a:b]), "desde": part[t]["desde"], "hasta": part[t]["hasta"],
+                     "maxdd_bh": _dd_bh(df.close.to_numpy(float), a, b)}
+    # 30 operaciones en total: todos los tramos abiertos juntos
+    n_total = int(sum(tramos[t]["n"] for t in abiertos))
 
     def juzgar(J):
         if not J["n"]:
-            return {"pf": False, "n": False, "dd": False, "pf_sin_mejor": False}
-        return {"pf": bool(J["pf"] >= UMBRAL["pf_oos"]), "n": bool(J["n"] >= UMBRAL["n_oos"]),
-                "dd": bool(J["maxdd"] < UMBRAL["dd_oos"]), "pf_sin_mejor": bool(J["pf_sin_mejor"] > UMBRAL["pf_sin_mejor"])}
+            return {"pf": False, "n": n_total >= UMBRAL["n_oos"], "dd": False, "pf_sin_mejor": False}
+        # caída: menor que la de comprar y mantener en ese mismo tramo (el 20 % es un objetivo, no un suspenso)
+        return {"pf": bool(J["pf"] >= UMBRAL["pf_oos"]), "n": bool(n_total >= UMBRAL["n_oos"]),
+                "dd": bool(J["maxdd"] < J["maxdd_bh"]), "pf_sin_mejor": bool(J["pf_sin_mejor"] > UMBRAL["pf_sin_mejor"])}
     juez = abiertos[-1]
     crit = juzgar(tramos[juez])
     crit_ex = juzgar(tramos["examen"]) if "examen" in tramos else None
@@ -2884,7 +2901,7 @@ def backtest_lab(texto_csv, spec) -> dict:
            for x in T.itertuples() if not (oculto[int(x.i_in)] or (int(x.i_out) < fin_vis and oculto[int(x.i_out)]))]
     return _limpio({"particion": part, "abierto": abiertos, "juez": juez, "tramos": tramos, "criterios": crit,
                     "criterios_examen": crit_ex, "pasa": pasa, "frontera": bool(1.25 <= tramos[juez]["pf"] <= 1.35), "eq": eq,
-                    "velas": velas, "operaciones": ops[-400:], "n_operaciones": len(ops), "examen_oculto": bool(oculto.any()),
+                    "velas": velas, "operaciones": ops[-400:], "n_operaciones": len(ops), "n_total": n_total, "examen_oculto": bool(oculto.any()),
                     "pseudocodigo": pseudocodigo(s), "tf": cal["tf"], "calidad": cal["veredicto"]})
 
 
