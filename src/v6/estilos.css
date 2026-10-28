@@ -1179,6 +1179,7 @@ body.basic .toast{left:50%;max-width:calc(100vw - 32px)}
 
 /* Buzón de feedback (2026-10-08) */
 .fb-btn{position:fixed;right:16px;bottom:calc(46px + env(safe-area-inset-bottom,0px));z-index:60;font:600 max(13px,.82rem) var(--f-mono,monospace);padding:.55rem .9rem;border-radius:999px;border:1px solid var(--gold);background:var(--bg,#111);color:var(--gold);cursor:pointer;box-shadow:0 4px 18px rgba(0,0,0,.35)}
+@media (max-width:600px){.fb-btn{font-size:0;padding:.5rem .6rem;bottom:calc(12px + env(safe-area-inset-bottom,0px));opacity:.9}.fb-btn::before{content:'💬';font-size:16px}}
 .fb-btn:hover,.fb-btn:focus-visible{background:var(--gold);color:var(--bg,#111)}
 .fb-modal{position:fixed;inset:0;z-index:80;display:grid;place-items:center;padding:16px;background:rgba(0,0,0,.55)}
 .fb-caja{width:min(520px,100%);display:grid;gap:.6rem;padding:1.1rem;border-radius:8px;border:1px solid var(--line);background:var(--panel,var(--bg,#151515))}

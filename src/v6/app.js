@@ -447,7 +447,7 @@ function fillVal(){const fs=D.fases,M=D.mc||{},W=D.wf_res||{},S=D.stress||{},Me=
     <p class="fq">${q}</p><div><ul class="crit">${crit}</ul></div>${body}</section>`;
   const mx=Math.max(2.2,IS.pf*1.1,OOS.pf*1.1);
   const f1=card('F1','Diseño / prueba','¿Sigue ganando con datos que no se usaron para diseñarla?',
-    ck(OOS.pf>=1.3,'Factor de beneficio',nf(OOS.pf,2),'≥ 1,30')+ck(OOS.n>=30,'Operaciones',OOS.n,'≥ 30')+ck(OOS.maxdd<.2,'Peor caída',pct(-OOS.maxdd,1),'< 20 %')+ck(OOS.pf_sin_mejor>1,'PF sin la mejor',nf(OOS.pf_sin_mejor,2),'> 1,00'),
+    ck(OOS.pf>=1.3,'Factor de beneficio',nf(OOS.pf,2),'≥ 1,30')+ck(nOk(),'Operaciones',nTot()+' en total','≥ 30 en total')+ck(ddOk(),'Peor caída',pct(-OOS.maxdd,1),ddTxt())+ck(OOS.pf_sin_mejor>1,'PF sin la mejor',nf(OOS.pf_sin_mejor,2),'> 1,00'),
     `<div class="fbody" style="align-content:end"><div class="sbar"><span>Diseño</span><span class="tr"><i style="width:${Math.min(100,IS.pf/mx*100)}%;background:var(--dim2)"></i><u style="left:${1.3/mx*100}%"></u></span><span>${nf(IS.pf,2)}</span></div><div class="sbar"><span>Prueba honesta</span><span class="tr"><i style="width:${Math.min(100,OOS.pf/mx*100)}%;background:var(--f1)"></i><u style="left:${1.3/mx*100}%"></u></span><span>${nf(OOS.pf,2)}</span></div><div class="c-dim" style="font-size:.8rem">raya = mínimo 1,30</div></div>`,'oos');
   const f2=card('F2','Walk-forward','¿Aguanta si se reajusta cada año y se prueba en el siguiente?',
     W.eficiencia!=null?ck(W.eficiencia>=.5,'Eficiencia',nf(W.eficiencia,2),'≥ 0,50')+ck(W.pct_positivas>=.6,'Años en positivo',Math.round(W.pct_positivas*W.n_ventanas)+' de '+W.n_ventanas,'≥ 60 %'):'',
@@ -905,8 +905,11 @@ function aplicarAgente04(txt){const out=[],L=txt.split(/\r?\n/).map(l=>l.trim())
 /* ---------- los 4 números de la mesa (fase 04): fuera de muestra y con costes ---------- */
 function ritmo(){const n=+FULL.n,a=+FULL.anios;if(!(n>0&&a>0))return null;const r=n/a,m=30/r*12;
   return{r,m,txt:'Ritmo: ~'+nf(r,r<10?1:0)+' operaciones al año → 30 operaciones en vivo tardarían ~'+(m<24?nf(m,0)+' meses':nf(m/12,1)+' años'),
-    consejo:r>=60?'Un forward de 30 operaciones en demo es razonable.':r>=12?'Para un forward, fija una ventana de tiempo (3–6 meses), no un número de operaciones.':'Esperar 30 operaciones en vivo son años: en demo comprueba solo la ejecución 1–3 meses.'}}
-function numeros4(){const N4=[['Factor de beneficio',nf(OOS.pf,2),'≥ 1,3',OOS.pf>=1.3],['Operaciones',String(OOS.n),'≥ 30',OOS.n>=30],['Caída máxima',pct(OOS.maxdd,1,false),'< 20 %',OOS.maxdd<.2],['Factor de beneficio sin la mejor operación',nf(OOS.pf_sin_mejor,2),'> 1',OOS.pf_sin_mejor>1]];
+    consejo:n<=2?'Con '+n+' operaci'+(n===1?'ón':'ones')+' en todo el histórico, lo más probable es que tu regla entrara y no volviera a salir: revisa la condición de salida (p. ej. en un cruce de medias, el cruce contrario con las mismas dos medias).':r>=60?'Un forward de 30 operaciones en demo es razonable.':r>=12?'Para un forward, fija una ventana de tiempo (3–6 meses), no un número de operaciones.':'Esperar 30 operaciones en vivo son años: en demo comprueba solo la ejecución 1–3 meses.'}}
+/* caída: menos que comprar y mantener en la prueba (el 20 % es un objetivo); operaciones: 30 en total (diseño + prueba) */
+const ddRef=()=>OOS.maxdd_bh!=null?OOS.maxdd_bh:.2,ddOk=()=>OOS.maxdd<ddRef(),nTot=()=>(+IS.n||0)+(+OOS.n||0),nOk=()=>nTot()>=30;
+const ddTxt=()=>OOS.maxdd_bh!=null?'< comprar y mantener ('+pct(-OOS.maxdd_bh,1)+') · objetivo 20 %':'< 20 %';
+function numeros4(){const N4=[['Factor de beneficio',nf(OOS.pf,2),'≥ 1,3',OOS.pf>=1.3],['Operaciones',nTot()+' en total','≥ 30 en total',nOk()],['Caída máxima',pct(OOS.maxdd,1,false),ddTxt(),ddOk()],['Factor de beneficio sin la mejor operación',nf(OOS.pf_sin_mejor,2),'> 1',OOS.pf_sin_mejor>1]];
   const x4=N4.filter(n=>n[3]).length,ap=x4===4;
   N4TXT=['MEGA CUEVA TESTER · resultado para mi agente 04 VALIDADOR','Estrategia: '+NOMBRE+(SIMB?' · '+SIMB:''),
     'Datos: '+fd(D.desde)+' → '+fd(D.hasta)+' · fuera de muestra desde '+fd(SPLIT)+' · con costes','',
@@ -955,7 +958,7 @@ async function correrPI(){const btn=$('#pi-correr');if(btn.disabled||corriendo)r
   $('#pi-nota-motor').innerHTML='<b class="c-red">No se pudo correr:</b> '+esc(err?err.message:'sin respuesta del motor')}
 function mostrarResPI(real,err){
   const fx=[['PF · prueba',nf(OOS.pf,2),qPF(OOS.pf),'TIS ≥ 1,30 · frontera 1,25–1,35'],['Operaciones · prueba',OOS.n,qMin(OOS.n,30),'TIS ≥ 30'],
-    ['Peor caída · prueba',pct(-OOS.maxdd,1),qMax(OOS.maxdd,.2),'TIS < 20 %'],['PF sin la mejor',nf(OOS.pf_sin_mejor,2),qMin(OOS.pf_sin_mejor,1),'TIS > 1,00'],
+    ['Peor caída · prueba',pct(-OOS.maxdd,1),qMax(OOS.maxdd,ddRef()),'TIS '+ddTxt()],['PF sin la mejor',nf(OOS.pf_sin_mejor,2),qMin(OOS.pf_sin_mejor,1),'TIS > 1,00'],
     ['Acierto · prueba',pct(OOS.win_rate,0,false),qAcierto(OOS.win_rate),ST&&ST.payoff?'mínimo con su payoff: '+pct(1/(1+ST.payoff),0,false):'informativo'],
     ['Rentab. anual · prueba',pct(OOS.cagr,1),OOS.cagr>0.005?'q-ok':OOS.cagr>-0.005?'q-fr':'q-ko','positiva = gana'],
     ['Sharpe · prueba',nf(OOS.sharpe,2),'q-neu','informativo'],['Expectancy · op.',usd(CU.expectancy_usd_oos!=null?CU.expectancy_usd_oos:OOS.media_trade*CAP,0,true),(OOS.media_trade||0)>0?'q-ok':'q-ko','cuenta de 100.000 USD']];
@@ -1070,7 +1073,7 @@ function cifraClave(id){const Mc=D.mc||{},W=D.wf_res||{},St=D.stress||{},Me=D.me
 function detalleFase(id){const Mc=D.mc||{},W=D.wf_res||{},St=D.stress||{},Me=D.meseta,f=FASES.find(x=>x.id===id),e=estFase(id);
   let cr='',graf='',sig='',tec='',titG='',auto=false;
   if(id==='F1'){const c=F1.criterios||{};
-    cr=crit(ee(c.pf_oos??OOS.pf>=1.3),'Factor de beneficio','≥ 1,30',nf(OOS.pf,2))+crit(ee(c.n_oos??OOS.n>=30),'Operaciones','≥ 30',OOS.n)+crit(ee(c.dd_oos??OOS.maxdd<.2),'Peor caída','< 20 %',pct(-OOS.maxdd,1))+crit(ee(c.pf_sin_mejor??OOS.pf_sin_mejor>1),'PF sin la mejor','> 1,00',nf(OOS.pf_sin_mejor,2));
+    cr=crit(ee(c.pf_oos??OOS.pf>=1.3),'Factor de beneficio','≥ 1,30',nf(OOS.pf,2))+crit(ee(c.n_oos??nOk()),'Operaciones','≥ 30 en total',nTot())+crit(ee(c.dd_oos??ddOk()),'Peor caída',ddTxt(),pct(-OOS.maxdd,1))+crit(ee(c.pf_sin_mejor??OOS.pf_sin_mejor>1),'PF sin la mejor','> 1,00',nf(OOS.pf_sin_mejor,2));
     titG='Capital con el corte <em>diseño / prueba</em>';graf=`<div class="cv" id="cv-pdet"><canvas role="img" aria-label="Curva de capital con el corte"></canvas><div class="tt"></div></div>`;
     sig=e==='pasa'?`En los años guardados (${yr(SPLIT)}–${yr(D.hasta)}) gana <b>${nf(OOS.pf,2)}</b> por cada 1 que pierde (diseño: ${nf(IS.pf,2)}). No estaba aprendida de memoria.`:'En la parte guardada no cumple los mínimos: la ventaja del diseño no se repite.';
     tec=`Corte ${fd(SPLIT)} · IS ${IS.n} op., PF ${nf(IS.pf,2)} · OOS ${OOS.n} op., PF ${nf(OOS.pf,2)}, MaxDD ${pct(OOS.maxdd,1,false)}, CAGR ${pct(OOS.cagr,1)}. Frontera (PF 1,25–1,35): ${F1.frontera?'sí':'no'}.`}
@@ -1267,8 +1270,9 @@ async function m1Dato(id){if($('#m1-analizar').disabled)return;const e=libId(id)
 function m1Clasificar(p){const f=p.fig||{},b=(f.acf&&f.acf.banda)||0.02;
   const fondo=p.ret_anual_pct>5?'alcista':p.ret_anual_pct<-5?'bajista':'lateral';
   const a1=p.autocorr_lag1,er=p.eficiencia_kaufman;
-  const sigue=(a1>b&&(er==null||er>=0.25))||(er!=null&&er>=0.35&&a1>0);
-  const revierte=a1<-b||(er!=null&&er<0.22&&a1<0);
+  /* solo fuera de la banda de ruido de la Fig 3: dentro, «sin patrón claro» (si no, la ficha se contradice con su propia figura) */
+  const sigue=a1>b&&(er==null||er>=0.25);
+  const revierte=a1<-b;
   const corto=sigue&&!revierte?'sigue':revierte&&!sigue?'revierte':'mixto';
   const colas=p.curtosis_exceso>1?'gordas':'normales';
   const V=f.vol||{};const regimen=V.hoy==null?'—':V.hoy>V.q66?'alto':V.hoy<V.q33?'bajo':'medio';
@@ -1652,8 +1656,8 @@ function initMision1(){$('#bx-mision1').onclick=m1Abrir;$('#m1-volver').onclick=
   m1CalChip(null);setTimeout(()=>{m1Restaurar().catch(()=>{})},0)}
 
 function bxResHTML(){const N=[['¿Gana más de lo que pierde?',nf(OOS.pf,2),OOS.pf>=1.3,`Por cada 1 USD que pierde, gana ${nf(OOS.pf,2)}. Pide 1,30 o más.`],
-    ['¿Hay operaciones suficientes?',String(OOS.n),OOS.n>=30,`${OOS.n} operaciones en la prueba honesta. Pide 30 o más para no fiarse de la suerte.`],
-    ['¿Se aguanta la peor racha?',pct(-OOS.maxdd,1),OOS.maxdd<.2,`Llegó a caer un ${pct(OOS.maxdd,1,false)} desde su máximo. Pide menos del 20 %.`],
+    ['¿Hay operaciones suficientes?',String(nTot()),nOk(),`${nTot()} operaciones en total (${OOS.n} en la prueba honesta). Pide 30 o más en total para no fiarse de la suerte.`],
+    ['¿Se aguanta la peor racha?',pct(-OOS.maxdd,1),ddOk(),`Llegó a caer un ${pct(OOS.maxdd,1,false)} desde su máximo. Pide caer menos que comprar y mantener${OOS.maxdd_bh!=null?' ('+pct(OOS.maxdd_bh,1,false)+')':''}. Objetivo: menos del 20 %.`],
     ['¿Gana sin su mejor operación?',nf(OOS.pf_sin_mejor,2),OOS.pf_sin_mejor>1,`Quitando la mejor, gana ${nf(OOS.pf_sin_mejor,2)} por cada 1 que pierde. Pide más de 1.`]];
   const x4=N.filter(n=>n[2]).length,ap=x4===4,exp=CU.expectancy_usd!=null?CU.expectancy_usd:T.reduce((a,t)=>a+t.ret,0)/T.length*CAP;
   const quien=SIMB?(SIMB+(SPEC_RES&&SPEC_RES.temporalidad?' · '+(TFN[SPEC_RES.temporalidad]||'').replace(/^vela /,''):'')+' · '):'';
