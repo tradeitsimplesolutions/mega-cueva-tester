@@ -921,6 +921,8 @@ pre.ia-pseudo{max-height:20rem;white-space:pre-wrap;margin:0}
 .pegar summary .pg-t em{font-style:normal;color:var(--ink)}
 .pegar summary .pg-t::before{content:"▸  ";color:var(--cy)}
 .pegar[open] summary .pg-t::before{content:"▾  "}
+.pegar-aviso{margin:.6rem 0;padding:.6rem .75rem;border:1px solid var(--red);border-left-width:4px;border-radius:var(--rad);background:rgba(var(--red-rgb),.08);color:var(--txt);font-size:max(13px,.88rem)}
+.pegar-aviso p{margin:0}.pegar-aviso p+p{margin-top:.35rem}.pegar-aviso b{color:var(--red)}
 .mesa-mini{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;padding-top:.6rem;border-top:1px dashed var(--line2)}
 .mm-t{font-family:var(--f-mono);font-size:max(12px,.74rem);letter-spacing:.13em;text-transform:uppercase;color:var(--dim2)}
 .mm-l{list-style:none;margin:0;padding:0;display:flex;gap:.2rem;align-items:center;flex-wrap:wrap}

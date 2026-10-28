@@ -5,6 +5,8 @@
    D = resultados de TU prueba (motor, guardados en sessionStorage) o la demo incrustada (D_DEMO).
    ===================================================================== */
 const D=(()=>{try{const s=sessionStorage.getItem('mct_res');if(s){const j=JSON.parse(s);if(j&&j.trades&&j.f1)return j}}catch(e){}return D_DEMO})(), ES_DEMO=D===D_DEMO;
+/* Regla sin parámetros que mover (p. ej. «cierre > media de 200»): el motor devuelve meseta.pf=[]; sin esto, fillVal rompía al pintar y no salían resultados */
+if(D.meseta&&Array.isArray(D.meseta.pf)&&!(D.meseta.pf.length&&Array.isArray(D.meseta.pf[0])&&D.meseta.pf[0].length))D.meseta.pf=null;
 const SPEC_RES=(()=>{if(ES_DEMO)return null;try{return JSON.parse(sessionStorage.getItem('mct_spec_res')||'null')}catch(e){return null}})();
 /* ---------- utilidades ---------- */
 const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -447,7 +449,7 @@ function fillVal(){const fs=D.fases,M=D.mc||{},W=D.wf_res||{},S=D.stress||{},Me=
     <p class="fq">${q}</p><div><ul class="crit">${crit}</ul></div>${body}</section>`;
   const mx=Math.max(2.2,IS.pf*1.1,OOS.pf*1.1);
   const f1=card('F1','Diseño / prueba','¿Sigue ganando con datos que no se usaron para diseñarla?',
-    ck(OOS.pf>=1.3,'Factor de beneficio',nf(OOS.pf,2),'≥ 1,30')+ck(nOk(),'Operaciones',nTot()+' en total','≥ 30 en total')+ck(ddOk(),'Peor caída',pct(-OOS.maxdd,1),ddTxt())+ck(OOS.pf_sin_mejor>1,'PF sin la mejor',nf(OOS.pf_sin_mejor,2),'> 1,00'),
+    ck(OOS.pf>=1.3,'Factor de beneficio',nf(OOS.pf,2),'≥ 1,30')+ck(nOk(),'Operaciones',nTot()+' en total','≥ 30 en total')+ck(ddOk(),'Peor caída',pct(-OOS.maxdd,1),ddTxt())+ck(psmOk(),'PF sin la mejor',nf(psmV(),2),'> 1,00 (en total)'),
     `<div class="fbody" style="align-content:end"><div class="sbar"><span>Diseño</span><span class="tr"><i style="width:${Math.min(100,IS.pf/mx*100)}%;background:var(--dim2)"></i><u style="left:${1.3/mx*100}%"></u></span><span>${nf(IS.pf,2)}</span></div><div class="sbar"><span>Prueba honesta</span><span class="tr"><i style="width:${Math.min(100,OOS.pf/mx*100)}%;background:var(--f1)"></i><u style="left:${1.3/mx*100}%"></u></span><span>${nf(OOS.pf,2)}</span></div><div class="c-dim" style="font-size:.8rem">raya = mínimo 1,30</div></div>`,'oos');
   const f2=card('F2','Walk-forward','¿Aguanta si se reajusta cada año y se prueba en el siguiente?',
     W.eficiencia!=null?ck(W.eficiencia>=.5,'Eficiencia',nf(W.eficiencia,2),'≥ 0,50')+ck(W.pct_positivas>=.6,'Años en positivo',Math.round(W.pct_positivas*W.n_ventanas)+' de '+W.n_ventanas,'≥ 60 %'):'',
@@ -789,6 +791,7 @@ function checklist(){const s=SPEC,R=s.reglas,G=s.gestion,c=s.costes,out=[];const
   const malas=todas.filter(x=>x.op==='x_factor'?(!opValido(x.izq)||!(x.factor>0)):(!opValido(x.izq)||!opValido(x.der))).length+(s.niveles||[]).filter(n=>!n.nombre||!opValido(n.valor)).length
     +P.filter(x=>!x.condiciones.length||(x.ventana&&!(x.ventana.velas>=1))).length;
   ok(R.entrada.length||P.length?'pasa':'falla','Entrada',P.length?P.length+' paso(s)'+(R.entrada.length?' + '+R.entrada.length+' cond.':'')+(R.filtros.length?' + '+R.filtros.length+' filtro(s)':''):R.entrada.length?R.entrada.length+' cond. + '+R.filtros.length+' filtro(s)':'Añade una condición');
+  if(pegadoActivo())ok('falla','Tu regla pegada',PEGADO.previo!=null?'Sin montar: correría la anterior':'Incompleta: mira el aviso');
   const intra=INTRADIA(s.temporalidad),sesOn=intra&&s.sesion_on,usa=usaSesion(s);
   if(intra||usa)ok(usa&&!sesOn?'falla':sesOn?'pasa':'aviso','Sesión',usa&&!sesOn?(intra?'Usas operandos de sesión: actívala':'Operandos de sesión: solo en intradía'):sesOn?s.sesion.inicio+'–'+s.sesion.fin+' · '+(ZSES[s.sesion.zona_horaria]||s.sesion.zona_horaria):'24 h, sin sesión');
   ok(malas?'falla':'pasa','Bloques completos',malas?malas+' sin número':'Todo con números');
@@ -816,7 +819,8 @@ function actualizarPI(inicial){const pre=$('#pi-codigo');
   $('#pi-cuenta').textContent=nok+' de '+C.length+' listos';
   {const sl=$('#pi-fuente-sello'),nc=datosNoCuadran(SPEC),d=datosCargados();if(sl){sl.className='fuente-sello '+(nc?'ko':d?'ok':'tuyo');sl.textContent=nc?'✕ no son de tu activo':d?'✓ cuadran con tu regla':'tu CSV: revisa que sea de '+(SPEC.activo.simbolo||'tu activo')}const fz=$('#pi-fuente');if(fz)fz.classList.toggle('mal',!!nc)}
   const btn=$('#pi-correr');if(!corriendo){btn.disabled=mal>0;btn.title=mal?'Completa lo marcado en rojo':'Corre las 5 fases con el motor TIS'}
-  if(!corriendo)$('#pi-nota-motor').innerHTML=mal?`Faltan ${mal} punto(s) en rojo.`:motorFn()?'Motor TIS listo: calcula las 5 fases de tu regla.':'Sin motor: se enseñan los resultados de la demo.';
+  pintarAvisoPegado();
+  if(!corriendo)$('#pi-nota-motor').innerHTML=pegadoActivo()?`<b class="c-red">No corro todavía: la regla del formulario no es la que pegaste</b>${PEGADO.previo!=null?` (se probaría la anterior, «${esc(PEGADO.previo||'sin nombre')}»)`:''}. Mira el aviso rojo de «pega aquí sus piezas», ponla a mano en los bloques${mal>1?' y completa lo demás en rojo':''}. <button type="button" class="link" data-pegado-ok>Ya lo sé: correr la regla del formulario</button>`:mal?`Faltan ${mal} punto(s) en rojo.`:motorFn()?'Motor TIS listo: calcula las 5 fases de tu regla.':'Sin motor: se enseñan los resultados de la demo.';
   const cs=corteFechas();$('#f-corte-vis').innerHTML=cs.pctOOS!=null&&cs.pctOOS>0&&cs.pctOOS<100?`<div class="is" style="width:${100-cs.pctOOS}%">DISEÑO ${yr(SPEC.datos.desde)}–${yr(cs.ini)}</div><div class="oos" style="width:${cs.pctOOS}%">PRUEBA ${nf(cs.pctOOS,0)} %</div>`:'';
   $('#f-corte-auto').innerHTML=SPEC.corte.tipo==='auto'&&cs.ini?`Automático: 70/30 de los datos disponibles → la prueba honesta empieza el <b>${fd(cs.ini)}</b>.`:'';
   $('#f-corte-f').disabled=SPEC.corte.tipo!=='fecha';$('#f-corte-p').disabled=SPEC.corte.tipo!=='pct';
@@ -836,27 +840,55 @@ function operandoDe(t){t=t.trim().toLowerCase().replace(/^(el|la|los|las|de)\s+/
   if(/^apertura\s+de\s+(?:la\s+)?sesi[oó]n/.test(t))return{tipo:'sesion_apertura'};
   {const N=nivNombres(OD_SPEC||SPEC),u=t.toUpperCase().trim();if(N.includes(u))return{tipo:'nivel',nombre:u};if(/^nivel\b/.test(t)&&N.length)return{tipo:'nivel',nombre:N[0]}}
   if((m=t.match(/^rsi\s*\(?\s*(\d+)\s*\)?/)))return{tipo:'rsi',periodo:+m[1]};
-  if((m=t.match(/^(sma|ema|atr)\s*\(?\s*(\d+)\s*\)?/)))return{tipo:m[1],periodo:+m[2]};
-  if((m=t.match(/^media\s+exponencial\s*(?:de\s*)?(\d+)/)))return{tipo:'ema',periodo:+m[1]};
-  if((m=t.match(/^(?:media(?:\s+m[oó]vil)?(?:\s+simple)?|mm)\s*(?:de\s*)?(?:las?\s*)?\(?\s*(\d+)/)))return{tipo:'sma',periodo:+m[1]};
+  /* «EMA de 20», «EMA(20)», «EMA 20», «SMA de 50», «MA 50», «MME 20», «media (móvil) exponencial de 20», «media (móvil) (simple) de 200» */
+  if((m=t.match(/^(sma|ema|atr)\s*(?:de\s*)?(?:las?\s*)?\(?\s*(\d+)\s*\)?/)))return{tipo:m[1],periodo:+m[2]};
+  if((m=t.match(/^(?:mme|media\s+(?:m[oó]vil\s+)?exponencial)\s*(?:de\s*)?(?:las?\s*)?\(?\s*(\d+)/)))return{tipo:'ema',periodo:+m[1]};
+  if((m=t.match(/^(?:media(?:\s+m[oó]vil)?(?:\s+simple)?|mm|ma)\s*(?:de\s*)?(?:las?\s*)?\(?\s*(\d+)/)))return{tipo:'sma',periodo:+m[1]};
   if((m=t.match(/^m[aá]ximo\s+de\s+(?:las?\s+)?(\d+)/)))return{tipo:'max_n',periodo:+m[1]};
   if((m=t.match(/^m[ií]nimo\s+de\s+(?:las?\s+)?(\d+)/)))return{tipo:'min_n',periodo:+m[1]};
   if(/^(cierre|close|precio)/.test(t))return{tipo:'precio'};if(/^(apertura|open)/.test(t))return{tipo:'apertura'};
   if(/^(m[aá]ximo|high)/.test(t))return{tipo:'maximo'};if(/^(m[ií]nimo|low)/.test(t))return{tipo:'minimo'};
   if(/^-?\d/.test(t))return{tipo:'num',valor:numES(t)};return null}
-const COMPS=[[/cruza\s+(?:hacia\s+)?arriba(?:\s+de)?|cruza\s+al\s+alza/,'cruza_arriba'],[/cruza\s+(?:hacia\s+)?abajo(?:\s+de)?|cruza\s+a\s+la\s+baja/,'cruza_abajo'],
+/* cruces: «cruza hacia arriba (de/a)», «cruza por encima de», «cruza al alza», «corta al alza»… (y sus contrarios) */
+const COMPS=[[/\b(?:cruza|cruzan|corta|cortan)\s+(?:hacia\s+)?(?:arriba|al\s+alza|por\s+encima)(?:\s+(?:de(?:l)?|a(?:l)?))?\b/,'cruza_arriba'],
+  [/\b(?:cruza|cruzan|corta|cortan)\s+(?:hacia\s+)?(?:abajo|a\s+la\s+baja|por\s+debajo)(?:\s+(?:de(?:l)?|a(?:l)?))?\b/,'cruza_abajo'],
   [/>=|≥|mayor\s+o\s+igual\s+(?:que|a)/,'>='],[/<=|≤|menor\s+o\s+igual\s+(?:que|a)/,'<='],
   [/>|por\s+encima\s+de(?:\s+la|\s+el|\s+su)?|mayor\s+(?:que|a)|supera(?:\s+a|\s+el|\s+la)?/,'>'],[/<|por\s+debajo\s+de(?:\s+la|\s+el|\s+su)?|menor\s+(?:que|a)/,'<']];
 const INV={'>':'<','<':'>','>=':'<=','<=':'>=','cruza_arriba':'cruza_abajo','cruza_abajo':'cruza_arriba'};
 function condDe(t){const x=t.toLowerCase().replace(/\s+/g,' ').trim();
   for(const [re,op] of COMPS){const m=x.match(re);if(!m)continue;
-    let iz=x.slice(0,m.index).replace(/\s*\bcierra\s*$/,'').trim(),de=x.slice(m.index+m[0].length).trim();
+    let iz=x.slice(0,m.index).replace(/(?:^|\s+)(?:cierra|est[aá]n?|queda|sigue|se\s+mantiene|se\s+sit[uú]a|se\s+encuentra)\s*$/,'').trim(),de=x.slice(m.index+m[0].length).trim();
     if(!iz||/^(el\s+precio|la\s+vela)$/.test(iz))iz='cierre';
-    const a=operandoDe(iz),b=operandoDe(de);
+    const a=operandoDe(iz);let b=operandoDe(de);
+    /* «la EMA de 20 está por encima de la de 50» / «cruza por encima de la 50»: la otra media es del mismo tipo */
+    {const e=de.match(/^(?:(?:la|el)\s+(?:de\s+)?|de\s+)(\d+)(?:\s+(?:periodos?|sesiones?|velas?|d[ií]as?|barras?))?$/);if(e&&a&&(a.tipo==='ema'||a.tipo==='sma'))b={tipo:a.tipo,periodo:+e[1]}}
     if(a&&b&&!(a.tipo==='num'&&b.tipo==='num'))return a.tipo==='num'?{izq:b,op:INV[op]||op,der:a}:{izq:a,op,der:b}}
   return null}
-function condsDe(t){const partes=t.split(/\s+y\s+|;|\s+and\s+/i).map(x=>x.trim()).filter(Boolean),ok=[],mal=[];partes.forEach(p=>{const c=condDe(p);c?ok.push(c):mal.push(p)});return{ok,mal}}
-function aplicarAgente04(txt){const out=[],L=txt.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);const nuevo=normSpec(clone(SPEC));OD_SPEC=nuevo;let reglas=false;
+/* «cruce alcista de la EMA 20 y la EMA 50», «cruce bajista de las EMA 20/50», «cruce al alza de la media de 50 sobre la de 200»,
+   «golden cross» / «cruce de la muerte» → forma que entiende condDe («ema 20 cruza hacia arriba ema 50»). Va antes de partir por «y». */
+const MA_P='(ema|sma|mme|mm|ma|medias?(?:\\s+m[oó]vil(?:es)?)?(?:\\s+(?:simple|exponencial)(?:es)?)?)';
+const CRUCE_RE=new RegExp('\\bcruces?\\s+(alcista|al\\s+alza|hacia\\s+arriba|bajista|a\\s+la\\s+baja|hacia\\s+abajo)\\s+(?:(?:de|entre)\\s+)?(?:(?:la|el|las|los)\\s+)?'+MA_P+
+  '\\s*(?:de\\s*)?\\(?\\s*(\\d+)\\s*\\)?\\s*(?:y|con|sobre|bajo|\\/|-|por\\s+encima\\s+de|por\\s+debajo\\s+de|a)\\s*(?:(?:la|el)\\s+)?(?:'+MA_P+'\\s*)?(?:de\\s*)?\\(?\\s*(\\d+)\\s*\\)?','gi');
+function crucesDe(t){const ti=s=>/ema|mme|exponencial/i.test(s)?'ema':'sma';
+  return String(t).replace(CRUCE_RE,(_,d,m1,p1,m2,p2)=>`${ti(m1)} ${p1} cruza ${/alcista|alza|arriba/i.test(d)?'hacia arriba':'hacia abajo'} ${ti(m2||m1)} ${p2}`)
+    .replace(/\b(?:golden\s+cross|cruce\s+dorado)\b/gi,'sma 50 cruza hacia arriba sma 200').replace(/\b(?:death\s+cross|cruce\s+de\s+la\s+muerte)\b/gi,'sma 50 cruza hacia abajo sma 200')}
+function condsDe(t){const partes=crucesDe(t).split(/\s+y\s+|;|\s+and\s+/i).map(x=>x.trim()).filter(Boolean),ok=[],mal=[];partes.forEach(p=>{const c=condDe(p);c?ok.push(c):mal.push(p)});return{ok,mal}}
+/* Si una pieza de ENTRADA/SALIDA/FILTRO no se entiende, la regla del formulario NO es la pegada: aviso visible y CORRER bloqueado
+   (checklist en rojo) mientras los bloques sigan tal cual quedaron. Tocar los bloques o confirmar a mano lo quita. */
+let PEGADO=null; /* {firma, mal:[{sec,t}], previo: nombre de la regla anterior si se mantuvo entera, o null} */
+const firmaReglas=R=>R?['filtros','entrada','salida'].map(g=>(R[g]||[]).map(condTxt).join(' & ')).join(' | ')+' | '+JSON.stringify(R.pasos||[])+' | '+(R.salida_modo||'cualquiera'):'';
+function pegadoActivo(){if(PEGADO&&firmaReglas(SPEC.reglas)!==PEGADO.firma)PEGADO=null;return !!PEGADO}
+function nombreAuto(R){const e=R.entrada[0],ma=o=>o&&(o.tipo==='ema'||o.tipo==='sma');
+  if(e&&/^cruza/.test(e.op)&&ma(e.izq)&&ma(e.der))return 'Cruce '+(e.izq.tipo===e.der.tipo?e.izq.tipo.toUpperCase()+' '+e.izq.periodo+'/'+e.der.periodo:opTxt(e.izq)+'/'+opTxt(e.der));
+  return ((R.entrada.length?R.entrada:R.filtros).map(condTxt).join(' y ')||'Regla del agente 04').slice(0,60)}
+function avisoPegadoHTML(){if(!PEGADO)return '';const SEC={entrada:'ENTRADA',salida:'SALIDA',filtros:'FILTRO'};
+  const piezas=PEGADO.mal.map(x=>`tu ${SEC[x.sec]}: «${esc(x.t)}»`).join(' · ');
+  const conse=PEGADO.previo!=null?`Si corres ahora, se probará la regla anterior («${esc(PEGADO.previo||'sin nombre')}»), no la tuya.`:'La regla del formulario <b>no es la que pegaste</b>: le falta esa parte. Si corres ahora, probarás otra cosa.';
+  return `<p><b>No he podido montar ${piezas}.</b> ${conse} Ponla a mano en los bloques o reescríbela (p. ej. <code>EMA(20) cruza hacia arriba EMA(50)</code>, <code>cierre &gt; media de 200</code>).</p>
+    <p class="pa-b"><button type="button" class="link" data-pegado-ok>Ya lo sé: correr la regla que hay en el formulario →</button></p>`}
+function pintarAvisoPegado(){const el=$('#pi-pegar-aviso');if(!el)return;const on=pegadoActivo();el.hidden=!on;el.innerHTML=on?avisoPegadoHTML():''}
+function aplicarAgente04(txt){const out=[],L=txt.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);const nuevo=normSpec(clone(SPEC));OD_SPEC=nuevo;let reglas=false,nombrePuesto=false;
+  const previo=SPEC.nombre,firmaPrev=firmaReglas(SPEC.reglas),malR=[];
   const pon=(e,t)=>out.push({e,t}),pb=x=>/%/.test(x)?numES(x)*100:numES(x),sup=v=>/supuest/i.test(v);
   L.forEach(l=>{const m=l.match(/^[-*·•\d.)\s]*([A-Za-zÁÉÍÓÚÑáéíóúñ][A-Za-zÁÉÍÓÚÑáéíóúñ \/.]*?)\s*[:=]\s*(.+)$/);if(!m){pon('no','No entiendo: «'+l+'»');return}
     const k=m[1].toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim(),v=m[2].trim(),vl=v.toLowerCase();
@@ -869,7 +901,8 @@ function aplicarAgente04(txt){const out=[],L=txt.split(/\r?\n/).map(l=>l.trim())
       if(!reglas){nuevo.reglas={filtros:[],entrada:[],salida:[],pasos:[]};reglas=true}
       r.ok.forEach(c=>{const esFiltro=sec!=='salida'&&['>','<','>=','<='].includes(c.op)&&['precio','apertura','maximo','minimo'].includes(c.izq.tipo)&&['sma','ema'].includes(c.der.tipo);const g=esFiltro?'filtros':sec;nuevo.reglas[g].push(c);
         pon('ok',{filtros:'Filtro',entrada:'Entrada',salida:'Salida'}[g]+': '+condTxt(c))});
-      r.mal.forEach(x=>pon('no',{filtros:'Filtro',entrada:'Entrada',salida:'Salida'}[sec]+': no sé convertir «'+x+'» en un bloque. Ponlo a mano.'));return}
+      r.mal.forEach(x=>{malR.push({sec,t:x});pon('no',{filtros:'Filtro',entrada:'Entrada',salida:'Salida'}[sec]+': no sé convertir «'+x+'» en un bloque. Ponlo a mano.')});return}
+    if(/^(NOMBRE|ESTRATEGIA)/.test(k)){nuevo.nombre=v.slice(0,60);nombrePuesto=true;pon('ok','Nombre: '+nuevo.nombre);return}
     if(/^STOP/.test(k)){if(/\bsin\b|ningun|^no\b/.test(vl)){nuevo.gestion.stop={tipo:'ninguno',valor:null};pon('ok','Stop: sin stop')}
       else if(/(m[ií]nimo|m[aá]ximo|apertura)\s+de\s+(?:la\s+)?vela/.test(vl)){const t=/m[ií]nimo/.test(vl)?'minimo':/m[aá]ximo/.test(vl)?'maximo':'apertura';nuevo.gestion.stop={tipo:'nivel',valor:{tipo:t}};pon('ok','Stop: en el '+opTxt({tipo:t})+' de la vela de la señal')}
       else if(/atr/.test(vl)&&numES(v)!=null){nuevo.gestion.stop={tipo:'atr',valor:numES(v)};pon('ok','Stop: '+nf(numES(v),1)+' × ATR')}
@@ -898,18 +931,27 @@ function aplicarAgente04(txt){const out=[],L=txt.split(/\r?\n/).map(l=>l.trim())
     if(/^COSTES?/.test(k)){pon('av','Costes «'+v+'»: escribe COMISIÓN, DESLIZAMIENTO y SPREAD en líneas separadas.');return}
     if(/^(REPARTO|CORTE|DIVISION)/.test(k)){const n=numES(v);if(n==null||n===70){nuevo.corte.tipo='auto';pon('ok','Reparto: automático 70/30')}else{nuevo.corte.tipo='pct';nuevo.corte.is_pct=n;pon('ok','Reparto: '+n+' % para diseñar')}return}
     pon('no','No sé dónde va «'+m[1]+'»')});
-  if(reglas&&!nuevo.reglas.entrada.length&&!nuevo.reglas.pasos.length){pon('no','No he entendido ninguna condición de ENTRADA: se mantienen tus reglas.');nuevo.reglas=clone(SPEC.reglas)}
+  /* «ENTRADA: cierre por encima de la media de 200» sola: es la entrada, no un filtro sin entrada */
+  if(reglas&&!malR.length&&!nuevo.reglas.entrada.length&&!nuevo.reglas.pasos.length&&nuevo.reglas.filtros.length){nuevo.reglas.entrada=nuevo.reglas.filtros;nuevo.reglas.filtros=[];out.forEach(o=>{if(o.e==='ok'&&o.t.startsWith('Filtro: '))o.t='Entrada: '+o.t.slice(8)})}
+  let mantenida=false;
+  if(reglas&&!nuevo.reglas.entrada.length&&!nuevo.reglas.pasos.length){pon('no','No he entendido ninguna condición de ENTRADA: el formulario sigue con la regla anterior («'+(previo||'sin nombre')+'»), no con la tuya.');nuevo.reglas=clone(SPEC.reglas);mantenida=true}
+  normSpec(nuevo);
+  if(reglas&&!mantenida&&!nombrePuesto&&firmaReglas(nuevo.reglas)!==firmaPrev)nuevo.nombre=nombreAuto(nuevo.reglas)+(malR.length?' (incompleta)':'');
+  PEGADO=malR.length?{firma:firmaReglas(nuevo.reglas),mal:malR,previo:mantenida?(previo||''):null}:null;
   OD_SPEC=null;SPEC=nuevo;SPEC.optimizar=null;piPrev=[];rellenarForm();
   $('#pi-pegar-r').innerHTML=out.map(o=>`<li class="${o.e}"><span>${o.e==='ok'?'✓':o.e==='no'?'✕':'!'}</span><span>${esc(o.t)}</span></li>`).join('');
-  const n=out.filter(o=>o.e==='ok').length,k=out.filter(o=>o.e==='no').length;toast(n+' piezas aplicadas'+(k?' · '+k+' sin entender (en rojo)':''))}
+  pintarAvisoPegado();
+  const n=out.filter(o=>o.e==='ok').length,k=out.filter(o=>o.e==='no').length;toast(PEGADO?'Ojo: tu regla NO está entera en el formulario (mira el aviso en rojo)':n+' piezas aplicadas'+(k?' · '+k+' sin entender (en rojo)':''))}
 /* ---------- los 4 números de la mesa (fase 04): fuera de muestra y con costes ---------- */
 function ritmo(){const n=+FULL.n,a=+FULL.anios;if(!(n>0&&a>0))return null;const r=n/a,m=30/r*12;
   return{r,m,txt:'Ritmo: ~'+nf(r,r<10?1:0)+' operaciones al año → 30 operaciones en vivo tardarían ~'+(m<24?nf(m,0)+' meses':nf(m/12,1)+' años'),
     consejo:n<=2?'Con '+n+' operaci'+(n===1?'ón':'ones')+' en todo el histórico, lo más probable es que tu regla entrara y no volviera a salir: revisa la condición de salida (p. ej. en un cruce de medias, el cruce contrario con las mismas dos medias).':r>=60?'Un forward de 30 operaciones en demo es razonable.':r>=12?'Para un forward, fija una ventana de tiempo (3–6 meses), no un número de operaciones.':'Esperar 30 operaciones en vivo son años: en demo comprueba solo la ejecución 1–3 meses.'}}
 /* caída: menos que comprar y mantener en la prueba (el 20 % es un objetivo); operaciones: 30 en total (diseño + prueba) */
+/* PF sin la mejor: sobre todas las operaciones (diseño + prueba), como lo juzga el motor (f1.pf_sin_mejor_total) */
+const psmV=()=>F1.pf_sin_mejor_total!=null?F1.pf_sin_mejor_total:OOS.pf_sin_mejor,psmOk=()=>psmV()>1;
 const ddRef=()=>OOS.maxdd_bh!=null?OOS.maxdd_bh:.2,ddOk=()=>OOS.maxdd<ddRef(),nTot=()=>(+IS.n||0)+(+OOS.n||0),nOk=()=>nTot()>=30;
 const ddTxt=()=>OOS.maxdd_bh!=null?'< comprar y mantener ('+pct(-OOS.maxdd_bh,1)+') · objetivo 20 %':'< 20 %';
-function numeros4(){const N4=[['Factor de beneficio',nf(OOS.pf,2),'≥ 1,3',OOS.pf>=1.3],['Operaciones',nTot()+' en total','≥ 30 en total',nOk()],['Caída máxima',pct(OOS.maxdd,1,false),ddTxt(),ddOk()],['Factor de beneficio sin la mejor operación',nf(OOS.pf_sin_mejor,2),'> 1',OOS.pf_sin_mejor>1]];
+function numeros4(){const N4=[['Factor de beneficio',nf(OOS.pf,2),'≥ 1,3',OOS.pf>=1.3],['Operaciones',nTot()+' en total','≥ 30 en total',nOk()],['Caída máxima',pct(OOS.maxdd,1,false),ddTxt(),ddOk()],['Factor de beneficio sin la mejor operación',nf(psmV(),2),'> 1 (en total)',psmOk()]];
   const x4=N4.filter(n=>n[3]).length,ap=x4===4;
   N4TXT=['MEGA CUEVA TESTER · resultado para mi agente 04 VALIDADOR','Estrategia: '+NOMBRE+(SIMB?' · '+SIMB:''),
     'Datos: '+fd(D.desde)+' → '+fd(D.hasta)+' · fuera de muestra desde '+fd(SPLIT)+' · con costes','',
@@ -958,7 +1000,7 @@ async function correrPI(){const btn=$('#pi-correr');if(btn.disabled||corriendo)r
   $('#pi-nota-motor').innerHTML='<b class="c-red">No se pudo correr:</b> '+esc(err?err.message:'sin respuesta del motor')}
 function mostrarResPI(real,err){
   const fx=[['PF · prueba',nf(OOS.pf,2),qPF(OOS.pf),'TIS ≥ 1,30 · frontera 1,25–1,35'],['Operaciones · prueba',OOS.n,qMin(OOS.n,30),'TIS ≥ 30'],
-    ['Peor caída · prueba',pct(-OOS.maxdd,1),qMax(OOS.maxdd,ddRef()),'TIS '+ddTxt()],['PF sin la mejor',nf(OOS.pf_sin_mejor,2),qMin(OOS.pf_sin_mejor,1),'TIS > 1,00'],
+    ['Peor caída · prueba',pct(-OOS.maxdd,1),qMax(OOS.maxdd,ddRef()),'TIS '+ddTxt()],['PF sin la mejor',nf(psmV(),2),qMin(psmV(),1),'TIS > 1,00 (en total)'],
     ['Acierto · prueba',pct(OOS.win_rate,0,false),qAcierto(OOS.win_rate),ST&&ST.payoff?'mínimo con su payoff: '+pct(1/(1+ST.payoff),0,false):'informativo'],
     ['Rentab. anual · prueba',pct(OOS.cagr,1),OOS.cagr>0.005?'q-ok':OOS.cagr>-0.005?'q-fr':'q-ko','positiva = gana'],
     ['Sharpe · prueba',nf(OOS.sharpe,2),'q-neu','informativo'],['Expectancy · op.',usd(CU.expectancy_usd_oos!=null?CU.expectancy_usd_oos:OOS.media_trade*CAP,0,true),(OOS.media_trade||0)>0?'q-ok':'q-ko','cuenta de 100.000 USD']];
@@ -1052,6 +1094,9 @@ function initPI(){try{const g=store.get('mct_spec2');if(g){const o=JSON.parse(g)
   $('#pi-correr').onclick=correrPI;
   $('#pi-pegar-b').onclick=()=>{const t=$('#pi-pegar-t').value.trim();if(!t){toast('Pega primero lo que te dio tu agente 04');return}aplicarAgente04(t)};
   $('#pi-pegar-ej').onclick=()=>{$('#pi-pegar-t').value=EJ_04};
+  document.addEventListener('click',e=>{if(!e.target.closest('[data-pegado-ok]'))return;
+    if(!confirm('La regla del formulario NO es la que pegaste'+(PEGADO&&PEGADO.previo!=null?' (es la anterior, «'+(PEGADO.previo||'sin nombre')+'»)':'')+'. ¿Correr igualmente la regla que hay ahora en los bloques?'))return;
+    PEGADO=null;actualizarPI();toast('Vale: se correrá la regla que ves en los bloques')});
   $('#pi-csv-ayuda').onclick=()=>openDlg('csv-dlg');
   rellenarForm();if(NAS&&SPEC.nombre===NAS.nombre&&SPEC.datos.fuente==='csv_propio'&&!CSV)cargarNAS(true);
   else if(!CSV&&SPEC.datos.fuente==='darwinex_mt5'){   /* volvió una spec guardada que ya usaba un juego de la librería */
@@ -1073,7 +1118,7 @@ function cifraClave(id){const Mc=D.mc||{},W=D.wf_res||{},St=D.stress||{},Me=D.me
 function detalleFase(id){const Mc=D.mc||{},W=D.wf_res||{},St=D.stress||{},Me=D.meseta,f=FASES.find(x=>x.id===id),e=estFase(id);
   let cr='',graf='',sig='',tec='',titG='',auto=false;
   if(id==='F1'){const c=F1.criterios||{};
-    cr=crit(ee(c.pf_oos??OOS.pf>=1.3),'Factor de beneficio','≥ 1,30',nf(OOS.pf,2))+crit(ee(c.n_oos??nOk()),'Operaciones','≥ 30 en total',nTot())+crit(ee(c.dd_oos??ddOk()),'Peor caída',ddTxt(),pct(-OOS.maxdd,1))+crit(ee(c.pf_sin_mejor??OOS.pf_sin_mejor>1),'PF sin la mejor','> 1,00',nf(OOS.pf_sin_mejor,2));
+    cr=crit(ee(c.pf_oos??OOS.pf>=1.3),'Factor de beneficio','≥ 1,30',nf(OOS.pf,2))+crit(ee(c.n_oos??nOk()),'Operaciones','≥ 30 en total',nTot())+crit(ee(c.dd_oos??ddOk()),'Peor caída',ddTxt(),pct(-OOS.maxdd,1))+crit(ee(c.pf_sin_mejor??psmOk()),'PF sin la mejor','> 1,00 (en total)',nf(psmV(),2));
     titG='Capital con el corte <em>diseño / prueba</em>';graf=`<div class="cv" id="cv-pdet"><canvas role="img" aria-label="Curva de capital con el corte"></canvas><div class="tt"></div></div>`;
     sig=e==='pasa'?`En los años guardados (${yr(SPLIT)}–${yr(D.hasta)}) gana <b>${nf(OOS.pf,2)}</b> por cada 1 que pierde (diseño: ${nf(IS.pf,2)}). No estaba aprendida de memoria.`:'En la parte guardada no cumple los mínimos: la ventaja del diseño no se repite.';
     tec=`Corte ${fd(SPLIT)} · IS ${IS.n} op., PF ${nf(IS.pf,2)} · OOS ${OOS.n} op., PF ${nf(OOS.pf,2)}, MaxDD ${pct(OOS.maxdd,1,false)}, CAGR ${pct(OOS.cagr,1)}. Frontera (PF 1,25–1,35): ${F1.frontera?'sí':'no'}.`}
@@ -1658,7 +1703,7 @@ function initMision1(){$('#bx-mision1').onclick=m1Abrir;$('#m1-volver').onclick=
 function bxResHTML(){const N=[['¿Gana más de lo que pierde?',nf(OOS.pf,2),OOS.pf>=1.3,`Por cada 1 USD que pierde, gana ${nf(OOS.pf,2)}. Pide 1,30 o más.`],
     ['¿Hay operaciones suficientes?',String(nTot()),nOk(),`${nTot()} operaciones en total (${OOS.n} en la prueba honesta). Pide 30 o más en total para no fiarse de la suerte.`],
     ['¿Se aguanta la peor racha?',pct(-OOS.maxdd,1),ddOk(),`Llegó a caer un ${pct(OOS.maxdd,1,false)} desde su máximo. Pide caer menos que comprar y mantener${OOS.maxdd_bh!=null?' ('+pct(OOS.maxdd_bh,1,false)+')':''}. Objetivo: menos del 20 %.`],
-    ['¿Gana sin su mejor operación?',nf(OOS.pf_sin_mejor,2),OOS.pf_sin_mejor>1,`Quitando la mejor, gana ${nf(OOS.pf_sin_mejor,2)} por cada 1 que pierde. Pide más de 1.`]];
+    ['¿Gana sin su mejor operación?',nf(psmV(),2),psmOk(),`Quitando la mejor de todas sus operaciones, gana ${nf(psmV(),2)} por cada 1 que pierde. Pide más de 1.`]];
   const x4=N.filter(n=>n[2]).length,ap=x4===4,exp=CU.expectancy_usd!=null?CU.expectancy_usd:T.reduce((a,t)=>a+t.ret,0)/T.length*CAP;
   const quien=SIMB?(SIMB+(SPEC_RES&&SPEC_RES.temporalidad?' · '+(TFN[SPEC_RES.temporalidad]||'').replace(/^vela /,''):'')+' · '):'';
   return `<div class="bx-ver">${sello(ap,x4+'/4 · '+(ap?'APRUEBA':'NO APRUEBA'),true)}<p>${esc(quien)}${yr(D.desde)}–${yr(D.hasta)}<br><span class="c-dim">${ap?'Pasa los 4 números de la mesa.':'Le falla'+(4-x4>1?'n '+(4-x4)+' números':' 1 número')+' de la mesa.'}</span></p></div>
@@ -1899,7 +1944,7 @@ function retrato(cv,A,esc2,soloCabeza){const P=palOficina(),rows=filasPersona(A.
   const px=(x,y,w,h,c)=>{g.fillStyle=c;g.fillRect(x*esc2,y*esc2,w*esc2,h*esc2)};pintaSprite(px,rows,colPersona(A.look,P),1,1,n,P.out)}
 function selAgente(id){mesaSel=id;const A=agPor(id),i=AG_ALL.indexOf(A);
   $$('#of-tags .of-st').forEach(b=>b.setAttribute('aria-pressed',b.dataset.ag===id));
-  const o=OOS||{},n4=[o.pf>=1.3,o.n>=30,o.maxdd<.2,o.pf_sin_mejor>1].filter(Boolean).length,np=Object.values(D.fases||{}).filter(Boolean).length;
+  const o=OOS||{},n4=[o.pf>=1.3,nOk(),ddOk(),psmOk()].filter(Boolean).length,np=Object.values(D.fases||{}).filter(Boolean).length;
   const extra=id==='tes'?`<div class="ag-b"><h3>En la ${ES_DEMO?'demo del oro':'prueba'}</h3><p class="ag-ver"><b>${n4}/4</b> en los 4 números · <b>${np}/5</b> en el protocolo → <span class="${np===5?'pos':'neg'}">${np===5?'aprueba':'no aprueba'}</span></p></div>`:'';
   $('#ag-det').innerHTML=`<div class="ag-top">${A.look?'<canvas class="ag-ret" aria-hidden="true"></canvas>':'<span class="ag-ret ag-tes" aria-hidden="true"></span>'}<div><p class="eyebrow">${esc(A.fase)}</p><h2>${esc(A.id==='tes'?'Mega Cueva Tester':A.nom)}</h2><p class="ag-mision">${esc(A.mision)}</p></div></div>
     <div class="ag-b"><h3>Qué hace</h3><p>${esc(A.hace)}</p></div>

@@ -12,7 +12,7 @@ La regla es un JSON. `normalizar_spec()` la valida y da errores en español si f
 | `parametros` | Valores con nombre; se usan en los bloques como `"$nombre"` | `{}` |
 | `filtros` | Grupo que deben cumplir TODAS las entradas (largas y cortas) | ninguno |
 | `largo` / `corto` | `{filtros, entrada, salida}`: grupos de ese lado | — |
-| `stop`, `objetivo` | `{"tipo":"atr","n":14,"k":2}` o `{"tipo":"pct","valor":2}` (desde el precio de entrada) | ninguno |
+| `stop`, `objetivo` | `{"tipo":"atr","n":14,"k":2}` o `{"tipo":"pct","valor":2}` (desde el precio de entrada); `nivel` (ver sesiones). Solo objetivo: `{"tipo":"r","k":2}`. Solo stop: `{"tipo":"trailing",…}` (ver «Stop móvil y objetivo a k·R») | ninguno |
 | `salida_tiempo` | Nº de velas; sale en la apertura de la vela entrada+N | sin límite |
 | `sizing` | `{"tipo":"nocional","pct":100}` o `{"tipo":"riesgo","pct":1,"apalancamiento_max":1}` (riesgo exige stop) | 100 % |
 | `costes` | `spread_pb` (por operación), `comision_pb_lado`, `deslizamiento_pb_lado`, `swap_largo_pb_dia`, `swap_corto_pb_dia` (pb = puntos básicos, 0,01 %; swap negativo = coste) | 0 |
@@ -33,6 +33,11 @@ Bloque: `{"indicador": X, <parámetros>, "comparador": C, "valor": número | "$p
 - Indicadores: `close`, `open`, `high`, `low`, `volumen`, `sma(n, fuente)`, `ema(n, fuente)`, `rsi(n)` (Wilder),
   `atr(n)`, `bollinger_sup/inf(n, k)`, `bollinger_media(n)`, `max_n(n, fuente=high)` y `min_n(n, fuente=low)` (de las n velas
   ANTERIORES, sin la actual: sirven para rupturas), `cambio_pct(n)` (en %), `ibs`, `dia_semana` (1 = lunes), `hora`, `mes`.
+- `hora` = hora **con minutos** de la apertura de la vela: hora + minuto/60 (16:15 → 16,25; 09:30 → 9,5). En velas de hora
+  entera (H1, D1) da lo mismo que antes. Con horas enteras, `>=` y `<` dan lo mismo que antes también en M15/M30; **`>` y `<=`
+  cambian** en velas de menos de una hora (antes `hora > 15` era falso a las 15:30; ahora 15,5 > 15 es verdadero): para
+  «desde las 16:00» usa `hora >= 16`. El `valor` puede escribirse como texto `"HH:MM"` (`"15:30"` → 15,5); el texto de la
+  regla lo muestra como «hora ≥ 15:30».
 - Opcionales en cualquier operando: `desfase` (valor de hace N velas), `factor` (multiplica, p. ej. 1.02 × SMA).
 - Cualquier parámetro puede ser `"$nombre"`.
 
@@ -71,6 +76,45 @@ Cada vez que CIERRA una vela, el sistema revisa:
   SALIDA LARGO: si hay posición y RSI(4) > 55 → VENDE (cierra el largo) en la APERTURA de la vela siguiente.
   ...
 ```
+
+## Stop móvil y objetivo a k·R (v1.3)
+
+| Tipo | Spec | Qué hace |
+|---|---|---|
+| Objetivo a k veces el riesgo | `"objetivo": {"tipo": "r", "k": 2}` | entrada ± k·\|entrada − stop inicial\| (largo +, corto −). **Exige stop** (si no, `ErrorSpec`: «El objetivo a k veces el riesgo (p. ej. 2R) necesita un STOP…»). Vale con stop `pct`, `atr`, `nivel` y `trailing` (con el móvil, R se mide con el stop de la primera vela). `k` > 0, admite `"$param"`. Si la distancia al stop es 0 o no se puede calcular, esa operación va sin objetivo. |
+| Stop móvil por ATR | `"stop": {"tipo": "trailing", "modo": "atr", "n": 14, "k": 3}` | Largo: (máximo desde la entrada) − k·ATR(n); corto: (mínimo desde la entrada) + k·ATR(n). «Desde la entrada» = el precio de entrada y los máximos/mínimos de las velas YA CERRADAS con la posición abierta. Se recalcula al cierre de cada vela con el ATR de esa vela y solo se mueve a favor. Primera vela: entrada − k·ATR de la vela de la señal (igual que el stop `atr`). |
+| Stop móvil por mínimo de n velas | `"stop": {"tipo": "trailing", "modo": "min_n", "n": 10}` | Largo: mínimo de los mínimos de las n velas ANTERIORES; corto: máximo de los máximos. Solo se mueve a favor. Si aún no hay n velas antes de la de entrada, no se entra. |
+
+Reglas comunes del stop móvil: el stop vigente en la vela j se calcula con datos hasta el cierre de j−1 (sin mirar el futuro) y se
+vigila DENTRO de la vela j; si la vela abre ya más allá del stop (hueco), sale a la apertura (largo: min(stop, apertura); corto:
+max). Si stop y objetivo se tocan en la misma vela, manda el stop. La salida se marca con `motivo = "stop"` (con stop móvil un
+«stop» puede cerrar con ganancia). El sizing por riesgo usa la distancia al stop de la primera vela. Con `ejecucion =
+cierre_misma_vela` la vigilancia empieza en la vela siguiente a la de entrada y el extremo «desde la entrada» parte del cierre de
+entrada. `n` y `k` admiten `"$param"` (entran en la meseta si se optimizan). Errores en español: modo distinto de `atr`/`min_n`,
+`k ≤ 0`, `n < 1`, `trailing` como objetivo o `r` como stop.
+
+Spec del formulario (app): `{"tipo": "r", "valor": 2}` (objetivo) · `{"tipo": "trailing", "modo": "atr", "periodo": 14, "valor": 3}`
+· `{"tipo": "trailing", "modo": "min_n", "valor": 10}` (stop).
+
+## «PF sin su mejor operación» sobre el total (v1.3)
+
+Igual que las 30 operaciones, el criterio «PF sin su mejor operación > 1» se mide sobre TODAS las operaciones juntas, quitando la
+mejor del conjunto (con 10 operaciones en un tramo, quitar la mejor de ese tramo tumba casi siempre a las estrategias de tendencia).
+- Cueva Tester (`validar`, Fase 1): sobre diseño + prueba (IS + OOS). `f1.criterios.pf_sin_mejor` usa ese valor; claves nuevas
+  `f1.pf_sin_mejor_total` (número; null si hay < 2 operaciones) y `f1.n_total` (nº de operaciones IS + OOS). `f1.OOS.pf_sin_mejor`
+  sigue existiendo (el del tramo, informativo); coincide con `full.pf_sin_mejor`.
+- Laboratorio (`backtest_lab`): sobre los tramos ABIERTOS (los mismos que cuentan para `n_total`; el examen oculto no entra).
+  `criterios.pf_sin_mejor` y `criterios_examen.pf_sin_mejor` usan ese valor; clave nueva `pf_sin_mejor_total`.
+  `tramos.<tramo>.pf_sin_mejor` sigue siendo el de cada tramo (informativo).
+
+## Hallazgos del AED con corrección por pruebas múltiples (preparado, NO ACTIVO: se activará tras el reto)
+
+`perfil_activo(df)["hallazgos"]` mide m pruebas a la vez (13 en diario; + 1 por hora del día en intradía: ~36 en H1). Con tantas,
+el azar da casi siempre algún |t| ≥ 2, así que el listón sube con m (Bonferroni bilateral):
+CLARA = |t| ≥ z(1 − 0,05/(2m)) **y** mismo signo en las 3 épocas (≈ 2,9 con 13; 3,0 con 20; 3,2 con 36) · SE INSINÚA =
+|t| ≥ z(1 − 0,20/(2m)) (≈ 2,4 con 13; 2,6 con 20; 2,8 con 36) · NADA = el resto. Ya no hay vía «3 épocas con |t| ≥ 1».
+m = nº de pruebas hechas (las que tienen ≥ 30 velas). Claves nuevas en `hallazgos`: `n_pruebas`, `umbral_clara`, `umbral_insinua`
+(redondeados a 2 decimales) y `criterio` (frase lista para la leyenda).
 
 ## Salida de `validar(df, spec)`
 
@@ -129,6 +173,7 @@ la 2.ª posición y la meseta 3×3 se mide alrededor de él. El walk-forward usa
   corridas en cada ventana (no resimula), como Sentinel: por eso solo puede re-optimizar sobre los 2 ejes de la meseta.
 - Walk-forward necesita ≥ 4,5 años de histórico (IS 3 años + OOS 1 año).
 - Régimen malo de la Fase 5 = peor año del activo (comprar y mantener) ∪ 2022, como en Sentinel.
-- Un activo, una posición a la vez; sin órdenes límite/stop de entrada, sin piramidar, sin trailing stop, sin series externas.
+- Un activo, una posición a la vez; sin órdenes límite/stop de entrada, sin piramidar, sin series externas. El stop móvil
+  (`trailing`) solo tiene los modos `atr` y `min_n`, y el objetivo a k·R se fija con el stop inicial (no se mueve con él).
 - Pasos: sin reintento dentro del día si una ventana caduca; una sesión no puede cruzar el fin de semana.
 - El swap se cobra por día natural cruzado (sin el triple del miércoles), igual que Sentinel.

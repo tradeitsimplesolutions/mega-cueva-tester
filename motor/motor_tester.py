@@ -37,7 +37,7 @@ import time
 import numpy as np
 import pandas as pd
 
-VERSION = "1.2.0"
+VERSION = "1.3.0"
 MAX_VELAS = 250_000
 MIN_VELAS = 300
 PF_INF = 99.0
@@ -498,6 +498,10 @@ def _grupo(g, donde: str):
             der = _operando(b["valor"]) if isinstance(b["valor"], dict) else {"indicador": "valor", "valor": b["valor"]}
         else:
             raise ErrorSpec(f"{donde} › bloque {i + 1}: falta con qué comparar («valor» o «contra»).")
+        if izq["indicador"] == "hora" and der["indicador"] == "valor" and isinstance(der.get("valor"), str) \
+                and re.fullmatch(r"\d{1,2}:\d{2}", der["valor"].strip()):
+            hh, mm = der["valor"].strip().split(":")
+            der = {**der, "valor": int(hh) + int(mm) / 60.0}
         bloques.append({"izq": izq, "comparador": comp, "der": der})
     return {"op": op, "bloques": bloques} if bloques else None
 
@@ -532,7 +536,42 @@ def _nivel(d, que: str):
         if "valor" not in d:
             raise ErrorSpec(f"{que}: con tipo «pct» hace falta «valor» (en %).")
         return {"tipo": "pct", "valor": d["valor"]}
-    raise ErrorSpec(f"{que}: tipo «{t}» no válido (usa «atr» o «pct»).")
+    if t in ("r", "riesgo", "multiplo_riesgo"):
+        if que != "Objetivo":
+            raise ErrorSpec(f"{que}: el tipo «r» (k veces el riesgo) solo vale para el OBJETIVO.")
+        k_ = d.get("k", d.get("valor", 2.0))
+        _num_pos(k_, f"{que} a k veces el riesgo: k debe ser un número mayor que 0 (p. ej. 2 = 2R)", lambda x: x > 0)
+        return {"tipo": "r", "k": k_}
+    if t in ("trailing", "stop_movil", "movil"):
+        if que != "Stop":
+            raise ErrorSpec(f"{que}: el tipo «trailing» (stop que se mueve a favor) solo vale para el STOP.")
+        modo = str(d.get("modo", "atr")).lower()
+        modo = {"min": "min_n", "minimo": "min_n", "mínimo": "min_n", "minimo_n": "min_n", "max_min": "min_n",
+                "extremo_n": "min_n", "chandelier": "atr"}.get(modo, modo)
+        if modo == "atr":
+            n_, k_ = d.get("n", 14), d.get("k", d.get("valor", 3.0))
+            _num_pos(n_, "Stop móvil por ATR: el ATR necesita 1 vela o más", lambda x: x >= 1)
+            _num_pos(k_, "Stop móvil por ATR: k (las veces el ATR) debe ser mayor que 0", lambda x: x > 0)
+            return {"tipo": "trailing", "modo": "atr", "n": n_, "k": k_}
+        if modo == "min_n":
+            n_ = d.get("n", d.get("valor", 10))
+            _num_pos(n_, "Stop móvil por mínimo de n velas: n debe ser 1 o más", lambda x: x >= 1)
+            return {"tipo": "trailing", "modo": "min_n", "n": n_}
+        raise ErrorSpec(f"Stop móvil: modo «{modo}» no válido (usa «atr» o «min_n»).")
+    raise ErrorSpec(f"{que}: tipo «{t}» no válido (usa «atr», «pct» o «nivel»"
+                    + (", o «trailing» para un stop móvil)." if que == "Stop" else ", o «r» para k veces el riesgo)."))
+
+
+def _num_pos(v, txt: str, cond):
+    """Comprueba un número de stop/objetivo (las referencias «$param» se comprueban al resolverlas)."""
+    if isinstance(v, str) and v.startswith("$"):
+        return
+    try:
+        ok = cond(float(v))
+    except (TypeError, ValueError):
+        ok = False
+    if not ok:
+        raise ErrorSpec(txt + ".")
 
 
 def _pasos(lista, lado: str):
@@ -690,6 +729,9 @@ def normalizar_spec(spec) -> dict:
             raise ErrorSpec(f"Falta la condición de ENTRADA para {lado}s.")
     s["stop"] = _nivel(spec.get("stop"), "Stop")
     s["objetivo"] = _nivel(spec.get("objetivo"), "Objetivo")
+    if s["objetivo"] and s["objetivo"]["tipo"] == "r" and not s["stop"]:
+        raise ErrorSpec("El objetivo a k veces el riesgo (p. ej. 2R) necesita un STOP: el riesgo es la distancia de la "
+                        "entrada al stop. Añade un stop (pct, atr, nivel o trailing) o usa otro tipo de objetivo.")
     st = spec.get("salida_tiempo")
     if isinstance(st, dict):
         st = st.get("barras", st.get("velas"))
@@ -862,8 +904,8 @@ def _calc(df: pd.DataFrame, op: dict, P: dict, cache: dict) -> np.ndarray:
         v = ((df.close - df.low) / rng).fillna(0.5)
     elif nombre == "dia_semana":
         v = pd.Series(df.index.dayofweek + 1, index=df.index, dtype=float)
-    elif nombre == "hora":
-        v = pd.Series(df.index.hour, index=df.index, dtype=float)
+    elif nombre == "hora":       # hora + minuto/60: 16:15 → 16,25 (en velas de hora entera, igual que antes)
+        v = pd.Series(df.index.hour + df.index.minute / 60.0, index=df.index, dtype=float)
     elif nombre == "mes":
         v = pd.Series(df.index.month, index=df.index, dtype=float)
     elif nombre in _OPS_SESION:
@@ -963,6 +1005,53 @@ def _senales(D: _Datos, s: dict, P: dict, cache: dict):
     return out
 
 
+def _usa_atr(cfg) -> bool:
+    return bool(cfg) and (cfg["tipo"] == "atr" or (cfg["tipo"] == "trailing" and cfg["modo"] == "atr"))
+
+
+def _extremos_previos(D: _Datos, cfg, P: dict, cache: dict):
+    """Stop móvil «min_n»: {1: mínimo de las n velas ANTERIORES (largos), -1: máximo (cortos)}, indexado por vela."""
+    if not cfg or cfg["tipo"] != "trailing" or cfg["modo"] != "min_n":
+        return None
+    n = _r(cfg["n"], P)
+    return {1: _calc(D.df, {"indicador": "min_n", "n": n, "fuente": "low"}, P, cache),
+            -1: _calc(D.df, {"indicador": "max_n", "n": n, "fuente": "high"}, P, cache)}
+
+
+def _trailing_ini(cfg, ld: int, px_in: float, k0: int, P: dict, atr, ext) -> float:
+    """Stop móvil vigente en la PRIMERA vela vigilada (k0), con datos hasta el cierre de k0-1."""
+    if k0 < 1 or k0 >= len(atr if atr is not None else ext[1]):
+        return np.nan
+    if cfg["modo"] == "atr":
+        return px_in - ld * float(_r(cfg["k"], P)) * atr[k0 - 1]
+    return float(ext[ld][k0])
+
+
+def _trailing_curva(cfg, ld: int, px_in: float, k0: int, fin: int, h, l, P: dict, atr, ext) -> np.ndarray:
+    """Stop móvil vigente en cada vela k0..fin-1 (vigilado DENTRO de la vela). El de la vela j se calcula al cierre de
+    j-1 (sin mirar el futuro) y solo se mueve a favor. ATR: extremo favorable desde la entrada (precio de entrada y
+    máximos/mínimos de las velas ya cerradas con la posición abierta) − k·ATR(n) de j-1. min_n: mínimo (largos) /
+    máximo (cortos) de las n velas anteriores a j."""
+    if fin <= k0:
+        return np.zeros(0)
+    if cfg["modo"] == "atr":
+        k = float(_r(cfg["k"], P))
+        if ld == 1:
+            ex = np.maximum.accumulate(np.r_[px_in, h[k0:fin - 1]])
+            return np.maximum.accumulate(ex - k * atr[k0 - 1:fin - 1])
+        ex = np.minimum.accumulate(np.r_[px_in, l[k0:fin - 1]])
+        return np.minimum.accumulate(ex + k * atr[k0 - 1:fin - 1])
+    seg = ext[ld][k0:fin]
+    return np.maximum.accumulate(seg) if ld == 1 else np.minimum.accumulate(seg)
+
+
+def _objetivo_r(cfg, ld: int, px_in: float, stop: float, P: dict) -> float:
+    """Objetivo a k veces el riesgo inicial: entrada ± k·|entrada − stop| (stop inicial)."""
+    if not np.isfinite(stop) or abs(px_in - stop) <= 0:
+        return np.nan
+    return px_in + ld * float(_r(cfg["k"], P)) * abs(px_in - stop)
+
+
 def _correr(D: _Datos, s: dict, P: dict, cache: dict, factor_costes: float = 1.0) -> Corrida:
     if _usa_simulador_pasos(s):
         return _correr_pasos(D, s, P, cache, factor_costes)
@@ -975,10 +1064,14 @@ def _correr(D: _Datos, s: dict, P: dict, cache: dict, factor_costes: float = 1.0
     idx_ent = np.flatnonzero(ent_l | ent_s)
     idx_sal = {1: np.flatnonzero(sal_l), -1: np.flatnonzero(sal_s)}
     stop_cfg, obj_cfg = s["stop"], s["objetivo"]
-    atr_stop = _calc(D.df, {"indicador": "atr", "n": stop_cfg["n"]}, P, cache) if stop_cfg and stop_cfg["tipo"] == "atr" else None
-    atr_obj = _calc(D.df, {"indicador": "atr", "n": obj_cfg["n"]}, P, cache) if obj_cfg and obj_cfg["tipo"] == "atr" else None
-    # con stop u objetivo por ATR, una señal sin ATR calculado todavía no se opera (si no, iría sin stop)
-    for a_ in (atr_stop, atr_obj):
+    atr_stop = _calc(D.df, {"indicador": "atr", "n": stop_cfg["n"]}, P, cache) if _usa_atr(stop_cfg) else None
+    atr_obj = _calc(D.df, {"indicador": "atr", "n": obj_cfg["n"]}, P, cache) if _usa_atr(obj_cfg) else None
+    movil = bool(stop_cfg) and stop_cfg["tipo"] == "trailing"
+    ext = _extremos_previos(D, stop_cfg, P, cache)
+    # con stop u objetivo por ATR, una señal sin ATR calculado todavía no se opera (si no, iría sin stop);
+    # con stop móvil «min_n», tampoco si aún no hay n velas antes de la de entrada
+    falta_ext = None if ext is None else np.r_[~np.isfinite(ext[1][1:]), False]
+    for a_ in (atr_stop, atr_obj, None if falta_ext is None else np.where(falta_ext, np.nan, 0.0)):
         if a_ is not None:
             sin = ~np.isfinite(np.asarray(a_, dtype=float))
             if sin.any():
@@ -1010,6 +1103,8 @@ def _correr(D: _Datos, s: dict, P: dict, cache: dict, factor_costes: float = 1.0
                 a = atr_stop[e - 1]
                 if np.isfinite(a):
                     stop = px_in - ld * float(_r(stop_cfg["k"], P)) * a
+            elif movil:
+                stop = _trailing_ini(stop_cfg, ld, px_in, e, P, atr_stop, ext)
             else:
                 stop = px_in * (1 - ld * float(_r(stop_cfg["valor"], P)) / 100.0)
         if obj_cfg:
@@ -1017,6 +1112,8 @@ def _correr(D: _Datos, s: dict, P: dict, cache: dict, factor_costes: float = 1.0
                 a = atr_obj[e - 1]
                 if np.isfinite(a):
                     tgt = px_in + ld * float(_r(obj_cfg["k"], P)) * a
+            elif obj_cfg["tipo"] == "r":
+                tgt = _objetivo_r(obj_cfg, ld, px_in, stop, P)
             else:
                 tgt = px_in * (1 + ld * float(_r(obj_cfg["valor"], P)) / 100.0)
         if sz["tipo"] == "nocional":
@@ -1036,7 +1133,16 @@ def _correr(D: _Datos, s: dict, P: dict, cache: dict, factor_costes: float = 1.0
         fin = min(x_open, n)
         # salida dentro de la vela: stop / objetivo en las velas e .. fin-1
         j_int, px_int, mot_int = n, np.nan, ""
-        if np.isfinite(stop):
+        if np.isfinite(stop) and movil:
+            st = _trailing_curva(stop_cfg, ld, px_in, e, fin, h, l, P, atr_stop, ext)
+            seg = (l[e:fin] <= st) if ld == 1 else (h[e:fin] >= st)
+            hit = np.flatnonzero(seg)
+            if hit.size:
+                js = e + int(hit[0]); sj = float(st[js - e])
+                # con hueco (la apertura ya está más allá del stop) se sale a la apertura
+                px = min(sj, o[js]) if ld == 1 else max(sj, o[js])
+                j_int, px_int, mot_int = js, px, "stop"
+        elif np.isfinite(stop):
             seg = (l[e:fin] <= stop) if ld == 1 else (h[e:fin] >= stop)
             hit = np.flatnonzero(seg)
             if hit.size:
@@ -1290,8 +1396,11 @@ def _correr_pasos(D: _Datos, s: dict, P: dict, cache: dict, factor_costes: float
     lados = [ld for ld in ("largo", "corto") if s["direccion"] in (ld, "ambos")]
     prep = {ld: _preparar_lado(D, s, P, cache, ld, info, s["filtros"]) for ld in lados}
     stop_cfg, obj_cfg = s["stop"], s["objetivo"]
-    atr_stop = _calc(D.df, {"indicador": "atr", "n": stop_cfg["n"]}, P, cache) if stop_cfg and stop_cfg["tipo"] == "atr" else None
-    atr_obj = _calc(D.df, {"indicador": "atr", "n": obj_cfg["n"]}, P, cache) if obj_cfg and obj_cfg["tipo"] == "atr" else None
+    atr_stop = _calc(D.df, {"indicador": "atr", "n": stop_cfg["n"]}, P, cache) if _usa_atr(stop_cfg) else None
+    atr_obj = _calc(D.df, {"indicador": "atr", "n": obj_cfg["n"]}, P, cache) if _usa_atr(obj_cfg) else None
+    movil = bool(stop_cfg) and stop_cfg["tipo"] == "trailing"
+    ext = _extremos_previos(D, stop_cfg, P, cache)
+
     def _niv(cfg):
         if not cfg or cfg["tipo"] != "nivel":
             return None
@@ -1341,8 +1450,9 @@ def _correr_pasos(D: _Datos, s: dict, P: dict, cache: dict, factor_costes: float
                     break
                 e, px_in, k0 = t + 1, o[t + 1], t + 1
             # con stop u objetivo por ATR, sin ATR calculado no se entra (iría sin stop)
-            if (stop_cfg and stop_cfg["tipo"] == "atr" and not np.isfinite(atr_stop[t])) or \
-               (obj_cfg and obj_cfg["tipo"] == "atr" and not np.isfinite(atr_obj[t])):
+            if (_usa_atr(stop_cfg) and not np.isfinite(atr_stop[t])) or \
+               (_usa_atr(obj_cfg) and not np.isfinite(atr_obj[t])) or \
+               (movil and not np.isfinite(_trailing_ini(stop_cfg, ld, px_in, k0, P, atr_stop, ext))):
                 pos = t + 1
                 continue
             # stop / objetivo
@@ -1353,6 +1463,8 @@ def _correr_pasos(D: _Datos, s: dict, P: dict, cache: dict, factor_costes: float
                 elif stop_cfg["tipo"] == "atr":
                     a = atr_stop[t]
                     stop = px_in - ld * float(_r(stop_cfg["k"], P)) * a if np.isfinite(a) else np.nan
+                elif movil:
+                    stop = _trailing_ini(stop_cfg, ld, px_in, k0, P, atr_stop, ext)
                 else:
                     stop = px_in * (1 - ld * float(_r(stop_cfg["valor"], P)) / 100.0)
             if obj_cfg:
@@ -1361,6 +1473,8 @@ def _correr_pasos(D: _Datos, s: dict, P: dict, cache: dict, factor_costes: float
                 elif obj_cfg["tipo"] == "atr":
                     a = atr_obj[t]
                     tgt = px_in + ld * float(_r(obj_cfg["k"], P)) * a if np.isfinite(a) else np.nan
+                elif obj_cfg["tipo"] == "r":
+                    tgt = _objetivo_r(obj_cfg, ld, px_in, stop, P)
                 else:
                     tgt = px_in * (1 + ld * float(_r(obj_cfg["valor"], P)) / 100.0)
             if sz["tipo"] == "nocional":
@@ -1374,7 +1488,15 @@ def _correr_pasos(D: _Datos, s: dict, P: dict, cache: dict, factor_costes: float
             # candidatos de salida: (instante, prioridad, vela, precio, motivo, al_cierre, forzado)
             # instante = 2·vela + 0 (apertura) | 1 (dentro de la vela) | 2 (cierre)
             cands = []
-            if np.isfinite(stop) and k0 <= lim:
+            if np.isfinite(stop) and k0 <= lim and movil:
+                st = _trailing_curva(stop_cfg, ld, px_in, k0, lim + 1, h, l, P, atr_stop, ext)
+                seg = (l[k0:lim + 1] <= st) if ld == 1 else (h[k0:lim + 1] >= st)
+                hit = np.flatnonzero(seg)
+                if hit.size:
+                    js = k0 + int(hit[0]); sj = float(st[js - k0])
+                    px = min(sj, o[js]) if ld == 1 else max(sj, o[js])
+                    cands.append((2 * js + 1, 0, js, px, "stop", False, False))
+            elif np.isfinite(stop) and k0 <= lim:
                 seg = (l[k0:lim + 1] <= stop) if ld == 1 else (h[k0:lim + 1] >= stop)
                 hit = np.flatnonzero(seg)
                 if hit.size:
@@ -1520,9 +1642,15 @@ def fase1(c: Corrida, fs: pd.Timestamp, close=None) -> dict:
         a = int(np.searchsorted(c.idx.values, np.datetime64(fs), "left"))
         IS["maxdd_bh"] = _dd_bh(close, 0, a); OOS["maxdd_bh"] = _dd_bh(close, a, len(c.idx))
     dd_ref = OOS.get("maxdd_bh", UMBRAL["dd_oos"])
+    # «PF sin su mejor operación», coherente con las 30 operaciones en total: sobre TODAS las operaciones (diseño +
+    # prueba juntas) quitando la mejor del conjunto. Con pocas operaciones en la prueba, quitar la mejor de ese tramo
+    # tumba casi siempre a las estrategias de tendencia (pocas ganadoras grandes) aunque no dependan de un solo golpe.
+    rets_tot = c.trades.ret.to_numpy(float) if len(c.trades) else np.zeros(0)
+    psm_tot = pf_sin_mejor(rets_tot)
     crit = {"pf_oos": bool(OOS["pf"] >= UMBRAL["pf_oos"]), "n_oos": bool(IS["n"] + OOS["n"] >= UMBRAL["n_oos"]),
-            "dd_oos": bool(OOS["maxdd"] < dd_ref), "pf_sin_mejor": bool(OOS["pf_sin_mejor"] > UMBRAL["pf_sin_mejor"])}
+            "dd_oos": bool(OOS["maxdd"] < dd_ref), "pf_sin_mejor": bool(psm_tot > UMBRAL["pf_sin_mejor"])}
     return {"fecha_split": str(fs.date()), "IS": IS, "OOS": OOS, "criterios": crit,
+            "pf_sin_mejor_total": psm_tot, "n_total": int(rets_tot.size),
             "frontera": bool(1.25 <= OOS["pf"] <= 1.35), "pasa": all(crit.values())}
 
 
@@ -1759,6 +1887,12 @@ def _txt_bloque(b: dict, P: dict) -> str:
     izq = _txt_op(b["izq"], P); der = _txt_op(b["der"], P)
     if b["izq"]["indicador"] == "dia_semana" and b["der"]["indicador"] == "valor":
         der = _DIAS.get(int(float(_r(b["der"]["valor"], P))), der)
+    elif b["izq"]["indicador"] == "hora" and b["der"]["indicador"] == "valor":
+        try:
+            x = float(_r(b["der"]["valor"], P)); hh = int(x); mm = int(round((x - hh) * 60))
+            der = f"{hh:02d}:{mm:02d}" if 0 <= x < 24 and mm < 60 else der
+        except (TypeError, ValueError):
+            pass
     return f"{izq} {_COMP[b['comparador']]} {der}"
 
 
@@ -1778,6 +1912,15 @@ def _txt_nivel(d, P, que):
         return f"{_num(_r(d['k'], P))} × ATR({_num(_r(d['n'], P))}) desde el precio de entrada"
     if d["tipo"] == "nivel":
         return f"{_txt_op(d['operando'], P)} de la vela de la señal"
+    if d["tipo"] == "r":
+        k = _num(_r(d['k'], P))
+        return f"{k} veces el riesgo ({k}R: {k} × la distancia de la entrada al stop inicial)"
+    if d["tipo"] == "trailing":
+        if d["modo"] == "atr":
+            return (f"stop móvil: el mejor precio desde la entrada − {_num(_r(d['k'], P))} × ATR({_num(_r(d['n'], P))}), "
+                    "recalculado al cierre de cada vela y solo a favor")
+        return (f"stop móvil: el mínimo (en cortos, el máximo) de las {_num(_r(d['n'], P))} velas anteriores, "
+                "recalculado al cierre de cada vela y solo a favor")
     return f"{_num(_r(d['valor'], P))} % desde el precio de entrada"
 
 
@@ -2838,22 +2981,29 @@ def backtest_lab(texto_csv, spec) -> dict:
     if "validacion" in abiertos and "examen" not in abiertos:
         oculto[i_ex:i_val] = True
     tramos = {}
+    rets_ab = []
     for t in abiertos:
         a, b = lim[t]
         ct = corr[t]
         m = (ct.i_in >= a) & (ct.i_in < b)
         rets = ct.trades.ret.to_numpy(float)[m] if len(ct.trades) else np.zeros(0)
+        rets_ab.append(rets)
         tramos[t] = {**_resumen(rets, ct.r[a:b], ct.idx[a:b]), "desde": part[t]["desde"], "hasta": part[t]["hasta"],
                      "maxdd_bh": _dd_bh(df.close.to_numpy(float), a, b)}
     # 30 operaciones en total: todos los tramos abiertos juntos
     n_total = int(sum(tramos[t]["n"] for t in abiertos))
+    # «PF sin su mejor operación», con el mismo criterio que las 30 operaciones: sobre TODAS las operaciones de los
+    # tramos abiertos juntas, quitando la mejor del conjunto (con 10 operaciones en un tramo, quitar la mejor de ese
+    # tramo tumba casi siempre a las estrategias de tendencia)
+    psm_tot = pf_sin_mejor(np.concatenate(rets_ab) if rets_ab else np.zeros(0))
+    psm_ok = bool(psm_tot > UMBRAL["pf_sin_mejor"])
 
     def juzgar(J):
         if not J["n"]:
-            return {"pf": False, "n": n_total >= UMBRAL["n_oos"], "dd": False, "pf_sin_mejor": False}
+            return {"pf": False, "n": n_total >= UMBRAL["n_oos"], "dd": False, "pf_sin_mejor": psm_ok}
         # caída: menor que la de comprar y mantener en ese mismo tramo (el 20 % es un objetivo, no un suspenso)
         return {"pf": bool(J["pf"] >= UMBRAL["pf_oos"]), "n": bool(n_total >= UMBRAL["n_oos"]),
-                "dd": bool(J["maxdd"] < J["maxdd_bh"]), "pf_sin_mejor": bool(J["pf_sin_mejor"] > UMBRAL["pf_sin_mejor"])}
+                "dd": bool(J["maxdd"] < J["maxdd_bh"]), "pf_sin_mejor": psm_ok}
     juez = abiertos[-1]
     crit = juzgar(tramos[juez])
     crit_ex = juzgar(tramos["examen"]) if "examen" in tramos else None
@@ -2901,7 +3051,7 @@ def backtest_lab(texto_csv, spec) -> dict:
            for x in T.itertuples() if not (oculto[int(x.i_in)] or (int(x.i_out) < fin_vis and oculto[int(x.i_out)]))]
     return _limpio({"particion": part, "abierto": abiertos, "juez": juez, "tramos": tramos, "criterios": crit,
                     "criterios_examen": crit_ex, "pasa": pasa, "frontera": bool(1.25 <= tramos[juez]["pf"] <= 1.35), "eq": eq,
-                    "velas": velas, "operaciones": ops[-400:], "n_operaciones": len(ops), "n_total": n_total, "examen_oculto": bool(oculto.any()),
+                    "velas": velas, "operaciones": ops[-400:], "n_operaciones": len(ops), "n_total": n_total, "pf_sin_mejor_total": psm_tot, "examen_oculto": bool(oculto.any()),
                     "pseudocodigo": pseudocodigo(s), "tf": cal["tf"], "calidad": cal["veredicto"]})
 
 
@@ -3272,7 +3422,14 @@ def _nivel_app(d, que: str, prm=None):
         return {"tipo": "pct", "valor": v}
     if t == "atr":
         return {"tipo": "atr", "n": int(d.get("periodo", d.get("n", 14)) or 14), "k": v}
-    raise ErrorSpec(f"{que}: tipo «{t}» no válido (usa ninguno, pct, atr o nivel).")
+    if t == "r":
+        return _nivel({"tipo": "r", "k": v}, que)
+    if t == "trailing":
+        modo = str(d.get("modo", "atr")).lower()
+        if modo == "atr":
+            return _nivel({"tipo": "trailing", "modo": "atr", "n": int(d.get("periodo", d.get("n", 14)) or 14), "k": v}, que)
+        return _nivel({"tipo": "trailing", "modo": modo, "n": int(v)}, que)
+    raise ErrorSpec(f"{que}: tipo «{t}» no válido (usa ninguno, pct, atr, nivel, r o trailing).")
 
 
 def adaptar_spec_app(spec_app, df: pd.DataFrame | None = None) -> tuple:
