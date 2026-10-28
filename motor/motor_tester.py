@@ -2739,7 +2739,9 @@ def calidad_datos(df: pd.DataFrame):
     poner("ani", "Años de historia", "falla" if a_dis < 5 else "ok",
           f"{anios:.1f} años en total; tu diseño (lo que miras) cubre {a_dis:.1f}. " +
           ("El mínimo son 5 años de diseño: con menos, tu regla puede haber visto un solo régimen (solo subidas, solo calma) "
-           "y no sabrás cómo se porta en el otro. Sube más historia: hacen falta más años, no más velas."
+           "y no sabrás cómo se porta en el otro. El diseño es solo una parte de tus datos (el resto es el examen y la validación), "
+           f"así que para 5 años de diseño necesitas unos {np.ceil(5 * anios / max(a_dis, 0.01)):.0f} años en total. "
+           "Sube más historia: hacen falta más años, no más velas."
            if a_dis < 5 else
            "Cumple el mínimo de 5. Aun así, cuantos más años mejor: que el diseño incluya alguna crisis y algún mercado lateral (lo ideal, 10 o más)."
            if a_dis < 10 else "Bien: varios regímenes dentro del diseño."))
