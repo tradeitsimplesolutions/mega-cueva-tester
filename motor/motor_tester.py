@@ -1379,14 +1379,15 @@ def _correr_pasos(D: _Datos, s: dict, P: dict, cache: dict, factor_costes: float
                 hit = np.flatnonzero(seg)
                 if hit.size:
                     js = k0 + int(hit[0])
-                    px = stop if (js == e and not al_cierre) else (min(stop, o[js]) if ld == 1 else max(stop, o[js]))
+                    # también en la vela de entrada: si la apertura ya está más allá del stop (stop en un precio de la vela de la señal), se sale a la apertura
+                    px = min(stop, o[js]) if ld == 1 else max(stop, o[js])
                     cands.append((2 * js + 1, 0, js, px, "stop", False, False))
             if np.isfinite(tgt) and k0 <= lim:
                 seg = (h[k0:lim + 1] >= tgt) if ld == 1 else (l[k0:lim + 1] <= tgt)
                 hit = np.flatnonzero(seg)
                 if hit.size:
                     jt = k0 + int(hit[0])
-                    px = tgt if (jt == e and not al_cierre) else (max(tgt, o[jt]) if ld == 1 else min(tgt, o[jt]))
+                    px = max(tgt, o[jt]) if ld == 1 else min(tgt, o[jt])
                     cands.append((2 * jt + 1, 1, jt, px, "objetivo", False, False))
             # al cierre: la salida se mira desde la vela siguiente a la entrada; en apertura, desde la vela de entrada
             jsal = int(prep[nm][1][k0 if al_cierre else e])
