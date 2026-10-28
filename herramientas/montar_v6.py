@@ -116,6 +116,11 @@ def main():
         lab_html = (L / "lab.html").read_text(encoding="utf-8") if lab else ""
         lab_css = (L / "lab.css").read_text(encoding="utf-8") if lab else ""
         lab_js = (L / "lab.js").read_text(encoding="utf-8") if lab else ""
+        # módulo «TU UNIDAD» (opcional): va detrás de lab.css / lab.js; si no existe, no pasa nada
+        if lab and (L / "unidad.css").exists():
+            lab_css += "\n" + (L / "unidad.css").read_text(encoding="utf-8")
+        if lab and (L / "unidad.js").exists():
+            lab_js += "\n" + (L / "unidad.js").read_text(encoding="utf-8")
         js = ("window.MCT_LAB=true;\n" if lab else "") + ia + app_js.replace("/*__LAB_JS__*/", lab_js)
         return (plantilla
                 .replace("/*__CSS__*/", css + lab_css)
