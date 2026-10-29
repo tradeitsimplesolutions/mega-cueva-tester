@@ -1,0 +1,161 @@
+/* ---------- MODO «MÁS BÁSICO» (body.modo-basico) · Cuevi, el muñequito pixel que guía ----------
+   Capa opcional para las dos herramientas (pública y laboratorio). Todo lo de aquí lleva prefijo mb-
+   y solo actúa con body.modo-basico, salvo el conmutador. No toca la impresión (todo va en @media screen). */
+@media screen{
+/* conmutador · siempre visible, abajo a la izquierda (el feedback vive abajo a la derecha) */
+.mb-toggle{position:fixed;left:14px;bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:58;display:inline-flex;align-items:center;gap:.45rem;
+  min-height:40px;padding:.45rem .9rem;border-radius:999px;border:1px solid var(--line2,#3F4C53);background:var(--pan2,#1C2327);color:var(--txt,#ECE8DF);
+  font:600 max(13px,.82rem)/1.1 var(--f-mono,monospace);cursor:pointer;box-shadow:0 4px 18px rgba(0,0,0,.35)}
+.mb-toggle:hover{border-color:var(--gold,#FFD23F)}
+.mb-toggle[aria-pressed="true"]{background:var(--gold,#FFD23F);color:var(--on-acc,#161200);border-color:var(--gold,#FFD23F)}
+.mb-toggle .mb-sw{display:inline-block;width:26px;height:14px;border-radius:999px;background:var(--line2,#3F4C53);position:relative;flex:none}
+.mb-toggle .mb-sw::after{content:"";position:absolute;top:2px;left:2px;width:10px;height:10px;border-radius:50%;background:var(--txt,#ECE8DF);transition:left .15s}
+.mb-toggle[aria-pressed="true"] .mb-sw{background:rgba(0,0,0,.35)}
+.mb-toggle[aria-pressed="true"] .mb-sw::after{left:14px;background:var(--on-acc,#161200)}
+body.lab .mb-toggle{left:calc(17.5rem + 14px)}
+.mb-toggle.mb-en-cab{position:static;min-height:34px;padding:.3rem .75rem;margin-right:.6rem;box-shadow:none;vertical-align:middle}
+
+/* la guía: Cuevi + bocadillo */
+.mb-guia{position:fixed;left:14px;bottom:calc(64px + env(safe-area-inset-bottom,0px));z-index:57;width:min(400px,calc(100vw - 28px));
+  display:grid;grid-template-columns:76px minmax(0,1fr);gap:.55rem;align-items:end;font-family:var(--f-body,system-ui,sans-serif)}
+body.lab .mb-guia{left:calc(17.5rem + 14px)}
+.mb-guia[hidden]{display:none}
+.mb-guia .mb-cuevi{width:76px;height:76px;image-rendering:pixelated;image-rendering:crisp-edges;display:block;filter:drop-shadow(0 3px 0 rgba(0,0,0,.45))}
+.mb-boc{position:relative;background:var(--pan2,#1C2327);color:var(--txt,#ECE8DF);border:2px solid var(--gold,#FFD23F);border-radius:10px;
+  padding:.75rem .85rem .7rem;box-shadow:0 10px 30px rgba(0,0,0,.45);max-height:min(62vh,520px);display:flex;flex-direction:column;min-height:0}
+.mb-boc::before{content:"";position:absolute;left:-11px;bottom:22px;border:9px solid transparent;border-right-color:var(--gold,#FFD23F);border-left:0}
+.mb-boc::after{content:"";position:absolute;left:-7px;bottom:24px;border:7px solid transparent;border-right-color:var(--pan2,#1C2327);border-left:0}
+.mb-cab{display:flex;align-items:flex-start;gap:.5rem}
+.mb-etapa{margin:0;font:600 .7rem/1.3 var(--f-mono,monospace);letter-spacing:.06em;color:var(--gold,#FFD23F);text-transform:uppercase;flex:1}
+.mb-x{flex:none;border:1px solid var(--line2,#3F4C53);background:transparent;color:var(--dim,#B9B5AB);border-radius:6px;font:700 .9rem/1 var(--f-mono,monospace);cursor:pointer;width:30px;height:30px;padding:0}
+.mb-x:hover{color:var(--txt,#ECE8DF);border-color:var(--gold,#FFD23F)}
+.mb-tit{margin:.25rem 0 .35rem;font:800 1.18rem/1.15 var(--f-disp,sans-serif);letter-spacing:.02em;color:var(--ink,#FFFBF2)}
+.mb-txt{overflow:auto;min-height:0;font-size:.95rem;line-height:1.45;padding-right:.2rem}
+.mb-txt p{margin:0 0 .5rem}.mb-txt ol,.mb-txt ul{margin:0 0 .5rem;padding-left:1.15rem}.mb-txt li{margin:.15rem 0}
+.mb-txt b{color:var(--ink,#FFFBF2)}
+.mb-pq{display:inline-flex;align-items:center;gap:.3rem;margin:0 0 .4rem;padding:.25rem .55rem;min-height:30px;border:1px solid var(--line2,#3F4C53);border-radius:999px;background:transparent;color:var(--gold,#FFD23F);font:600 .8rem var(--f-mono,monospace);cursor:pointer}
+.mb-pq:hover{border-color:var(--gold,#FFD23F)}
+.mb-pqt{border-left:3px solid var(--gold,#FFD23F);padding:.1rem 0 .1rem .6rem;margin:0 0 .3rem}
+.mb-pqt[hidden]{display:none}
+.mb-ruta{display:flex;flex-wrap:wrap;gap:.25rem;margin:.1rem 0 .55rem;padding:0;list-style:none}
+.mb-ruta li{font:600 .66rem/1 var(--f-mono,monospace);padding:.28rem .4rem;border-radius:999px;border:1px solid var(--line2,#3F4C53);color:var(--dim2,#959186)}
+.mb-ruta li.hecho{border-color:var(--ok,#16B25F);color:var(--ok2,#7FDCA6)}
+.mb-ruta li.aqui{border-color:var(--gold,#FFD23F);color:var(--gold,#FFD23F);background:rgba(var(--gold-rgb,255,210,63),.12)}
+.mb-acc{display:flex;flex-wrap:wrap;align-items:center;gap:.45rem;margin-top:.45rem}
+.mb-sig{min-height:40px;padding:.5rem .95rem;border-radius:8px;border:0;background:var(--gold,#FFD23F);color:var(--on-acc,#161200);font:800 .98rem/1 var(--f-disp,sans-serif);letter-spacing:.04em;cursor:pointer}
+.mb-sig:hover{filter:brightness(1.08)}
+.mb-sig[disabled]{opacity:.45;cursor:default}
+.mb-otro{min-height:36px;border:1px dashed var(--line2,#3F4C53);background:transparent;color:var(--txt,#ECE8DF);border-radius:8px;padding:.35rem .65rem;font:600 .82rem var(--f-body,sans-serif);cursor:pointer}
+.mb-otro:hover{border-color:var(--gold,#FFD23F)}
+.mb-txt .sr,.mb-ruta .sr{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+/* laboratorio en escritorio: la guía se sienta en la barra lateral, encima de las fases 05-08 (cerradas), y no tapa el trabajo */
+body.lab .mb-guia.mb-lado{left:10px;right:auto;width:calc(17.5rem - 20px);bottom:var(--mb-bot,96px);grid-template-columns:1fr;gap:0}
+body.lab .mb-guia.mb-lado .mb-cuevi{width:48px;height:48px;margin:0 0 -2px 6px;position:relative;z-index:1}
+body.lab .mb-guia.mb-lado .mb-boc{max-height:var(--mb-maxh,300px)}
+body.lab .mb-guia.mb-lado .mb-boc::before{left:22px;top:-11px;bottom:auto;border:9px solid transparent;border-bottom-color:var(--gold,#FFD23F);border-top:0}
+body.lab .mb-guia.mb-lado .mb-boc::after{left:24px;top:-7px;bottom:auto;border:7px solid transparent;border-bottom-color:var(--pan2,#1C2327);border-top:0}
+body.lab .mb-guia.mb-lado .mb-tit{font-size:1.08rem}
+body.lab .mb-guia.mb-lado .mb-txt{font-size:.9rem}
+body.lab .mb-guia.mb-lado .mb-ruta{gap:.2rem;margin-bottom:.4rem}body.lab .mb-guia.mb-lado .mb-ruta li{padding:.22rem .32rem;font-size:.6rem}
+body.lab .mb-guia.mb-lado .mb-boc{padding:.6rem .7rem .6rem}body.lab .mb-guia.mb-lado .mb-etapa{font-size:.64rem}
+/* mientras la guía ocupa ese hueco, las fases 05-08 (aún cerradas) se apartan: así no tapa nada que se pueda pulsar */
+body.modo-basico.mb-lado-on #lab-fases .lab-fase.cerrada,body.modo-basico.mb-lado-on #lab-fases .lab-grupo:nth-of-type(2){display:none}
+@media (min-width:901px){body.lab .mb-mini{bottom:14px}}
+/* plegada: solo Cuevi, como botón */
+.mb-mini{position:fixed;left:14px;bottom:calc(64px + env(safe-area-inset-bottom,0px));z-index:57;width:64px;height:64px;padding:4px;border-radius:12px;
+  border:2px solid var(--gold,#FFD23F);background:var(--pan2,#1C2327);cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.4)}
+body.lab .mb-mini{left:calc(17.5rem + 14px)}
+.mb-guia.mb-der,.mb-mini.mb-der,body.lab .mb-guia.mb-der,body.lab .mb-mini.mb-der{left:auto;right:14px;bottom:calc(104px + env(safe-area-inset-bottom,0px))}
+.mb-mini img{width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges;display:block}
+.mb-mini[hidden]{display:none}
+.mb-mini .mb-punto{position:absolute;top:-6px;right:-6px;width:14px;height:14px;border-radius:50%;background:var(--red,#FF6B5E);border:2px solid var(--pan2,#1C2327)}
+
+/* espacio al final para poder sacar el contenido de debajo de la guía */
+body.modo-basico .lab-main::after,body.modo-basico.mision1 #mision1::after{content:"";display:block;flex:0 0 auto;height:var(--mb-reserva,0px)}
+
+/* lo que se resalta cuando Cuevi señala algo */
+body.modo-basico .mb-foco{scroll-margin-top:72px;outline:3px solid var(--gold,#FFD23F)!important;outline-offset:4px;border-radius:6px;animation:mb-late 1s ease-in-out 3}
+@keyframes mb-late{50%{outline-color:rgba(var(--gold-rgb,255,210,63),.25)}}
+
+body.modo-basico #m1-perfil{grid-template-columns:minmax(0,1fr)}
+
+/* «ver detalle»: los bloques técnicos se pliegan (se vuelven a ver con su botón) */
+.mb-detalle{display:flex;align-items:center;gap:.5rem;width:100%;margin:.2rem 0;padding:.6rem .85rem;border:1px dashed var(--line2,#3F4C53);border-radius:8px;
+  background:transparent;color:var(--dim,#B9B5AB);font:600 .9rem/1.3 var(--f-body,sans-serif);text-align:left;cursor:pointer}
+.mb-detalle:hover{color:var(--txt,#ECE8DF);border-color:var(--gold,#FFD23F)}
+.mb-detalle .mb-fl{font-family:var(--f-mono,monospace);color:var(--gold,#FFD23F);flex:none}
+.mb-detalle small{color:var(--dim2,#959186);font-weight:400}
+body.modo-basico:not(.mb-ver-cal) #m1-calidad,
+body.modo-basico:not(.mb-ver-part) #m1-perfil .m1t-part,
+body.modo-basico:not(.mb-ver-rasgos) #m1-perfil .m1p-rasgos,
+body.modo-basico:not(.mb-ver-rasgos) #m1-perfil .m1p-choque,
+body.modo-basico:not(.mb-ver-ficha) #m1-ficha-tis,
+body.modo-basico:not(.mb-ver-figs) #m1-vista,
+body.modo-basico:not(.mb-ver-figs) #m1-facil,
+body.modo-basico:not(.mb-ver-figs) #m1-tecnica,
+body.modo-basico:not(.mb-ver-mapa) #m1-arbol,
+body.modo-basico:not(.mb-ver-mapa) #m1-docs,
+body.modo-basico:not(.mb-ver-m2extra) #lab-v-hip .m2-extra,
+body.modo-basico:not(.mb-ver-m3m2) #lab-v-reg .m3-m2>pre.codigo,
+body.modo-basico:not(.mb-ver-m3adv) #lab-v-reg .m3-niv,
+body.modo-basico:not(.mb-ver-part4) #lab-v-bt .m3-part,
+body.modo-basico:not(.mb-ver-curva) #lab-v-bt section.m1t-ficha,
+body.modo-basico:not(.mb-ver-unmapa) #lab-v-unidad .un-mapa-w{display:none!important}
+
+/* tarjetas grandes en lenguaje llano */
+.mb-card{border:2px solid var(--gold,#FFD23F);border-radius:12px;background:var(--pan,#151A1D);padding:1rem 1.1rem 1.1rem;margin:0 0 1rem;color:var(--txt,#ECE8DF)}
+.mb-card-h{display:flex;align-items:center;gap:.7rem;margin:0 0 .8rem}
+.mb-card-h img{width:44px;height:44px;image-rendering:pixelated;image-rendering:crisp-edges;flex:none}
+.mb-card-h p{margin:0;font:600 .72rem/1.3 var(--f-mono,monospace);letter-spacing:.06em;color:var(--gold,#FFD23F);text-transform:uppercase}
+.mb-card-h h2{margin:.1rem 0 0;font:800 1.5rem/1.1 var(--f-disp,sans-serif);color:var(--ink,#FFFBF2);letter-spacing:.02em}
+.mb-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));gap:.8rem}
+.mb-t{border:1px solid var(--line2,#3F4C53);border-radius:10px;background:var(--pan2,#1C2327);padding:.85rem .9rem;display:flex;flex-direction:column;gap:.35rem}
+.mb-t h3{margin:0;font:600 1rem/1.25 var(--f-body,sans-serif);color:var(--dim,#B9B5AB)}
+.mb-t .mb-big{font:800 2.1rem/1 var(--f-disp,sans-serif);color:var(--ink,#FFFBF2);letter-spacing:.01em}
+.mb-t .mb-big.ok{color:var(--ok2,#7FDCA6)}.mb-t .mb-big.bad{color:var(--red,#FF6B5E)}.mb-t .mb-big.gold{color:var(--gold,#FFD23F)}
+.mb-t p{margin:0;font-size:.95rem;line-height:1.4}
+.mb-t svg{width:100%;height:auto;display:block;margin-top:.2rem}
+.mb-svg-t{font:600 11px var(--f-mono,monospace);fill:var(--dim,#B9B5AB)}
+.mb-svg-tb{font:700 12px var(--f-mono,monospace);fill:var(--ink,#FFFBF2)}
+.mb-frase{margin:.2rem 0 .8rem;font:700 1.25rem/1.3 var(--f-body,sans-serif);color:var(--ink,#FFFBF2)}
+.mb-frase b{color:var(--gold,#FFD23F)}
+.mb-curva{width:100%;height:auto;display:block;border:1px solid var(--line,#2B353A);border-radius:8px;background:var(--pan2,#1C2327);margin:0 0 .9rem}
+.mb-nota{margin:.7rem 0 0;font-size:.9rem;color:var(--dim,#B9B5AB)}
+
+/* celebración (pose trofeo) */
+.mb-fiesta{position:fixed;inset:0;z-index:90;display:grid;place-items:center;background:rgba(0,0,0,.55);padding:16px}
+.mb-fiesta[hidden]{display:none}
+.mb-fiesta-in{position:relative;width:min(420px,100%);text-align:center;background:var(--pan2,#1C2327);border:3px solid var(--gold,#FFD23F);border-radius:14px;padding:1.3rem 1.2rem 1.2rem;color:var(--txt,#ECE8DF);overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.mb-fiesta-in img{width:180px;height:auto;image-rendering:pixelated;image-rendering:crisp-edges}
+.mb-fiesta-in h2{margin:.6rem 0 .3rem;font:800 1.9rem/1.05 var(--f-disp,sans-serif);color:var(--gold,#FFD23F);letter-spacing:.03em}
+.mb-fiesta-in p{margin:0 0 1rem;font-size:1.02rem;line-height:1.45}
+.mb-conf{position:absolute;top:-12px;width:8px;height:8px;background:var(--gold,#FFD23F);animation:mb-cae 1.6s linear infinite}
+.mb-conf:nth-child(2n){background:var(--ok,#16B25F)}.mb-conf:nth-child(3n){background:var(--red,#FF6B5E)}
+@keyframes mb-cae{to{transform:translateY(340px)}}
+
+/* móvil: la guía va abajo, a todo lo ancho, y no tapa el conmutador ni el botón de feedback */
+@media (max-width:900px){
+  body.lab .mb-toggle,body.lab .mb-guia,body.lab .mb-mini{left:8px}
+}
+@media (max-width:700px){
+  .mb-toggle{left:8px;bottom:calc(10px + env(safe-area-inset-bottom,0px));min-height:40px}
+  .mb-guia{left:8px;right:8px;width:auto;bottom:calc(58px + env(safe-area-inset-bottom,0px));grid-template-columns:48px minmax(0,1fr);gap:.4rem}
+  .mb-guia .mb-cuevi{width:48px;height:48px}
+  .mb-boc{max-height:44vh;padding:.6rem .7rem}
+  .mb-boc::before{bottom:14px}.mb-boc::after{bottom:16px}
+  .mb-tit{font-size:1.05rem}.mb-txt{font-size:.9rem}
+  .mb-ruta{margin-bottom:.35rem}.mb-ruta li:not(.aqui){display:none}
+  .mb-acc{margin-top:.3rem}.mb-sig{min-height:40px}
+  .mb-mini{left:8px;bottom:calc(58px + env(safe-area-inset-bottom,0px));width:54px;height:54px}
+  .mb-card{padding:.8rem}.mb-card-h h2{font-size:1.25rem}.mb-t .mb-big{font-size:1.8rem}.mb-frase{font-size:1.08rem}
+  .mb-tiles{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){
+  body.modo-basico .mb-foco{animation:none}
+  .mb-conf{display:none}
+  .mb-toggle .mb-sw::after{transition:none}
+}
+}
+@media print{
+  .mb-toggle,.mb-guia,.mb-mini,.mb-detalle,.mb-card,.mb-fiesta{display:none!important}
+}

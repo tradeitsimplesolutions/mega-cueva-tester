@@ -1,0 +1,4 @@
+/* convivencia de capas: cuando el botón Premium flota (Cueva Tester), se apila encima del de «Más básico» en vez de taparlo */
+.tp-toggle[data-tp-lugar="flota"]{bottom:calc(66px + env(safe-area-inset-bottom,0px))}
+/* en el móvil, con el modo básico activo, el bocadillo de Cuevi ocupa el pie: el botón Premium se esconde (vuelve al apagar el modo básico) */
+@media (max-width:600px){body.modo-basico .tp-toggle[data-tp-lugar="flota"]{display:none!important}}
