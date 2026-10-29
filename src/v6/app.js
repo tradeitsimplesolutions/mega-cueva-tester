@@ -1463,12 +1463,67 @@ function m1Particion(P){if(!P)return'';const t=P.diseno.velas+P.examen.velas+P.v
   const seg=(k,lbl,o,cl)=>`<div class="m1t-seg ${cl}" style="width:${w(o.velas)}"><b>${lbl}</b><span>${esc(o.desde.slice(0,7))} → ${esc(o.hasta.slice(0,7))}</span><small>${nf(o.velas,0)} velas</small></div>`;
   return `<section class="m1t-part"><header><p class="m1p-eyebrow mono">PARTICIÓN SELLADA</p><p class="c-dim">El AED se hace <b>solo con el diseño</b>. El examen es la fase 04; la validación no se abre hasta el final.</p></header>
     <div class="m1t-barra">${seg('d','DISEÑO · aquí miras',P.diseno,'dis')}${seg('e','EXAMEN · fase 04',P.examen,'exa')}${seg('v','VALIDACIÓN · sellada',P.validacion,'val')}</div></section>`}
-function m1Hallazgos(p){const H=p.hallazgos;if(!H)return'';const B=H.base,T=H.temperamento;
-  const tile=(k,v,d)=>`<div class="m1t-tile"><span>${k}</span><b>${v}</b><small>${d}</small></div>`;
-  const orden={CLARA:0,'SE INSINÚA':1,NADA:2},L=[...H.lista].sort((a,b)=>orden[a.semaforo]-orden[b.semaforo]||Math.abs(b.t||0)-Math.abs(a.t||0));
-  const fila=x=>`<tr class="${M1_SEM[x.semaforo]}"><td><span class="sem ${M1_SEM[x.semaforo]}">${x.semaforo}</span></td><td>${esc(x.h)}</td>
-    <td class="v">${x.efecto==null?'—':(x.efecto>0?'+':'')+nf(x.efecto*100,3)+' %'}</td><td class="v">${x.t==null?'—':nf(x.t,1)}</td><td class="v">${x.epocas}/3</td><td class="c-dim">${esc(x.que)}</td></tr>`;
-  const vis=L.filter(x=>x.semaforo!=='NADA'),nada=L.filter(x=>x.semaforo==='NADA');
+/* hallazgos con su FUERZA contra el azar del propio activo (como el rango de referencia de una analítica): barra con
+   tres zonas (ruido · límite · claro), marcador del valor, efecto en pb, constancia por épocas y «descartado, con evidencia».
+   La escala no es lineal: el ruido (0–90 %) ocupa la mitad y las dos zonas que importan se ven anchas. */
+const M1F_CSS=`.m1f-ley{display:grid;gap:.35rem;margin:.4rem 0 .2rem;font-size:.86rem}.m1f-ley p{margin:0}
+.m1f-lista{list-style:none;margin:.7rem 0 0;padding:0;display:grid;gap:.65rem}
+.m1f{border:1px solid var(--line);border-radius:10px;padding:.75rem .85rem .6rem;display:grid;gap:.35rem;min-width:0}
+.m1f.clara{border-color:rgba(var(--ok-rgb),.6)}.m1f.insinua{border-color:rgba(var(--gold-rgb),.55)}
+.m1f-cab{display:flex;flex-wrap:wrap;align-items:center;gap:.35rem .55rem}.m1f-cab b{font-size:.98rem}
+.m1f-cab small{margin-left:auto;font-family:var(--f-mono);font-size:.64rem;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+.m1f-ef{margin:0;font-size:.9rem;line-height:1.4}.m1f-ef b{font-family:var(--f-mono);white-space:nowrap}
+.m1f-esc{position:relative;display:flex;height:18px;border-radius:9px;margin:1.35rem 0 1.15rem}
+.m1f-esc .z{height:100%;display:flex;align-items:center;justify-content:center;font-family:var(--f-mono);font-size:.58rem;letter-spacing:.08em;text-transform:uppercase;color:var(--txt);overflow:hidden;white-space:nowrap}
+.m1f-esc .z.r{background:rgba(127,127,127,.2);border-radius:9px 0 0 9px}.m1f-esc .z.l{background:rgba(var(--gold-rgb),.38)}.m1f-esc .z.c{background:rgba(var(--ok-rgb),.55);border-radius:0 9px 9px 0}
+.m1f-esc .tk{position:absolute;top:21px;transform:translateX(-50%);font-family:var(--f-mono);font-size:.6rem;color:var(--dim)}
+.m1f-esc .mk{position:absolute;top:-5px;width:4px;height:28px;margin-left:-2px;background:var(--ink);border-radius:2px;box-shadow:0 0 0 2px rgba(0,0,0,.25)}
+.m1f-esc .mk span{position:absolute;bottom:31px;left:50%;transform:translateX(-50%);font-family:var(--f-mono);font-size:.74rem;font-weight:700;white-space:nowrap;color:var(--ink)}
+.m1f-esc .mk.izq span{left:-2px;transform:none}.m1f-esc .mk.der span{left:auto;right:-2px;transform:none}
+.m1f-pie{display:flex;flex-wrap:wrap;gap:.25rem 1rem;font-size:.78rem;color:var(--dim)}
+.m1f-ep{display:inline-block;width:.62rem;height:.62rem;border-radius:50%;border:1px solid var(--line2);margin-right:.18rem;vertical-align:-1px}
+.m1f-ep.si{background:var(--ok);border-color:var(--ok)}.m1f-ep.no{background:var(--red);border-color:var(--red)}
+.m1f-nota{margin:0;font-size:.8rem;color:var(--dim)}
+.m1f-desc{margin-top:1.1rem;border-top:1px dashed var(--line2);padding-top:.75rem}
+.m1f-desc ul{list-style:none;margin:.4rem 0 .3rem;padding:0;display:grid;gap:.45rem}.m1f-desc li{font-size:.86rem;line-height:1.4}
+.m1f-desc li b{margin-right:.35rem}.m1f-desc li .mono{font-size:.74rem;color:var(--dim);margin-right:.35rem}.m1f-desc li span.c-dim{display:block}
+.m1f-todo{margin-top:.5rem}.m1f-todo table{width:100%;border-collapse:collapse;font-size:.82rem}.m1f-todo td,.m1f-todo th{padding:.3rem .45rem;border-bottom:1px solid var(--line);text-align:left}.m1f-todo td.v{font-family:var(--f-mono);white-space:nowrap}
+@media (max-width:600px){.m1f-cab small{margin-left:0;flex-basis:100%}.m1f{padding:.65rem .65rem .55rem}.m1f-esc .z{font-size:.52rem}}`;
+function m1fCss(){if(typeof document==='undefined'||document.getElementById('m1f-css'))return;const s=document.createElement('style');s.id='m1f-css';s.textContent=M1F_CSS;document.head.appendChild(s)}
+const m1Pb=(x,d=1)=>x==null||!isFinite(x)?'—':(x>0?'+':'')+nf(x*1e4,d);
+const m1fDec=v=>v>=85&&v<99.95?1:0;   /* cerca de los umbrales, con un decimal: 97,3 no puede leerse «97» y parecer claro */
+function m1fPos(v,L,C){v=Math.max(0,Math.min(100,v));return v<=L?v/L*50:v<=C?50+(v-L)/(C-L)*30:80+(v-C)/(100-C)*20}
+function m1fBarra(x,L,C){const fz=x.fuerza_pct,pos=fz==null?null:m1fPos(fz,L,C);
+  return `<div class="m1f-esc" role="img" aria-label="${fz==null?'Sin medir':'Fuerza '+nf(fz,0)+' %: '+(x.rango||'')}">
+    <div class="z r" style="width:50%">ruido</div><div class="z l" style="width:30%">límite</div><div class="z c" style="width:20%">claro</div>
+    <span class="tk" style="left:50%">${nf(L,0)}</span><span class="tk" style="left:80%">${nf(C,1)}</span>
+    ${pos==null?'':`<i class="mk${pos<8?' izq':pos>92?' der':''}" style="left:${pos.toFixed(1)}%"><span>${nf(fz,m1fDec(fz))} %</span></i>`}</div>`}
+function m1fEpocas(x){const e=x.epocas_ef||[],s=Math.sign(x.efecto||0);
+  return e.map((d,i)=>d==null?`<i class="m1f-ep" title="Época ${i+1}: pocas velas"></i>`:`<i class="m1f-ep ${Math.sign(d)===s&&d!==0?'si':'no'}" title="Época ${i+1}: ${m1Pb(d)} pb"></i>`).join('')+` ${x.epocas}/3 épocas con el mismo signo`}
+function m1fEfecto(x){if(x.efecto==null)return'';
+  if(x.detalle)return `<p class="m1f-ef">${esc(x.detalle)}</p>`;
+  const ref=x.media_ref!=null?x.media_ref:(x.media!=null?x.media-x.efecto:null);
+  return x.media!=null?`<p class="m1f-ef"><b>${m1Pb(x.media)} pb</b> por vela siguiente frente a <b>${m1Pb(ref)}</b> de una vela cualquiera <span class="c-dim">(${m1Pb(x.efecto)} pb de diferencia · ${nf(x.n,0)} casos)</span></p>`
+    :`<p class="m1f-ef"><b>${m1Pb(x.efecto)} pb</b> frente a una vela cualquiera · ${nf(x.n,0)} casos</p>`}
+function m1fTarjeta(x,L,C){const az=x.azar_efecto;
+  return `<li class="m1f ${M1_SEM[x.semaforo]}"><div class="m1f-cab"><span class="sem ${M1_SEM[x.semaforo]}">${x.semaforo}</span><b>${esc(x.h)}</b><small>${esc(x.tipo||'')} · ${esc(x.que)}</small></div>
+    ${m1fEfecto(x)}${m1fBarra(x,L,C)}
+    <div class="m1f-pie"><span>${m1fEpocas(x)}</span>${x.fuerza_pct!=null?`<span>supera al ${nf(x.fuerza_pct,m1fDec(x.fuerza_pct))} % del azar (${esc(x.azar_ref||'tus datos barajados')})</span>`:''}
+      ${az&&x.tipo!=='calendario'?`<span>el azar ya llega a ±${nf(az.claro*1e4,1)} pb (97,5 %)</span>`:''}${x.t!=null?`<span>t ${nf(x.t,1)}</span>`:''}</div>
+    ${x.nota&&x.nota!=='pocas velas'?`<p class="m1f-nota">${esc(x.nota)}</p>`:''}</li>`}
+/* lo descartado, con evidencia: cada mecanismo con su frase; el calendario, una línea por familia (día, hora, mes) */
+function m1fDescartes(nada,az){const out=[],FAM={dia:['Días de la semana','día'],hora:['Horas del día','hora'],mes:['Meses','mes']};
+  nada.filter(x=>x.tipo!=='calendario').forEach(x=>out.push(`<li><b>${esc(x.h)}</b><span class="mono">${x.fuerza_pct==null?'sin medir':nf(x.fuerza_pct,0)+' %'}</span><span class="c-dim">${esc(x.descartado||x.nota||'No se distingue del azar.')}</span></li>`));
+  Object.keys(FAM).forEach(f=>{const G=nada.filter(x=>x.familia===f);if(!G.length)return;
+    const m=G.filter(x=>x.fuerza_pct!=null).sort((a,b)=>b.fuerza_pct-a.fuerza_pct)[0],todos=G.length;
+    const poca=f==='mes'&&az&&az.anios_diseno<az.mes_anios_min?` Además, con ${nf(az.anios_diseno,0)} años de diseño cada mes se ha visto ${nf(az.anios_diseno,0)} veces: poca muestra.`:'';
+    out.push(`<li><b>${FAM[f][0]}</b><span class="mono">${todos} sin señal</span><span class="c-dim">${m?`Indistinguibles del azar: el más fuerte, «${esc(m.h.replace(/^La vela (del |de las |de )/,''))}» (${m1Pb(m.efecto)} pb), solo supera al ${nf(m.fuerza_pct,0)} % de los barajados en su mejor ${FAM[f][1]}.`:'Pocas velas para medirlo.'}${poca}</span></li>`)});
+  return out.join('')}
+function m1Hallazgos(p){const H=p.hallazgos;if(!H)return'';const B=H.base,T=H.temperamento,AZ=H.azar||null;m1fCss();
+  const L=AZ?AZ.limite:90,C=AZ?AZ.claro:97.5,tile=(k,v,d)=>`<div class="m1t-tile"><span>${k}</span><b>${v}</b><small>${d}</small></div>`;
+  const orden={CLARA:0,'SE INSINÚA':1,NADA:2},L_=[...H.lista].sort((a,b)=>orden[a.semaforo]-orden[b.semaforo]||(b.fuerza_pct||0)-(a.fuerza_pct||0)||Math.abs(b.t||0)-Math.abs(a.t||0));
+  const vis=L_.filter(x=>x.semaforo!=='NADA'),nada=L_.filter(x=>x.semaforo==='NADA');
+  const filaN=x=>`<tr><td>${esc(x.h)}</td><td class="v">${m1Pb(x.efecto)} pb</td><td class="v">${x.fuerza_pct==null?'—':nf(x.fuerza_pct,0)+' %'}</td><td class="v">${x.epocas}/3</td></tr>`;
   return `<section class="m1t-ficha"><div class="m1t-cols">
     <div><p class="m1p-eyebrow mono">01 · QUIÉN ES · LÍNEA BASE</p><div class="m1t-tiles">
       ${tile('Velas que suben',m1P(B.pct_sube,1),'una señal que «acierta» esto no ha descubierto nada')}
@@ -1479,13 +1534,14 @@ function m1Hallazgos(p){const H=p.hallazgos;if(!H)return'';const B=H.base,T=H.te
       ${tile('Colas gordas',nf(T.curtosis,1),T.curtosis>1?'una normal es 0: cuenta con días que no salen en la teoría':'cerca de una campana normal')}
       ${tile('Peor / mejor vela',m1P(T.peor,1)+' / '+m1P(T.mejor,1),esc(T.peor_f)+' · '+esc(T.mejor_f))}</div></div></div>
     <p class="m1p-eyebrow mono" style="margin-top:1.2rem">02 · CÓMO SE COMPORTA · LA VELA SIGUIENTE, FRENTE A UNA CUALQUIERA</p>
-    <p class="c-dim m1t-leyenda"><span class="sem clara">CLARA</span> se separa del ruido (t ≥ 2) y se repite en las 3 épocas ·
-      <span class="sem insinua">SE INSINÚA</span> asoma (t ≥ 1,5) o se repite en las 3 épocas con t ≥ 1 · <span class="sem nada">NADA</span> no se distingue del azar: ahí no se busca.</p>
-    <table class="m1t-t"><thead><tr><th>Semáforo</th><th>Hallazgo</th><th>Efecto</th><th>t</th><th>Épocas</th><th>Sirve para</th></tr></thead>
-      <tbody>${vis.map(fila).join('')||'<tr><td colspan="6" class="c-dim">Ningún hallazgo asoma en este diseño.</td></tr>'}</tbody>
-      ${nada.length?`<tbody class="m1t-nada" hidden>${nada.map(fila).join('')}</tbody>`:''}</table>
-    ${nada.length?`<button type="button" class="link" data-m1-nada>ver los ${nada.length} hallazgos sin señal (NADA) →</button>`:''}
-    <p class="c-dim m1t-nota">Son pistas sobre el pasado: ninguna está aprobada hasta pasar el examen. Del calendario, solo te crees lo que el semáforo marque.</p></section>`}
+    <div class="c-dim m1t-leyenda m1f-ley"><p>Léelo como una <b>analítica</b>: cada prueba mide un rasgo con razón detrás, y la barra dice dónde cae su fuerza frente al <b>rango de referencia</b> de tu activo. El azar son <b>tus mismos datos barajados</b>${AZ?' '+nf(AZ.barajados,0)+' veces':''} (los mismos movimientos, en otro orden).</p>
+      <p><span class="sem nada">NADA</span> ruido: por debajo del ${nf(L,0)} % del azar · <span class="sem insinua">SE INSINÚA</span> en el límite: ${nf(L,0)}–${nf(C,1)} % · <span class="sem clara">CLARA</span> por encima del ${nf(C,1)} % y con el mismo signo en las 3 épocas. El calendario (día, hora, mes) compite contra el <b>mejor</b> día, hora o mes de cada barajado: es más exigente porque tiene menos razón detrás.</p></div>
+    ${AZ?'':'<p class="m1f-nota">Esta ficha se hizo con una versión anterior: vuelve a analizar el activo para ver la fuerza de cada hallazgo.</p>'}
+    <ul class="m1f-lista">${vis.map(x=>m1fTarjeta(x,L,C)).join('')||'<li class="m1f nada"><p class="m1f-ef">Ningún hallazgo sale del ruido en este diseño. También es información: este activo no regala nada en la vela siguiente.</p></li>'}</ul>
+    ${nada.length?`<div class="m1f-desc"><p class="m1p-eyebrow mono">DESCARTADO, CON EVIDENCIA · lo que se tira vale tanto como lo que se queda</p><ul>${m1fDescartes(nada,AZ)}</ul>
+      <button type="button" class="link" data-m1-nada>ver los ${nada.length} hallazgos sin señal (NADA) →</button>
+      <div class="m1t-nada m1f-todo" hidden><table><thead><tr><th>Hallazgo</th><th>Efecto</th><th>Fuerza</th><th>Épocas</th></tr></thead><tbody>${nada.map(filaN).join('')}</tbody></table></div></div>`:''}
+    <p class="c-dim m1t-nota">Son pistas sobre el pasado: ninguna está aprobada hasta pasar el examen. Del calendario, solo te crees lo que salga del ruido.</p></section>`}
 
 function m1Activo(){const e=CSV?libFich(CSV.nombre):libId('oro_d1');return e?e.b_t+' · '+e.b_s:(CSV?CSV.nombre:m1Simbolo)}
 function m1Perfil(p,c){const F=M1_FAM[c.fam],x=F.e.find(e=>e.s),veces=p.fig.dist.pct_3sd/p.fig.dist.pct_3sd_normal;
@@ -1607,7 +1663,7 @@ function m1Costes(p){const{C,rt,mov,ratio}=m1CostCalc(p),ok=rt!=null&&ratio!=nul
 function m1TecExtra(p,fila,sec){const H=p.hallazgos,out=[];
   if(p.calidad){out.push(sec('Calidad de los datos'),fila('Veredicto',esc(p.calidad.veredicto),'8 comprobaciones',p.calidad.checks.filter(x=>x.estado!=='ok').map(x=>esc(x.t)).join(' · ')||'Todo bien'))}
   if(H&&H.lista){out.push(sec('Hallazgos · la vela siguiente frente a una cualquiera'));
-    H.lista.filter(x=>x.semaforo!=='NADA').forEach(x=>out.push(fila(esc(x.h),x.efecto==null?'—':(x.efecto>0?'+':'')+nf(x.efecto*100,3)+' %','t '+(x.t==null?'—':nf(x.t,1))+' · '+x.epocas+'/3 épocas',`<span class="sem ${M1_SEM[x.semaforo]}">${x.semaforo}</span>`)));
+    H.lista.filter(x=>x.semaforo!=='NADA').forEach(x=>out.push(fila(esc(x.h),x.efecto==null?'—':m1Pb(x.efecto)+' pb',(x.fuerza_pct==null?'t '+(x.t==null?'—':nf(x.t,1)):'fuerza '+nf(x.fuerza_pct,0)+' % del azar')+' · '+x.epocas+'/3 épocas',`<span class="sem ${M1_SEM[x.semaforo]}">${x.semaforo}</span>`)));
     if(!H.lista.some(x=>x.semaforo!=='NADA'))out.push(fila('Ningún hallazgo asoma','—','—','Todo en NADA'))}
   if(H&&H.media&&H.media.filas.length){out.push(sec('¿Funciona gestionar con una media? · '+esc(H.media.veredicto.toUpperCase())));
     H.media.filas.forEach(f=>out.push(fila('Media de '+f.n,'PF '+nf(f.pf,2),nf(f.ops_anio,1)+' ops/año · '+m1P(f.acierto,0)+' acierto',esc(f.lectura))))}

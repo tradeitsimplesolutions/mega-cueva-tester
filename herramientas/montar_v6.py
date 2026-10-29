@@ -122,8 +122,12 @@ def main():
         if lab and (L / "unidad.js").exists():
             lab_js += "\n" + (L / "unidad.js").read_text(encoding="utf-8")
         js = ("window.MCT_LAB=true;\n" if lab else "") + ia + app_js.replace("/*__LAB_JS__*/", lab_js)
+        # capas opcionales para las dos herramientas (modo premium, modo básico…): src/extra/*.css y *.js, en orden alfabético
+        X = RAIZ / "src" / "extra"
+        extra_css = "".join("\n" + f.read_text(encoding="utf-8") for f in sorted(X.glob("*.css"))) if X.exists() else ""
+        js += "".join("\n" + f.read_text(encoding="utf-8") for f in sorted(X.glob("*.js"))) if X.exists() else ""
         return (plantilla
-                .replace("/*__CSS__*/", css + lab_css)
+                .replace("/*__CSS__*/", css + lab_css + extra_css)
                 .replace("<!--__LAB__-->", lab_html)
                 .replace("<!--__MOTOR__-->", motor_js)
                 .replace("/*__DATOS__*/", seguro(js_datos))

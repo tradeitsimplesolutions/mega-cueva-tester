@@ -107,14 +107,35 @@ mejor del conjunto (con 10 operaciones en un tramo, quitar la mejor de ese tramo
   `criterios.pf_sin_mejor` y `criterios_examen.pf_sin_mejor` usan ese valor; clave nueva `pf_sin_mejor_total`.
   `tramos.<tramo>.pf_sin_mejor` sigue siendo el de cada tramo (informativo).
 
-## Hallazgos del AED con corrección por pruebas múltiples (preparado, NO ACTIVO: se activará tras el reto)
+## Hallazgos del AED: rangos de fuerza contra el azar del propio activo (v1.4)
 
-`perfil_activo(df)["hallazgos"]` mide m pruebas a la vez (13 en diario; + 1 por hora del día en intradía: ~36 en H1). Con tantas,
-el azar da casi siempre algún |t| ≥ 2, así que el listón sube con m (Bonferroni bilateral):
-CLARA = |t| ≥ z(1 − 0,05/(2m)) **y** mismo signo en las 3 épocas (≈ 2,9 con 13; 3,0 con 20; 3,2 con 36) · SE INSINÚA =
-|t| ≥ z(1 − 0,20/(2m)) (≈ 2,4 con 13; 2,6 con 20; 2,8 con 36) · NADA = el resto. Ya no hay vía «3 épocas con |t| ≥ 1».
-m = nº de pruebas hechas (las que tienen ≥ 30 velas). Claves nuevas en `hallazgos`: `n_pruebas`, `umbral_clara`, `umbral_insinua`
-(redondeados a 2 decimales) y `criterio` (frase lista para la leyenda).
+Sustituye al semáforo por |t| (t ≥ 2 / 1,5 / «3 épocas con |t| ≥ 1») y a la corrección de Bonferroni que estaba
+preparada sin activar. Idea (charla del Sersan Summit, caso BTC): cada prueba es un análisis de sangre con razón detrás;
+lo que importa es **qué tan fuerte** es lo que vemos, medido contra el **rango de referencia de ese mismo activo**.
+
+- **Efecto** = media de la vela siguiente cuando se cumple la condición − media de una vela cualquiera de su universo
+  (universo = todas las velas; en «sobre/bajo su media de 200», solo las velas donde la media ya existe).
+- **t** = t de **Welch** del grupo frente al resto de su universo (robusta a que el grupo sea más tranquilo o más movido:
+  sin ella, «sobre la media de 200» —tramo de calma— salía artificialmente fuerte).
+- **Azar** = los retornos del DISEÑO barajados (permutación), `AED_BARAJADOS` = 400 réplicas, semilla fija
+  `AED_SEMILLA` = 20260208 (la ficha no cambia entre recargas). Vectorizado: sumas por producto de matrices, por bloques.
+- **fuerza_pct** = % de barajados con |t| menor que el real (empates a medias).
+  · `tipo: "mecanismo"` (media de 200, caídas/subidas fuertes, vela de alza/baja, rachas de 3, memoria) → contra su propio barajado.
+  · `tipo: "calendario"` (día de la semana, hora, mes; `familia`: `dia` / `hora` / `mes`) → contra el **mejor de su familia**
+    en cada barajado («el mejor mono»): más exigente, porque si miras 24 horas alguna sale bonita por suerte.
+- **Rangos** (`AED_LIMITE` = 90, `AED_CLARO` = 97,5): `NADA` (rango `ruido`) < 90 · `SE INSINÚA` (`límite`) 90–97,5 ·
+  `CLARA` (`claro`) ≥ 97,5 **y** mismo signo en las 3 épocas. Si llega a 97,5 pero no mantiene el signo, se queda en
+  SE INSINÚA con `nota`. Los meses no pasan de SE INSINÚA con menos de `AED_MES_ANIOS` = 10 años de diseño.
+- **Memoria a 1 vela** (prueba nueva, mecanismo): pendiente de la vela siguiente sobre la de hoy, t robusta
+  Σab/√Σ(ab)². `efecto` = lo que cambia la vela siguiente tras una caída de tamaño normal (−movimiento medio):
+  positivo = reversión (terreno del RSI corto), negativo = momentum. Claves extra `autocorr`, `detalle`.
+- Pruebas nuevas de calendario: «La vela de enero» … «La vela de diciembre» (`que: "horario"`).
+
+Claves por hallazgo (se mantienen `h, que, n, efecto, t, epocas, semaforo, pos`): `tipo`, `familia`, `rango`, `fuerza_pct`,
+`epocas_ef` (efecto en cada época, fracción), `media`, `media_ref`, `azar_ref` (frase), `azar_t` (`p50`, `limite`, `claro`:
+|t| del azar), `azar_efecto` (`limite`, `claro`: |efecto| que alcanza el azar, fracción), `descartado` (frase con la evidencia,
+solo en NADA), `nota`. En `hallazgos`: `azar` (`barajados, semilla, limite, claro, mes_anios_min, anios_diseno, criterio`)
+y `n_pruebas`.
 
 ## Salida de `validar(df, spec)`
 

@@ -2613,11 +2613,97 @@ def _particion_tis(df: pd.DataFrame):
     return part, df.iloc[:i_ex]
 
 
+# Rangos de fuerza (método TIS, como en la charla del Sersan Summit): cada hallazgo se mide contra el AZAR DE SU PROPIO
+# ACTIVO = los mismos retornos del diseño, barajados (permutación). fuerza_pct = % de barajados con |t| MENOR que el real.
+# Es el rango de referencia de una analítica: el valor importa según dónde cae frente a lo normal EN ESE activo.
+# Calendario (día, hora, mes): su azar de referencia es el MEJOR de la familia en cada barajado («el mejor mono»):
+# si miras 24 horas, alguna sale bonita por suerte, y esa es la que hay que batir.
+AED_BARAJADOS = (400, 1000)    # réplicas de la permutación: 1000 hasta 12.000 velas, y bajando hasta 400 en intradía
+                               # largo (12 millones de números barajados como mucho: el AED sigue tardando poco en Pyodide)
+AED_BARAJADOS_PRESUPUESTO = 12_000_000
+AED_SEMILLA = 20260208
+AED_LIMITE, AED_CLARO = 90.0, 97.5      # percentiles de fuerza: ruido < 90 ≤ límite < 97,5 ≤ claro
+AED_MES_ANIOS = 10             # con menos años de diseño, un mes no pasa de SE INSINÚA (cada mes se ha visto pocas veces)
+_MESES_LARGO = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre",
+                "noviembre", "diciembre"]
+_FAM_TXT = {"dia": "el mejor día de la semana", "hora": "la mejor hora", "mes": "el mejor mes"}
+
+
+def _coma(txt: str) -> str:
+    """Número ya formateado → con coma decimal y signo menos tipográfico (como el resto de la ficha)."""
+    return txt.replace(".", ",").replace("-", "−")
+
+
+def _memoria_t(xc: np.ndarray):
+    """Memoria a 1 vela: pendiente de «la siguiente» sobre «la de hoy» y su t ROBUSTA a los racimos de volatilidad
+    (t = Σab / √Σ(ab)², sobre retornos centrados). Admite una fila o una matriz de barajados (una fila por barajado)."""
+    a, b = xc[..., :-1], xc[..., 1:]
+    ab = a * b
+    with np.errstate(divide="ignore", invalid="ignore"):
+        t = ab.sum(axis=-1) / np.sqrt((ab * ab).sum(axis=-1))
+        beta = ab.sum(axis=-1) / (a * a).sum(axis=-1)
+    return np.nan_to_num(beta), np.nan_to_num(t)
+
+
+def _welch_t(S1, S2, k, tot1, tot2, N):
+    """t de Welch de «velas que cumplen» frente a «las que no», desde sumas (vale para una prueba o para matrices de
+    barajados). Robusta a que el grupo sea más tranquilo o más movido que el resto (racimos de volatilidad).
+    Devuelve (t, efecto = media del grupo − media de su universo, «una vela cualquiera»)."""
+    ko = N - k
+    m_in = S1 / k
+    m_out = (tot1 - S1) / np.maximum(ko, 1)
+    v_in = np.maximum((S2 - k * m_in ** 2) / np.maximum(k - 1, 1), 0.0)
+    v_out = np.maximum(((tot2 - S2) - ko * m_out ** 2) / np.maximum(ko - 1, 1), 0.0)
+    se = np.sqrt(v_in / k + v_out / np.maximum(ko, 1))
+    with np.errstate(divide="ignore", invalid="ignore"):
+        t = np.where(se > 0, (m_in - m_out) / se, 0.0)
+    return t, m_in - tot1 / N
+
+
+def _n_barajados(n: int) -> int:
+    lo, hi = AED_BARAJADOS
+    return int(min(hi, max(lo, AED_BARAJADOS_PRESUPUESTO // max(n, 1))))
+
+
+def _azar_tis(x: np.ndarray, tramos: list, R: int | None = None, semilla: int = AED_SEMILLA):
+    """|t| y |efecto| de cada prueba en R barajados de x, y la t de la memoria a 1 vela en cada barajado.
+    Truco que lo hace rápido: al barajar, cuáles velas forman el grupo da igual; solo importa CUÁNTAS son (y que el grupo
+    esté dentro de su universo). Así cada prueba es un tramo de posiciones (inicio, fin, tamaño del universo) del vector
+    barajado y sus sumas salen de dos sumas acumuladas. Las pruebas de una misma familia de calendario usan tramos SIN
+    solaparse del mismo barajado (para poder tomar «el mejor de la familia»), como los días reales.
+    Devuelve (|t| R×k, |ef| R×k, |t memoria| R, |pendiente memoria| R)."""
+    rng = np.random.default_rng(semilla)
+    n = x.size
+    R = R or _n_barajados(n)
+    ini = np.array([t[0] for t in tramos], dtype=int)
+    fin = np.array([t[1] for t in tramos], dtype=int)
+    nu = np.array([t[2] for t in tramos], dtype=int)
+    k = (fin - ini).astype(float)
+    bloque = int(max(8, min(R, 2_000_000 // max(n, 1))))
+    T, E, TM, BM, hechos = [], [], [], [], 0
+    mu = x.mean()
+    while hechos < R:
+        b = min(bloque, R - hechos)
+        P = rng.permuted(np.broadcast_to(x - mu, (b, n)), axis=1)   # b barajados de los MISMOS retornos (centrados)
+        bm, tm = _memoria_t(P)
+        TM.append(np.abs(tm)); BM.append(np.abs(bm))
+        C1 = np.zeros((b, n + 1)); np.cumsum(P, axis=1, out=C1[:, 1:])
+        P *= P
+        C2 = np.zeros((b, n + 1)); np.cumsum(P, axis=1, out=C2[:, 1:])
+        t, ef = _welch_t(C1[:, fin] - C1[:, ini], C2[:, fin] - C2[:, ini], k, C1[:, nu], C2[:, nu], nu)
+        T.append(np.abs(t)); E.append(np.abs(ef))
+        hechos += b
+    return np.vstack(T), np.vstack(E), np.concatenate(TM), np.concatenate(BM)
+
+
 def _hallazgos_tis(df, c, ret, tf) -> dict:
-    """La ficha del Reto: línea base, temperamento y hallazgos con semáforo, SOLO sobre el diseño.
-    Hallazgo = retorno de la vela siguiente cuando se cumple algo, MENOS el de una vela cualquiera.
-    Semáforo (slides del día 2): CLARA = t ≥ 2 y mismo signo en las 3 épocas · SE INSINÚA = t ≥ 1,5, o mismo
-    signo en las 3 épocas con poca fuerza · NADA = no se distingue del azar (también es información)."""
+    """La ficha del Reto: línea base, temperamento y hallazgos con su FUERZA medida contra el azar, SOLO sobre el diseño.
+    Hallazgo = retorno de la vela siguiente cuando se cumple algo, MENOS el de una vela cualquiera (efecto), con su t.
+    Fuerza = percentil de |t| frente a los mismos retornos barajados (rango de referencia, como en una analítica):
+      · mecanismo (tiene una razón detrás: memoria, rachas, media de 200) → contra su propio barajado;
+      · calendario (día, hora, mes) → contra el MEJOR de su familia en cada barajado (más exigente).
+    Rangos: NADA (ruido) < 90 · SE INSINÚA (límite) 90–97,5 · CLARA ≥ 97,5 y mismo signo en las 3 épocas
+    (si llega a 97,5 pero cambia de signo en alguna época, se queda en SE INSINÚA). Lo descartado queda escrito."""
     idx = df.index
     h, l = df.high.to_numpy(float), df.low.to_numpy(float)
     n = len(ret)
@@ -2628,42 +2714,128 @@ def _hallazgos_tis(df, c, ret, tf) -> dict:
     q10, q90 = np.quantile(ret, [0.10, 0.90])
     t_ret = idx[1:]
     sig_dia = np.r_[t_ret[1:].dayofweek.to_numpy(), -1]     # día de la semana de la vela siguiente
+    sig_mes = np.r_[t_ret[1:].month.to_numpy(), -1]
     intradia = tf not in ("D1", "W1", "MN")
     epocas = np.array_split(np.arange(n), 3)
+    anios_dis = max((idx[-1] - idx[0]).days / 365.25, 1e-9)
 
-    def medir(nombre, mask, que):
-        m = mask & ok
-        k = int(m.sum())
-        if k < 30:
-            return {"h": nombre, "que": que, "n": k, "efecto": None, "t": None, "epocas": 0, "semaforo": "NADA", "nota": "pocas velas"}
-        x = sig[m]
-        ef = float(x.mean() - base_m)
-        sd = float(x.std(ddof=1))
-        t = ef / (sd / math.sqrt(k)) if sd > 0 else 0.0
-        e = 0
-        for ep in epocas:
-            mm = m[ep]
-            if mm.sum() >= 8:
-                d = float(sig[ep][mm].mean() - np.nanmean(sig[ep][ok[ep]]))
-                e += int(np.sign(d) == np.sign(ef) and d != 0)
-        sem = "CLARA" if abs(t) >= 2 and e == 3 else "SE INSINÚA" if abs(t) >= 1.5 or (e == 3 and abs(t) >= 1) else "NADA"
-        return {"h": nombre, "que": que, "n": k, "efecto": ef, "t": float(t), "epocas": e, "semaforo": sem,
-                "pos": float((x > 0).mean())}
-
-    H = [medir("Bajo su media de 200", np.r_[c[1:] < sma200] & np.isfinite(sma200), "contexto"),
-         medir("Sobre su media de 200", np.r_[c[1:] > sma200] & np.isfinite(sma200), "contexto"),
-         medir("Tras una caída fuerte (10 % peor)", ret <= q10, "disparador"),
-         medir("Tras una subida fuerte (10 % mejor)", ret >= q90, "disparador"),
-         medir("Tras una vela de alza", ret > 0, "disparador"),
-         medir("Tras una vela de baja", ret < 0, "disparador"),
-         medir("Tras 3 velas seguidas de baja", np.r_[False, False, (ret[2:] < 0) & (ret[1:-1] < 0) & (ret[:-2] < 0)], "disparador"),
-         medir("Tras 3 velas seguidas de alza", np.r_[False, False, (ret[2:] > 0) & (ret[1:-1] > 0) & (ret[:-2] > 0)], "disparador")]
+    P = [("Bajo su media de 200", np.r_[c[1:] < sma200] & np.isfinite(sma200), "contexto", None),
+         ("Sobre su media de 200", np.r_[c[1:] > sma200] & np.isfinite(sma200), "contexto", None),
+         ("Tras una caída fuerte (10 % peor)", ret <= q10, "disparador", None),
+         ("Tras una subida fuerte (10 % mejor)", ret >= q90, "disparador", None),
+         ("Tras una vela de alza", ret > 0, "disparador", None),
+         ("Tras una vela de baja", ret < 0, "disparador", None),
+         ("Tras 3 velas seguidas de baja", np.r_[False, False, (ret[2:] < 0) & (ret[1:-1] < 0) & (ret[:-2] < 0)], "disparador", None),
+         ("Tras 3 velas seguidas de alza", np.r_[False, False, (ret[2:] > 0) & (ret[1:-1] > 0) & (ret[:-2] > 0)], "disparador", None)]
     for k_, nom in [(0, "lunes"), (1, "martes"), (2, "miércoles"), (3, "jueves"), (4, "viernes")]:
-        H.append(medir(f"La vela del {nom}", sig_dia == k_, "horario"))
+        P.append((f"La vela del {nom}", sig_dia == k_, "horario", "dia"))
     if intradia:
         hh = np.r_[t_ret[1:].hour.to_numpy(), -1]
         for hr in sorted(set(hh[hh >= 0].tolist())):
-            H.append(medir(f"La vela de las {hr:02d}h", hh == hr, "horario"))
+            P.append((f"La vela de las {hr:02d}h", hh == hr, "horario", "hora"))
+    for m_ in range(1, 13):
+        P.append((f"La vela de {_MESES_LARGO[m_ - 1]}", sig_mes == m_, "horario", "mes"))
+
+    # 1 · lo observado: efecto, t (Welch: las velas que cumplen frente a las que no, dentro de su universo) y constancia
+    #     en las 3 épocas. El universo de «sobre/bajo su media de 200» son las velas donde la media ya existe.
+    con_sma = np.isfinite(sma200)
+    UNIV = [ok, ok & con_sma]
+    filas, M = [], []
+    for nombre, mask, que, fam in P:
+        u = 1 if que == "contexto" else 0
+        m = mask & ok
+        k = int(m.sum())
+        f = {"h": nombre, "que": que, "tipo": "calendario" if fam else "mecanismo", "familia": fam, "n": k, "efecto": None, "t": None,
+             "epocas": 0, "epocas_ef": [None, None, None], "semaforo": "NADA", "rango": "ruido", "fuerza_pct": None}
+        if k < 30:
+            f["nota"] = "pocas velas"
+            f["descartado"] = f"Solo {k} velas cumplen la condición: no hay muestra para medirlo."
+            filas.append((f, None, fam)); continue
+        xs = sig[m]
+        su = sig[UNIV[u]]
+        t, ef = _welch_t(float(xs.sum()), float((xs * xs).sum()), k, float(su.sum()), float((su * su).sum()), int(su.size))
+        t, ef = float(t), float(ef)
+        e, eps = 0, []
+        for ep in epocas:
+            mm = m[ep]
+            if mm.sum() >= 8:
+                d = float(sig[ep][mm].mean() - np.nanmean(sig[ep][UNIV[u][ep]]))
+                e += int(np.sign(d) == np.sign(ef) and d != 0)
+                eps.append(d)
+            else:
+                eps.append(None)
+        f.update({"efecto": ef, "t": float(t), "epocas": e, "epocas_ef": eps, "pos": float((xs > 0).mean()),
+                  "media": float(xs.mean()), "media_ref": float(su.mean())})
+        filas.append((f, len(M), fam))
+        M.append((k, int(UNIV[u].sum()), fam))
+    # memoria a 1 vela (la autocorrelación del día a día): ¿lo que se mueve hoy se devuelve mañana (o sigue)?
+    # Efecto = lo que cambia la vela siguiente tras una caída de tamaño normal (−movimiento medio); por simetría, tras una
+    # subida normal, lo mismo con el signo cambiado. t robusta a los racimos de volatilidad.
+    x = sig[ok]
+    xc = x - x.mean()
+    mov = float(np.abs(ret).mean())
+    beta, tmem = _memoria_t(xc)
+    ef_mem = float(-beta * mov)
+    e_mem, eps_mem = 0, []
+    for ep in np.array_split(np.arange(x.size), 3):
+        be, _ = _memoria_t(x[ep] - x[ep].mean())
+        d = float(-be * mov)
+        e_mem += int(np.sign(d) == np.sign(ef_mem) and d != 0)
+        eps_mem.append(d)
+    mem = {"h": "Memoria a 1 vela (tras una caída normal)", "que": "disparador", "tipo": "mecanismo", "n": int(x.size - 1),
+           "efecto": ef_mem, "t": float(-tmem), "epocas": e_mem, "epocas_ef": eps_mem, "semaforo": "NADA", "rango": "ruido",
+           "fuerza_pct": None, "media": base_m + ef_mem, "media_ref": base_m, "autocorr": float(np.corrcoef(xc[:-1], xc[1:])[0, 1]),
+           "detalle": (f"Pendiente {_coma(f'{float(beta):+.3f}')}: tras una caída de −{_coma(f'{mov * 100:.2f}')} % (la normal) "
+                       f"la vela siguiente cambia {_coma(f'{ef_mem * 1e4:+.1f}')} pb; tras una subida normal, al revés. "
+                       + ("Negativa = lo que se mueve, vuelve (reversión: terreno del RSI corto)." if beta < 0 else
+                          "Positiva = lo que se mueve, sigue (momentum).")),
+           "_mem": True}
+    filas.insert(8, (mem, None, None))
+    # 2 · el azar del propio activo: los mismos retornos del diseño, barajados (semilla fija)
+    if M:
+        tramos, pos_fam = [], {}
+        for k_, nu_, fam_ in M:
+            if fam_:                      # calendario: tramos seguidos, sin solaparse, dentro de todas las velas
+                a_ = pos_fam.get(fam_, 0); pos_fam[fam_] = a_ + k_
+                tramos.append((a_, a_ + k_, x.size))
+            else:                         # mecanismo: el grupo, dentro de su universo
+                tramos.append((0, k_, nu_))
+        Tz, Ez, TMz, BMz = _azar_tis(x, tramos)
+        fam_cols = {}
+        for _, i, fam in filas:
+            if i is not None and fam:
+                fam_cols.setdefault(fam, []).append(i)
+        fam_max = {fa: Tz[:, cols].max(axis=1) for fa, cols in fam_cols.items()}
+    lista = []
+    for f, i, fam in filas:
+        lista.append(f)
+        es_mem = f.pop("_mem", False)
+        if i is None and not (es_mem and M):
+            continue
+        ref = TMz if es_mem else fam_max[fam] if fam else Tz[:, i]
+        at = abs(f["t"])
+        fz = 100.0 * (float((ref < at).sum()) + 0.5 * float((ref == at).sum())) / ref.size
+        f["fuerza_pct"] = round(fz, 1)
+        f["azar_ref"] = _FAM_TXT[fam] + " de cada barajado" if fam else "tus datos barajados"
+        f["azar_t"] = {"p50": round(float(np.quantile(ref, 0.5)), 2), "limite": round(float(np.quantile(ref, AED_LIMITE / 100)), 2),
+                       "claro": round(float(np.quantile(ref, AED_CLARO / 100)), 2)}
+        # efecto que alcanza el azar en ESTA prueba (|efecto| del 90 % y del 97,5 % de los barajados), en fracción
+        ez = BMz * mov if es_mem else Ez[:, i]
+        f["azar_efecto"] = {"limite": float(np.quantile(ez, AED_LIMITE / 100)),
+                            "claro": float(np.quantile(ez, AED_CLARO / 100))}
+        poca = fam == "mes" and anios_dis < AED_MES_ANIOS
+        if fz >= AED_CLARO and f["epocas"] == 3 and not poca:
+            f["semaforo"], f["rango"] = "CLARA", "claro"
+        elif fz >= AED_LIMITE:
+            f["semaforo"], f["rango"] = "SE INSINÚA", "límite"
+            if fz >= AED_CLARO:
+                f["nota"] = (f"Supera el {_num(AED_CLARO)} % del azar, pero cada mes solo se ha visto ~{anios_dis:.0f} veces en el diseño: poca muestra."
+                             if poca and f["epocas"] == 3 else
+                             f"Supera el {_num(AED_CLARO)} % del azar, pero no mantiene el signo en las 3 épocas ({f['epocas']}/3).")
+        else:
+            ref_txt = f"{_FAM_TXT[fam]} de tus datos barajados da" if fam else "tus mismos datos barajados dan"
+            f["descartado"] = (f"Indistinguible del azar: {ref_txt} una fuerza igual o mayor el {100 - fz:.0f} % de las veces."
+                               + (f" Y cada mes solo se ha visto ~{anios_dis:.0f} veces: poca muestra." if poca else ""))
     absr = np.abs(ret)
     racimos = float(np.corrcoef(absr[:-1], absr[1:])[0, 1]) if n > 3 else 0.0
     mu, sd = float(ret.mean()), float(ret.std(ddof=1))
@@ -2675,7 +2847,14 @@ def _hallazgos_tis(df, c, ret, tf) -> dict:
                              "curtosis": float(((ret - mu) ** 4).mean() / sd ** 4 - 3.0) if sd > 0 else 0.0,
                              "peor": float(ret[i_peor]), "peor_f": str(t_ret[i_peor].date()),
                              "mejor": float(ret[i_mejor]), "mejor_f": str(t_ret[i_mejor].date())},
-            "lista": H}
+            "azar": {"barajados": _n_barajados(int(ok.sum())), "semilla": AED_SEMILLA, "limite": AED_LIMITE, "claro": AED_CLARO,
+                     "mes_anios_min": AED_MES_ANIOS, "anios_diseno": round(anios_dis, 1),
+                     "criterio": (f"Fuerza = % de tus datos barajados (los mismos retornos en otro orden, {_n_barajados(int(ok.sum()))} veces) "
+                                  f"que quedan por debajo. NADA < {_num(AED_LIMITE)} % · SE INSINÚA {_num(AED_LIMITE)}–"
+                                  f"{_num(AED_CLARO)} % · CLARA ≥ {_num(AED_CLARO)} % y mismo signo en las 3 épocas. "
+                                  "El calendario compite contra el mejor día, hora o mes de cada barajado.")},
+            "n_pruebas": sum(1 for f in lista if f["fuerza_pct"] is not None),
+            "lista": lista}
 
 
 def _muestra(n: int, k: int = 420) -> np.ndarray:
