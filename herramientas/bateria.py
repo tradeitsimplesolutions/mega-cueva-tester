@@ -8,6 +8,9 @@
 A · estático: sintaxis de los JS, montaje al día, el laboratorio cifrado abre con la clave y no se filtra en claro.
 B · laboratorio con el motor: AED → Misión 2 (RSI(2) de Connors) → bloques → backtest → examen → TU UNIDAD,
     con sus números comparados con herramientas/bateria_referencia.json (todo es determinista: semilla fija).
+I · impresión: las 4 entregas (ficha M1, M2, M3, TU UNIDAD con firma) en PDF de verdad, con lo que debe y no debe salir.
+E · intradía: NAS100 15 min por el camino A, horario NY, filtro de hora, trailing 2×ATR y objetivo 2R; además de sus
+    números, propiedades que valen siempre (ninguna entrada antes de su hora, ninguna operación pasa la noche…).
 C · capas: premium/original × básico sí/no en todas las fases; móvil 390 px; recargar no pierde lo hecho.
 D · Cueva Tester pública: abre sin errores y corre una regla en BASIC.
 Sale con código 1 si algo falla. Capturas en capturas/bateria/.
@@ -295,8 +298,20 @@ def laboratorio(nav, url, errores):
             pg.wait_for_timeout(120)
     pg.wait_for_timeout(400)
     ok("B", "TU UNIDAD: responder guarda las respuestas", pg.evaluate("!!localStorage.getItem('lab_unidad')"))
+    # nombre, compromiso y firma a mano (la firma tiene que salir en el PDF)
+    pg.fill("#un-nombre", "Alumna Prueba")
+    pg.check("#un-acepto")
+    c = pg.query_selector("#un-cv").bounding_box()
+    pg.mouse.move(c["x"] + 20, c["y"] + 30)
+    pg.mouse.down()
+    for i in range(12):
+        pg.mouse.move(c["x"] + 20 + i * 15, c["y"] + 30 + (i % 3) * 12)
+    pg.mouse.up()
+    pg.wait_for_timeout(400)
+    ok("B", "TU UNIDAD: la firma se guarda", pg.evaluate("(JSON.parse(localStorage.getItem('lab_unidad')||'{}').firma||'').startsWith('data:image/png')"))
     pg.screenshot(path=str(CAP / "B6_unidad.png"), full_page=True)
 
+    impresiones(pg)
     estado = pg.evaluate("Object.assign({},localStorage)")
     ctx.close()
 
@@ -311,6 +326,168 @@ def laboratorio(nav, url, errores):
     ok("B", "Recargar: la regla de la Misión 3 sigue ahí", "RSI de 2 menor que 10" in texto(pg, "#lab-v-bt"))
     ctx.close()
     return estado
+
+
+# ---------------------------------------------------------------- I · impresión (las entregas se suben en PDF)
+# lo que queda a la vista al imprimir y nunca debe salir en el papel
+JS_IMP_OCULTOS = """() => ['#tp-toggle','#mb-toggle','#mb-guia','.lab-side','#fb-abrir','.lab-top'].filter(s=>{const e=document.querySelector(s);
+  return e&&getComputedStyle(e).display!=='none'&&e.offsetParent!==null&&e.getBoundingClientRect().height>0})"""
+ENTREGAS = [  # (nombre, fase, botón, clase que pone el botón, debe salir, no debe salir)
+    ("ficha Misión 1", "aed", "#m1-imprimir", None,
+     ["CALIDAD DE LOS DATOS", "PARTICIÓN SELLADA", "LA PERSONALIDAD DE ORO"], ["CORRER EL BACKTEST"]),
+    ("entrega Misión 2", "hip", "[data-m2-imprimir]", "m2-imprime",
+     ["EL PSEUDOCÓDIGO", "RSI de 2 por debajo de 10", "De dónde sale"], ["AÑADIR CONDICIÓN", "CORRER EL BACKTEST", "PARTICIÓN SELLADA"]),
+    ("entrega Misión 3", "bt", "[data-m3-imprimir] >> nth=0", "m3-imprime",
+     ["TU REGLA", "ENTRA RSI de 2 menor que 10", "CURVA DE CAPITAL", "POR TRAMOS"], ["AÑADIR CONDICIÓN", "EL PSEUDOCÓDIGO", "ANTES DE VER"]),
+    ("TU UNIDAD", "unidad", "[data-un-imprimir]", "un-imprime",
+     ["TU BORRADOR", "COMPROMISO", "Yo, Alumna Prueba"], ["CORRER EL BACKTEST", "Borrar firma"]),
+]
+
+
+def impresiones(pg):
+    print("\nI · IMPRESIÓN (las 4 entregas, en PDF de verdad)")
+    for nombre, fase, boton, clase, debe, no_debe in ENTREGAS:
+        ir(pg, fase)
+        if fase == "hip":
+            pg.click("[data-m2-sub=pseudo]")
+            pg.wait_for_timeout(300)
+        # el botón tiene que llamar a print() con su clase puesta (la que deja solo la entrega)
+        pg.evaluate("window.__imp=null;window.print=()=>{window.__imp=document.body.className}")
+        pg.click(boton)
+        pg.wait_for_timeout(250)
+        llamada = pg.evaluate("window.__imp")
+        ok("I", f"{nombre}: el botón abre la impresión", llamada is not None and (clase is None or clase in llamada.split()), str(llamada))
+        if clase:
+            pg.evaluate(f"document.body.classList.add('{clase}')")
+        pg.emulate_media(media="print")
+        try:
+            t = pg.evaluate("document.body.innerText")
+            faltan = [x for x in debe if x not in t]
+            sobran = [x for x in no_debe if x in t]
+            ok("I", f"{nombre}: sale lo que tiene que salir", not faltan, "falta " + ", ".join(faltan) if faltan else "")
+            ok("I", f"{nombre}: no se cuela nada de otras fases", not sobran, "sobra " + ", ".join(sobran) if sobran else "")
+            vis = pg.evaluate(JS_IMP_OCULTOS)
+            ok("I", f"{nombre}: sin conmutadores, barra lateral ni cabecera", not vis, ", ".join(vis))
+            if fase == "bt":
+                ok("I", f"{nombre}: sin los botones VER de la tabla", pg.evaluate(
+                    "[...document.querySelectorAll('#lab-v-bt .m3-ops td:last-child')].every(e=>getComputedStyle(e).display==='none')"))
+            if fase == "unidad":
+                ok("I", f"{nombre}: lleva la firma", pg.evaluate(
+                    "[...document.querySelectorAll('#lab-v-unidad img')].some(i=>i.src.startsWith('data:image/png')&&i.offsetParent!==null&&/firma/i.test(i.closest('[class]').className+i.alt))"))
+            pdf = pg.pdf(path=str(CAP / f"I_{fase}.pdf"), format="A4", print_background=True)
+            pags = len(re.findall(rb"/Type\s*/Page[^s]", pdf))
+            ok("I", f"{nombre}: el PDF se genera", pags >= 1, f"{pags} pág.")
+        finally:
+            pg.emulate_media(media="screen")
+            if clase:
+                pg.evaluate(f"document.body.classList.remove('{clase}')")
+
+
+# ---------------------------------------------------------------- E · intradía (NAS100 15 min, camino A, horario, trailing, 2R)
+def intradia(nav, url, errores):
+    print("\nE · INTRADÍA (NAS100 15 min · camino A · horario NY · trailing 2×ATR · objetivo 2R)")
+    n0 = len(errores)
+    ctx, pg = pagina(nav, 1440, 900, errores, "intradía", estado={"mb_on": "0"})
+    entrar_lab(pg, url)
+    pg.click("#m1-ejs [data-ej=nas100_m15]")
+    pg.wait_for_function("/NAS100/.test(document.querySelector('#m1-dat-t')?.textContent||'')", timeout=60000)
+    pg.click("#m1-analizar")
+    pg.wait_for_function("!document.querySelector('#mision1').classList.contains('analizando') && "
+                         "/ANALIZAR ESTE/.test(document.querySelector('#m1-analizar').textContent)", timeout=420000)
+    if not ok("E", "Misión 1: el motor analiza NAS100 en 15 min", pg.is_visible("#m1-res")):
+        ctx.close()
+        return
+    h = pg.evaluate("(()=>{const f=JSON.parse(localStorage.getItem('mct_ficha'));const h=f.perfil.hallazgos,c={};"
+                    "h.lista.forEach(x=>c[x.semaforo]=(c[x.semaforo]||0)+1);return {datos:f.datos,pruebas:h.n_pruebas,"
+                    "clara:c['CLARA']||0,insinua:c['SE INSINÚA']||0,nada:c['NADA']||0,diseno:f.perfil.particion.diseno.velas}})()")
+    ok("E", "Misión 1: la ficha es la de NAS100 15 min", h["datos"] == "nas100_m15", h["datos"])
+    medidos.update({f"nas_aed_{k}": v for k, v in h.items() if k != "datos"})
+
+    def sel(css, v):
+        pg.select_option(css, v)
+        pg.wait_for_timeout(250)
+
+    def esc(css, v):   # cada cambio repinta el editor: escribir, salir del campo y esperar
+        pg.fill(css, v)
+        pg.press(css, "Tab")
+        pg.wait_for_timeout(250)
+
+    # Misión 2 · camino A: piezas escritas a mano, todas «supuesto»
+    ir(pg, "hip")
+    pg.click("[data-m2-camino=A]")
+    pg.wait_for_timeout(300)
+    for k, v in [("horario", "Velas de 15 minutos, solo en la sesión de Nueva York de 09:30 a 16:00"),
+                 ("contexto", "Sin filtro: a partir de las 10:00"),
+                 ("disparador", "Cierre por encima del máximo de las 20 velas anteriores"),
+                 ("stop", "Trailing a 2 × ATR de 14 velas desde el mejor precio"),
+                 ("salida", "Objetivo a 2 veces el riesgo; si no, al cierre de la sesión")]:
+        esc(f"[data-m2-txt={k}]", v)
+        sel(f"[data-m2-or={k}]", "supuesto")
+    pg.click("[data-m2-sub=pseudo]")
+    pg.wait_for_timeout(400)
+    obj = re.search(r"OBJETIVIDAD\s*(\d)\s*/\s*6", pg.evaluate("[...document.querySelectorAll('[data-m2-sub=pseudo]')].map(e=>e.textContent).join(' ')"))
+    medidos["nas_m2_objetividad"] = int(obj.group(1)) if obj else None
+    ps = pg.evaluate("(document.querySelector('#m2-pseudo')||{}).innerText||''")
+    ok("E", "Misión 2 (camino A): el pseudocódigo recoge las piezas y la sesión",
+       "máximo de las 20 velas anteriores" in ps and "09:30 a 16:00" in ps and "trailing" in ps)
+
+    # Misión 3 · bloques a mano
+    ir(pg, "reg")
+    pg.check("[data-m3-ses=on]")
+    pg.wait_for_timeout(300)
+    pg.click("[data-m3-add=filtros]")
+    pg.wait_for_timeout(250)
+    sel("[data-m3-i='filtros.0.a']", "hora")
+    sel("[data-m3-c='filtros.0']", ">=")
+    sel("[data-m3-i='filtros.0.b']", "num")
+    esc("[data-m3-v='filtros.0.b']", "10:00")
+    pg.click("[data-m3-add=entrada]")
+    pg.wait_for_timeout(250)
+    sel("[data-m3-i='entrada.0.a']", "close")
+    sel("[data-m3-c='entrada.0']", ">")
+    sel("[data-m3-i='entrada.0.b']", "max_n")
+    esc("[data-m3-n='entrada.0.b']", "20")
+    sel("[data-m3-nt=stop]", "trailing.atr")
+    esc("[data-m3-nv='stop.tk']", "2")
+    esc("[data-m3-nv='stop.tn']", "14")
+    sel("[data-m3-nt=obj]", "r")
+    esc("[data-m3-nv='obj.rk']", "2")
+    pg.screenshot(path=str(CAP / "E3_reglas.png"), full_page=True)
+
+    pg.click("[data-m3-ir-bt]")
+    pg.wait_for_timeout(300)
+    regla = texto(pg, "#lab-v-bt")
+    ok("E", "Fase 04: la regla trae horario, filtro de hora, trailing y 2R",
+       all(x in regla for x in ("HORARIO de 09:30 a 16:00", "Hora del día mayor o igual que 10:00",
+                                "Máximo de las 20 velas anteriores", "Trailing: 2 × ATR de 14", "(2R)")))
+    pg.click("[data-m3-correr]")
+    pg.wait_for_function("/\\d\\s*\\/\\s*4\\s*·/.test(document.querySelector('#lab-v-bt').innerText)", timeout=300000)
+    pg.screenshot(path=str(CAP / "E4_backtest.png"), full_page=True)
+    r = pg.evaluate("(()=>{const m=JSON.parse(localStorage.getItem('lab_m3')||'{}'),R=m.res;if(!R)return null;const d=R.tramos.diseno;"
+                    "return {n:d.n,pf:+d.pf.toFixed(2),pf_sin_mejor:+d.pf_sin_mejor.toFixed(2),caida:+(100*d.maxdd).toFixed(1),"
+                    "pasa:R.pasa,ops:R.operaciones||[],n_ops:R.n_operaciones}})()")
+    if not ok("E", "Fase 04: el backtest intradía da resultado", r is not None):
+        ctx.close()
+        return
+    medidos.update(nas_bt_ops=r["n"], nas_bt_pf=r["pf"], nas_bt_pf_sin_mejor=r["pf_sin_mejor"], nas_bt_caida=r["caida"], nas_bt_pasa=r["pasa"])
+
+    # propiedades que tienen que cumplirse SIEMPRE, sean cuales sean los números
+    ops = r["ops"]
+    hh = lambda s: s[11:16]  # noqa: E731
+    fuera = [o for o in ops if not ("10:15" <= hh(o["in"]) <= "15:45")]
+    ok("E", "ninguna entrada antes de las 10:15 ni fuera de la sesión (filtro hora ≥ 10:00 + entrar en la siguiente)",
+       ops and not fuera, f"{len(fuera)} de {len(ops)}, p. ej. {fuera[0]['in']}" if fuera else f"{len(ops)} revisadas")
+    noche = [o for o in ops if o["out"][:10] != o["in"][:10] or hh(o["out"]) > "15:45"]
+    ok("E", "ninguna operación pasa la noche (cerrar al final de la sesión)", not noche,
+       f"{len(noche)}, p. ej. {noche[0]['in']} → {noche[0]['out']}" if noche else "")
+    motivos = {o["motivo"] for o in ops}
+    ok("E", "salen por stop, por objetivo y por fin de sesión (los tres mecanismos se disparan)",
+       {"stop", "objetivo", "fin_sesion"} <= motivos, ", ".join(sorted(motivos)))
+    ok("E", "nadie sale por «tu salida»: la regla no tiene condiciones de salida", "señal" not in motivos)
+    boton = pg.evaluate("(document.querySelector('[data-m3-todas]')||{}).textContent||''")
+    ok("E", "la lista dice cuántas operaciones enseña de cuántas", r["n_ops"] <= len(ops) or f"de {r['n_ops']:,}".replace(",", ".") in boton, boton.strip())
+    ok("E", "sin errores en la consola", len(errores) == n0, errores[n0] if len(errores) > n0 else "")
+    ctx.close()
 
 
 # ---------------------------------------------------------------- C · capas y tamaños
@@ -446,6 +623,10 @@ def main():
                 estado = laboratorio(nav, srv.url, errores)
             except Exception as e:  # noqa: BLE001
                 ok("B", "el recorrido del laboratorio llega al final", False, f"{type(e).__name__}: {str(e)[:160]}")
+            try:
+                intradia(nav, srv.url, errores)
+            except Exception as e:  # noqa: BLE001
+                ok("E", "el recorrido intradía llega al final", False, f"{type(e).__name__}: {str(e)[:160]}")
         try:
             capas(nav, srv.url, errores, estado)
         except Exception as e:  # noqa: BLE001
