@@ -1,0 +1,20 @@
+{
+  "aed_pruebas": 26,
+  "aed_clara": 0,
+  "aed_insinua": 1,
+  "aed_nada": 25,
+  "aed_diseno": 4130,
+  "aed_examen": 1771,
+  "aed_validacion": 1476,
+  "m2_objetividad": 6,
+  "bt_veredicto": "2/4 NO PASA",
+  "bt_pf": 0.88,
+  "bt_ops": 106,
+  "bt_caida": -27.3,
+  "bt_pf_sin_mejor": 0.84,
+  "oos_ops": 42,
+  "oos_pf": 1.39,
+  "publica_ops": 204,
+  "publica_oos_ops": 67,
+  "publica_pf_oos": 3.49
+}
