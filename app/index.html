@@ -1311,6 +1311,353 @@ table.m1t-t{width:100%;border-collapse:collapse;font-size:.92rem}
 
 #mis-3,#mis-3 *{text-decoration:none}
 
+/* =====================================================================
+   MODO PREMIUM · Mega Cueva Tester y Laboratorio Reto Cueva
+   Capa opcional (src/extra): todo cuelga de body.tema-premium y solo en pantalla (@media screen),
+   así «Original» y la impresión quedan exactamente como estaban.
+   Lenguaje de la marca: negro profundo cálido, oro, crema y verde fósforo; Big Shoulders · Manrope · IBM Plex Mono.
+   ===================================================================== */
+
+/* ---------- el conmutador (existe en los dos modos) ---------- */
+.tp-toggle{display:inline-flex;align-items:center;gap:2px;padding:3px;border-radius:999px;cursor:pointer;
+  border:1px solid rgba(237,228,211,.22);background:rgba(10,8,6,.82);color:#d9cdb8;
+  font:600 11px/1 "IBM Plex Mono",Consolas,monospace;letter-spacing:.08em;text-transform:uppercase;
+  -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);box-shadow:0 6px 18px -8px rgba(0,0,0,.7)}
+.tp-toggle[data-tp-lugar="flota"]{position:fixed;left:14px;bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:61}
+.tp-toggle[data-tp-lugar="lab"],.tp-toggle[data-tp-lugar="rail"]{align-self:flex-start;margin:0 0 .45rem .35rem}
+.tp-toggle[data-tp-lugar="pie"]{vertical-align:middle;margin:0 .9rem 0 0}
+.tp-op{display:inline-flex;align-items:center;gap:.35em;padding:6px 10px;border-radius:999px;color:#b9ad9b;transition:background-color .18s ease,color .18s ease}
+.tp-op i{font-style:normal;color:#f2c14e}
+.tp-toggle[aria-pressed="true"] .tp-op-p,.tp-toggle[aria-pressed="false"] .tp-op-o{background:#ede4d3;color:#14100a}
+.tp-toggle[aria-pressed="true"] .tp-op-p i{color:#8a5f12}
+.tp-toggle:hover{border-color:rgba(242,193,78,.7)}
+.tp-toggle:focus-visible{outline:2px solid #f2c14e;outline-offset:3px}
+@media (max-width:900px){.tp-toggle[data-tp-lugar="lab"]{position:absolute;right:.7rem;bottom:calc(.6rem + 4px);margin:0;font-size:10px;padding:2px;z-index:2}
+  .tp-toggle[data-tp-lugar="lab"] .tp-op{padding:4px 7px}}
+@media (prefers-reduced-motion:reduce){.tp-op{transition:none}}
+@media print{.tp-toggle{display:none!important}}
+
+/* =====================================================================
+   EL TEMA
+   ===================================================================== */
+@media screen{
+
+/* ---------- tokens (cueva y oscuro; el blanco conserva su paleta clara y recibe solo la estructura) ---------- */
+html:not([data-theme="blanco"]) body.tema-premium{
+  --bg:#0b0907; --bg2:#110e0b; --pan:#15110d; --pan2:#1a1510;
+  --line:rgba(237,228,211,.09); --line2:rgba(237,228,211,.19);
+  --cy:#f2c14e; --cy2:#ffe39a; --cy-rgb:242,193,78;
+  --gold:#f2c14e; --gold2:#ffe39a; --gold-rgb:242,193,78;
+  --red:#ff7366; --red2:#ffb4ab; --red-rgb:255,115,102;
+  --ok:#3fe08c; --ok2:#a8f5cb; --ok-rgb:63,224,140; --on-acc:#1a1203;
+  --warn:#f5ad45; --warn-rgb:245,173,69;
+  --f1:#9d927f; --f2:#9d927f; --f3:#9d927f; --f4:#9d927f; --f5:#9d927f; --fmt:#9d927f;
+  --txt:#efe7d8; --dim:#c0b4a1; --dim2:#a39782; --ink:#fff9ec;
+  --tp-hi:rgba(255,240,210,.045); --tp-glow:rgba(242,193,78,.16);
+  --tp-sombra:0 1px 0 rgba(255,244,220,.05) inset,0 1px 2px rgba(0,0,0,.45),0 22px 44px -26px rgba(0,0,0,.9);
+  --tp-sombra-alta:0 1px 0 rgba(255,244,220,.07) inset,0 2px 6px rgba(0,0,0,.4),0 34px 60px -30px rgba(0,0,0,.95),0 0 0 1px rgba(242,193,78,.08);
+}
+html[data-theme="blanco"] body.tema-premium{
+  --tp-hi:rgba(255,255,255,.7); --tp-glow:rgba(31,95,214,.10);
+  --tp-sombra:0 1px 2px rgba(15,23,42,.06),0 18px 36px -24px rgba(15,23,42,.25);
+  --tp-sombra-alta:0 2px 6px rgba(15,23,42,.08),0 30px 50px -28px rgba(15,23,42,.35);
+}
+body.tema-premium{
+  --rad:10px;
+  --f-body:"Manrope","Atkinson Hyperlegible Next","Segoe UI",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",Consolas,"Courier New",monospace;
+  --tp-ease:cubic-bezier(.2,.7,.2,1);
+  font-feature-settings:"tnum" 1,"ss01" 1;letter-spacing:.003em}
+
+/* fondo: negro cálido con dos halos (oro arriba, fósforo abajo) y las curvas de nivel de la cueva, atenuadas */
+html:not([data-theme="blanco"]) body.tema-premium{
+  background-color:var(--bg);
+  background-image:radial-gradient(1100px 620px at 88% -8%,rgba(242,193,78,.10),transparent 62%),
+    radial-gradient(900px 600px at -10% 110%,rgba(63,224,140,.05),transparent 60%),
+    linear-gradient(rgba(11,9,7,.62),rgba(11,9,7,.62)),var(--contornos,none);
+  background-repeat:no-repeat;background-position:0 0,0 0,0 0,right -10% top -30%;
+  background-size:auto,auto,auto,min(1500px,95vw) auto;background-attachment:fixed,fixed,fixed,scroll}
+html:not([data-theme="blanco"]) body.tema-premium.lab{background-image:none}
+html:not([data-theme="blanco"]) body.tema-premium .lab-main{
+  background-image:radial-gradient(900px 520px at 100% 0%,rgba(242,193,78,.08),transparent 62%),
+    linear-gradient(rgba(11,9,7,.6),rgba(11,9,7,.6)),var(--contornos,none);
+  background-repeat:no-repeat;background-position:0 0,0 0,right -20% top -10%;background-size:auto,auto,min(1300px,90vw) auto;background-attachment:local}
+html:not([data-theme="blanco"]) body.tema-premium::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:.045;mix-blend-mode:screen;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")}
+body.tema-premium .fb-btn{background:rgba(11,9,7,.78);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-color:rgba(var(--gold-rgb),.55);
+  box-shadow:0 6px 18px -8px rgba(0,0,0,.7)}
+body.tema-premium .fb-btn:hover{background:var(--gold);color:#1a1203}
+body.tema-premium ::selection{background:rgba(var(--gold-rgb),.35);color:var(--ink)}
+body.tema-premium *{scrollbar-width:thin;scrollbar-color:rgba(var(--gold-rgb),.28) transparent}
+
+/* ---------- tipografía ---------- */
+body.tema-premium{font-family:var(--f-body);line-height:1.55}
+body.tema-premium :is(h1,h2,h3){text-wrap-style:balance}
+body.tema-premium :is(p,li){text-wrap-style:pretty}
+body.tema-premium .lead{color:var(--dim);font-size:1.06rem;line-height:1.65}
+html:not([data-theme="blanco"]) body.tema-premium :is(.m1p-hero h1,.lab-cab h1,.landing-h1,.bx-hero h1,.fhero h1,.mhead h1,.un-head h2){
+  background:linear-gradient(180deg,#fffaf0 30%,#e6d6b8);-webkit-background-clip:text;background-clip:text;color:transparent;
+  -webkit-box-decoration-break:clone;box-decoration-break:clone;padding-top:.16em}
+html:not([data-theme="blanco"]) body.tema-premium :is(.m1p-hero h1,.lab-cab h1,.landing-h1,.bx-hero h1,.fhero h1,.mhead h1) span{
+  background:linear-gradient(180deg,#ffe08a,#e9ad35);-webkit-background-clip:text;background-clip:text;color:transparent}
+body.tema-premium .m1p-hero h1{font-size:clamp(2.4rem,4.4vw,3.9rem);font-weight:850;letter-spacing:-.005em;line-height:.94;margin:.55rem 0 .9rem}
+body.tema-premium .m1p-hero h1 span{margin-top:.12em;font-size:.56em;letter-spacing:.02em}
+body.tema-premium .m1p-hero .lead{max-width:56rem}
+/* antetítulos: mono espaciado con una raya de oro delante */
+body.tema-premium :is(.m1p-eyebrow,.lab-cab .num,.eyebrow,.m1p-fig .num){font-family:var(--f-mono);font-weight:500;letter-spacing:.2em}
+body.tema-premium :is(.m1p-hero .m1p-eyebrow,.lab-cab .num){display:flex;align-items:center;gap:.7rem}
+body.tema-premium :is(.m1p-hero .m1p-eyebrow,.lab-cab .num)::before{content:"";width:1.8rem;height:1px;background:linear-gradient(90deg,var(--gold),rgba(var(--gold-rgb),.2))}
+body.tema-premium .sec-t{letter-spacing:.06em}
+
+/* ---------- tarjetas: capas, borde fino, brillo suave arriba ---------- */
+body.tema-premium :is(.panel,.m1p-fig,.m1t-part,.m1t-ficha,.m1p-ficha,.m1p-veredicto,.m1p-rasgo,.hip-aed,.hip-hoja,.hip-guia,.lab-bloq,
+  .m2-evi,.m2-pz,.m2-sesgos,.m2-ayuda,.m2-ps,.m2-obj,.landing-card,.calchip,.m1p-doc){
+  border-color:var(--line2);border-radius:14px;box-shadow:var(--tp-sombra);
+  background-image:linear-gradient(180deg,var(--tp-hi),transparent 120px)}
+html:not([data-theme="blanco"]) body.tema-premium :is(.panel,.m1p-fig,.m1t-part,.m1t-ficha,.m1p-ficha,.hip-hoja,.hip-guia,.lab-bloq,.m2-ps,.m2-obj,.m2-ayuda,.m2-sesgos){
+  background-color:color-mix(in srgb,var(--pan) 94%,transparent)}
+body.tema-premium :is(.m1p-rasgo,.m1t-tile,.m1p-ficha-cab div){border-radius:12px}
+body.tema-premium .m1p-rasgo{border-top-width:2px;padding:1rem 1.15rem;gap:.25rem;justify-content:center}
+body.tema-premium .m1p-fig:hover{border-color:rgba(var(--gold-rgb),.32)}
+body.tema-premium .m1p-rasgo b{font-size:1.6rem;letter-spacing:.01em}
+body.tema-premium .m1t-tile{border-top-width:2px;padding:.8rem .9rem;background:color-mix(in srgb,var(--pan2) 70%,transparent)}
+body.tema-premium .m1t-tile b{font-size:1.6rem;letter-spacing:.005em}
+html:not([data-theme="blanco"]) body.tema-premium .m1p-veredicto{border-color:rgba(var(--gold-rgb),.55);
+  background:radial-gradient(120% 140% at 0% 0%,rgba(var(--gold-rgb),.12),transparent 55%),linear-gradient(180deg,var(--tp-hi),transparent 120px),var(--pan2);
+  box-shadow:var(--tp-sombra-alta)}
+body.tema-premium .m1p-veredicto h2{font-size:clamp(1.7rem,2.5vw,2.3rem);letter-spacing:.005em}
+body.tema-premium .m1p-ind{border-left-width:2px;border-radius:0 10px 10px 0;padding:.75rem 1rem;background:linear-gradient(90deg,rgba(var(--gold-rgb),.10),rgba(var(--gold-rgb),.03))}
+
+/* más aire */
+body.tema-premium .m1p{gap:1.8rem;padding:1.4rem 2.2rem 4.5rem}
+body.tema-premium #m1-res{gap:1.7rem}
+body.tema-premium .m1p-figs{gap:1.4rem}
+body.tema-premium .m1p-fig{padding:1.5rem 1.6rem 1.35rem;gap:.85rem}
+body.tema-premium .m1p-datos{padding:1.6rem 1.8rem;gap:1.2rem}
+body.tema-premium :is(.m1t-part,.m1t-ficha){padding:1.4rem 1.6rem}
+body.tema-premium .m1p-ficha{padding:1.7rem 1.9rem}
+body.tema-premium .lab-vista{padding:1.4rem 2.4rem 4rem}
+body.tema-premium .lab-cab{padding:2.4rem 2.4rem .8rem}
+
+/* ---------- cabeceras de sección ---------- */
+body.tema-premium :is(.m1p-fig h3,.m1p-h h2,.m1p-doc h4,.hip-aed h3,.hip-hoja h3,.hip-guia h3,.m2-ayuda h3){letter-spacing:.035em}
+body.tema-premium .m1p-fig header{padding-bottom:.7rem;border-bottom:1px solid var(--line);gap:.85rem}
+body.tema-premium .m1p-fig h3{font-size:1.4rem}
+body.tema-premium .m1p-fig .num{padding:.2rem .5rem;border:1px solid rgba(var(--gold-rgb),.4);border-radius:6px;font-size:.68rem;line-height:1.2}
+body.tema-premium .m1p-h h2{font-size:1.45rem}
+/* número de paso en círculo con anillo de oro */
+body.tema-premium .bx-n{border-color:rgba(var(--gold-rgb),.55);color:var(--gold);
+  background:radial-gradient(circle at 30% 25%,rgba(var(--gold-rgb),.22),transparent 65%);box-shadow:0 0 0 4px rgba(var(--gold-rgb),.06)}
+
+/* ---------- botones ---------- */
+body.tema-premium :is(.btn,.seg button,.bx-ej,.landing-card,.link,.lab-fase,.lab-side-link,.m2-paso,.aed-toc button.t,.calchip){
+  transition:background-color .18s var(--tp-ease),border-color .18s var(--tp-ease),color .18s var(--tp-ease),box-shadow .2s var(--tp-ease),transform .18s var(--tp-ease)}
+body.tema-premium .btn{border-radius:10px;padding:.5rem .9rem;border-color:var(--line2);background-image:linear-gradient(180deg,var(--tp-hi),transparent)}
+body.tema-premium .btn:hover:not(:disabled){border-color:rgba(var(--gold-rgb),.65);transform:translateY(-1px);box-shadow:0 10px 22px -14px rgba(0,0,0,.9)}
+body.tema-premium .btn:active:not(:disabled){transform:translateY(0) scale(.985);box-shadow:none}
+html:not([data-theme="blanco"]) body.tema-premium .btn.gold{color:#1a1203;border-color:#f6c95a;
+  background:linear-gradient(180deg,#ffdb7a 0%,#f2bd45 55%,#e3a92c 100%);
+  box-shadow:0 1px 0 rgba(255,255,255,.45) inset,0 -1px 0 rgba(0,0,0,.15) inset,0 10px 26px -12px rgba(242,193,78,.55)}
+html:not([data-theme="blanco"]) body.tema-premium .btn.gold:hover:not(:disabled){background:linear-gradient(180deg,#ffe596 0%,#f6c654 55%,#e8b03a 100%);color:#140e02;
+  box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 14px 32px -12px rgba(242,193,78,.7)}
+html:not([data-theme="blanco"]) body.tema-premium .btn.gold:disabled{background:linear-gradient(180deg,#6d5a2c,#5a4a24);color:#f3e6c4;border-color:#6d5a2c;opacity:1;box-shadow:none}
+body.tema-premium .btn.bigb{border-radius:12px;padding:.8rem 1.4rem;letter-spacing:.12em}
+/* secundarios dentro del laboratorio que la app pinta como contorno dorado */
+html:not([data-theme="blanco"]) body.tema-premium #lab :is(#m1-guardar,#m1-perfil .btn.gold){background:transparent;color:var(--gold);border-color:rgba(var(--gold-rgb),.6);box-shadow:none}
+body.tema-premium :is(.btn,.seg button,.bx-ej,.landing-card,.link,.lab-fase,.lab-side-link,.m2-paso,.calchip,.tp-toggle,select,input,textarea,summary,a):focus-visible{
+  outline:2px solid var(--gold);outline-offset:3px;box-shadow:0 0 0 6px rgba(var(--gold-rgb),.16)}
+body.tema-premium .link{text-underline-offset:.22em;text-decoration-thickness:1px}
+body.tema-premium .seg{border-radius:10px;padding:2px;gap:2px;background:color-mix(in srgb,var(--pan2) 80%,transparent)}
+body.tema-premium .seg button{border-radius:8px}
+body.tema-premium .seg button+button{border-left:0}
+html:not([data-theme="blanco"]) body.tema-premium .seg button[aria-pressed="true"]{background:#ede4d3;color:#14100a}
+
+/* fichas de activo (librería de datos) */
+body.tema-premium .bx-ej{border-radius:12px;padding:.85rem .95rem;background:linear-gradient(180deg,var(--tp-hi),transparent),color-mix(in srgb,var(--pan2) 85%,transparent)}
+body.tema-premium .bx-ej:hover{border-color:rgba(var(--gold-rgb),.55);transform:translateY(-2px);box-shadow:0 14px 26px -18px rgba(0,0,0,.95)}
+body.tema-premium .bx-ej[aria-pressed="true"]{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset,0 14px 30px -16px rgba(var(--gold-rgb),.45);
+  background:radial-gradient(120% 120% at 0 0,rgba(var(--gold-rgb),.18),transparent 60%),var(--pan2)}
+body.tema-premium .bx-ej .bx-ej-r{opacity:1;color:var(--dim2);font-family:var(--f-mono)}
+body.tema-premium .bx-csv{border-radius:12px}
+
+/* campos */
+body.tema-premium :is(select,input[type="text"],input[type="number"],input[type="email"],input[type="password"],textarea){border-radius:9px}
+html:not([data-theme="blanco"]) body.tema-premium :is(select,input[type="text"],input[type="number"],input[type="email"],textarea){border-color:var(--line2);background-color:#0f0c09}
+body.tema-premium :is(select,input,textarea):hover{border-color:rgba(var(--gold-rgb),.45)}
+
+/* ---------- tablas que respiran ---------- */
+body.tema-premium :is(table.m1p-t,table.m1t-t){border-collapse:separate;border-spacing:0;font-variant-numeric:tabular-nums lining-nums}
+body.tema-premium :is(.m1p-t,.m1t-t) th{position:sticky;top:var(--tp-th-top,0px);z-index:2;padding:.7rem .8rem;font-weight:500;letter-spacing:.14em;color:var(--dim2);
+  background:color-mix(in srgb,var(--pan2) 96%,transparent);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
+  border-bottom:1px solid var(--line2)}
+body.tema-premium :is(.m1p-t,.m1t-t) td{padding:.66rem .8rem;border-bottom:1px solid var(--line)}
+body.tema-premium :is(.m1p-t,.m1t-t) td .btn{padding:.28rem .7rem;border-radius:8px}
+body.tema-premium :is(.m1p-t,.m1t-t) tbody tr:nth-child(even) td{background:rgba(237,228,211,.022)}
+html[data-theme="blanco"] body.tema-premium :is(.m1p-t,.m1t-t) tbody tr:nth-child(even) td{background:rgba(15,23,42,.025)}
+body.tema-premium :is(.m1p-t,.m1t-t) tbody tr:hover td{background:rgba(var(--gold-rgb),.06)}
+body.tema-premium :is(.m1p-t,.m1t-t) tr:last-child td{border-bottom:0}
+body.tema-premium :is(.m1p-t,.m1t-t) td.v{font-family:var(--f-mono);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+body.tema-premium .m1p-t tr.sec td{background:none!important;padding-top:1.5rem}
+body.tema-premium #lab #lab-v-aed{--tp-th-top:6.2rem}
+body.tema-premium #lab #lab-v-bt{--tp-th-top:3.2rem}
+body.tema-premium .sem{padding:.24rem .6rem;letter-spacing:.08em}
+
+/* ---------- gráficos: más contraste en los ejes, trazos finos y nítidos, rejilla discreta ---------- */
+body.tema-premium .m1svg :is(path,line,rect,polyline,circle){vector-effect:non-scaling-stroke}
+body.tema-premium .m1svg .ax{fill:#d4c9b6;font-size:12px;font-weight:500;letter-spacing:.01em}
+html[data-theme="blanco"] body.tema-premium .m1svg .ax{fill:#3b4554}
+body.tema-premium .m1svg .ax.gold{fill:var(--gold)}
+body.tema-premium .m1svg .gr{stroke:rgba(237,228,211,.10);stroke-dasharray:2 5;stroke-width:1}
+html[data-theme="blanco"] body.tema-premium .m1svg .gr{stroke:rgba(15,23,42,.14)}
+body.tema-premium .m1svg .ln-p{stroke:#f6efe1;stroke-width:1.25;stroke-linejoin:round}
+html[data-theme="blanco"] body.tema-premium .m1svg .ln-p{stroke:#1b2430}
+body.tema-premium .m1svg .ln-m{stroke-width:1.25;stroke-dasharray:6 5}
+body.tema-premium .m1svg .ln-e{stroke-width:1.15}
+body.tema-premium .m1svg :is(.ln-n,.ln-v){stroke-width:1.6;stroke-linejoin:round;filter:drop-shadow(0 0 5px rgba(var(--gold-rgb),.35))}
+body.tema-premium .m1svg .ar-dd{fill:rgba(var(--red-rgb),.20);stroke-width:1}
+body.tema-premium .m1svg .base{stroke-width:1.1}
+body.tema-premium .m1svg .b-cy{opacity:.85}
+body.tema-premium .m1p-fig svg.m1svg{margin:.35rem 0 .2rem}
+body.tema-premium .m1p-lee{font-size:.95rem;line-height:1.6;color:var(--dim)}
+
+/* ---------- portada y misiones ---------- */
+body.tema-premium .landing-in{gap:1.7rem}
+body.tema-premium .landing-brand b{font-size:1.9rem}
+body.tema-premium .landing-h1{font-size:clamp(2.2rem,4.2vw,3.6rem);letter-spacing:.02em;line-height:1;margin:.4rem 0 .6rem;font-weight:850}
+body.tema-premium .landing-cards{gap:1.3rem}
+body.tema-premium .landing-card{padding:1.9rem 1.6rem 1.7rem;gap:.75rem;border-radius:18px;position:relative;isolation:isolate;
+  background:linear-gradient(180deg,var(--tp-hi),transparent 140px),color-mix(in srgb,var(--pan2) 92%,transparent)}
+html:not([data-theme="blanco"]) body.tema-premium .landing-card::after{content:"";position:absolute;inset:0;border-radius:inherit;z-index:-1;pointer-events:none;opacity:0;
+  background:radial-gradient(140% 90% at 50% 0%,rgba(var(--gold-rgb),.16),transparent 60%);transition:opacity .22s var(--tp-ease)}
+body.tema-premium .landing-card:hover{transform:translateY(-4px);border-color:rgba(var(--gold-rgb),.7);box-shadow:var(--tp-sombra-alta)}
+body.tema-premium .landing-card:hover::after{opacity:1}
+body.tema-premium .landing-card b{font-size:1.25rem;letter-spacing:.05em}
+body.tema-premium .landing-card small{font-size:.93rem;line-height:1.6}
+body.tema-premium .landing-card .landing-ic{width:3.4rem;height:3.4rem;border-color:rgba(var(--gold-rgb),.35);
+  background:radial-gradient(circle at 30% 25%,rgba(var(--gold-rgb),.20),transparent 70%);color:var(--gold)}
+html:not([data-theme="blanco"]) body.tema-premium .landing-card.primary .landing-ic{background:linear-gradient(180deg,#ffdb7a,#e9ad35);color:#1a1203;
+  box-shadow:0 0 0 6px rgba(var(--gold-rgb),.10),0 10px 24px -10px rgba(var(--gold-rgb),.6)}
+html:not([data-theme="blanco"]) body.tema-premium .landing-card.primary{border-color:rgba(var(--gold-rgb),.75);
+  background:radial-gradient(130% 100% at 0% 0%,rgba(var(--gold-rgb),.13),transparent 55%),linear-gradient(180deg,var(--tp-hi),transparent 140px),var(--pan2)}
+html:not([data-theme="blanco"]) body.tema-premium .landing-card.lab-card{border-color:rgba(var(--gold-rgb),.5);
+  background:radial-gradient(130% 100% at 100% 0%,rgba(63,224,140,.10),transparent 55%),linear-gradient(180deg,var(--tp-hi),transparent 140px),var(--pan2)}
+body.tema-premium .landing-pronto{opacity:.5}
+
+/* cabecera de la Misión 1 y marca */
+body.tema-premium .m1p-top{padding:.4rem 0 1.1rem;border-bottom-color:var(--line)}
+body.tema-premium .brand b{letter-spacing:.035em}
+html[data-theme="cueva"] body.tema-premium .brand::after{height:.22rem;margin-top:.5rem;opacity:.9;
+  background:repeating-linear-gradient(90deg,var(--gold) 0 14px,transparent 14px 22px)}
+body.tema-premium .m1p-paso{padding:.35rem .75rem;border:1px solid var(--line2);border-radius:999px;font-size:.7rem}
+
+/* ---------- pantalla de carga del motor ---------- */
+body.tema-premium .prog{height:6px;border-radius:999px;background:rgba(var(--gold-rgb),.10);box-shadow:0 0 0 1px rgba(var(--gold-rgb),.12) inset}
+body.tema-premium .prog i{border-radius:999px;background:linear-gradient(90deg,#c98f22,#f2c14e 60%,#ffe7a3);box-shadow:0 0 14px rgba(var(--gold-rgb),.55)}
+body.tema-premium .tp-carga{position:relative}
+/* la nota bajo el botón: el mensaje claro de tiempos */
+body.tema-premium :is(#m1-nota,#m3-nota,#bx-nota,#pi-nota).tp-carga{display:flex;flex-direction:column;gap:.35rem;padding:.85rem 1rem .85rem 3.1rem;border-radius:12px;
+  border:1px solid rgba(var(--gold-rgb),.35);background:linear-gradient(90deg,rgba(var(--gold-rgb),.10),rgba(var(--gold-rgb),.02));color:var(--txt)}
+body.tema-premium :is(#m1-nota,#m3-nota,#bx-nota,#pi-nota).tp-carga::before{content:"";position:absolute;left:1rem;top:1rem;width:1.15rem;height:1.15rem;border-radius:50%;
+  border:2px solid rgba(var(--gold-rgb),.25);border-top-color:var(--gold);animation:tpGira 0.9s linear infinite}
+body.tema-premium :is(#m1-nota,#m3-nota,#bx-nota,#pi-nota).tp-carga::after{content:attr(data-tp-msg);order:-1;font-weight:700;color:var(--ink);font-size:.95rem;line-height:1.45}
+body.tema-premium.tp-motor-listo :is(#m1-nota,#m3-nota,#bx-nota,#pi-nota).tp-carga::after{font-weight:600;color:var(--dim)}
+/* el hueco de resultados de la Misión 1 se convierte en una tarjeta de espera */
+body.tema-premium #mision1.analizando #m1-calidad{animation:none;min-height:16rem;display:grid;place-items:center;align-content:center;gap:1.1rem;padding:2rem;text-align:center;
+  border:1px solid var(--line2);border-radius:18px;
+  background:radial-gradient(60% 90% at 50% 0%,rgba(var(--gold-rgb),.12),transparent 70%),linear-gradient(180deg,var(--tp-hi),transparent),var(--pan)}
+body.tema-premium #mision1.analizando #m1-calidad::before{content:"";width:3.6rem;height:3.6rem;border-radius:50%;
+  background:conic-gradient(from 0deg,transparent 0 55%,rgba(var(--gold-rgb),.25) 70%,var(--gold) 100%);
+  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3px));mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3px));
+  animation:tpGira 1.1s linear infinite;filter:drop-shadow(0 0 8px rgba(var(--gold-rgb),.45))}
+body.tema-premium #mision1.analizando #m1-calidad::after{content:"PREPARANDO TU ANÁLISIS\A Aquí aparecerán la ficha de tu activo, las 7 figuras y el árbol de familias.";white-space:pre-line;max-width:34rem;color:var(--dim);font-size:.98rem;line-height:1.9}
+@keyframes tpGira{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){
+  body.tema-premium .tp-carga::before,body.tema-premium #mision1.analizando #m1-calidad::before{animation-duration:3s}}
+
+/* ---------- LABORATORIO: barra lateral de fases ---------- */
+html:not([data-theme="blanco"]) body.tema-premium .lab-side{background:linear-gradient(180deg,#120f0b,#0d0b08);border-right-color:var(--line)}
+body.tema-premium .lab-brand{padding:.3rem .5rem .9rem}
+body.tema-premium .lab-brand b{font-size:1.6rem;letter-spacing:.035em}
+body.tema-premium .lab-side-h{letter-spacing:.2em;color:var(--dim2)}
+body.tema-premium .lab-grupo{color:var(--dim2);letter-spacing:.14em;margin:.7rem .5rem .25rem}
+/* barra de progreso fina sobre la lista */
+body.tema-premium #lab-fases::before{content:attr(data-tp-prog);display:block;margin:0 .5rem .2rem;padding-top:.7rem;font:500 .64rem/1.2 var(--f-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--dim2);
+  background:linear-gradient(90deg,var(--ok),#9df5c5) 0 0/var(--tp-prog,0%) 3px no-repeat,linear-gradient(rgba(237,228,211,.10),rgba(237,228,211,.10)) 0 0/100% 3px no-repeat;border-radius:2px}
+body.tema-premium .lab-fase{border-radius:12px;padding:.48rem .6rem;gap:.75rem}
+body.tema-premium .lab-fase:hover{background:rgba(237,228,211,.045)}
+body.tema-premium .lab-fase .lab-n{background:var(--bg);border:1px solid var(--line2);color:var(--dim);font-size:.95rem;box-shadow:0 0 0 3px var(--bg2,#110e0b)}
+body.tema-premium .lab-fase.abierta .lab-n{border-color:rgba(var(--gold-rgb),.6);color:var(--gold)}
+body.tema-premium .lab-fase:not(:last-child)::after{width:1px;left:calc(.6rem + 1rem);background:linear-gradient(var(--line2),var(--line))}
+body.tema-premium .lab-fase.hecha:not(:last-child)::after{background:linear-gradient(var(--ok),rgba(var(--ok-rgb),.35))}
+body.tema-premium .lab-fase.hecha .lab-n{background:radial-gradient(circle at 30% 25%,#8ff0bb,var(--ok));border-color:var(--ok);color:#04140b;box-shadow:0 0 0 3px var(--bg2,#110e0b),0 0 14px rgba(var(--ok-rgb),.35)}
+body.tema-premium .lab-fase.on{background:linear-gradient(90deg,rgba(var(--gold-rgb),.16),rgba(var(--gold-rgb),.03));box-shadow:0 0 0 1px rgba(var(--gold-rgb),.28) inset}
+body.tema-premium .lab-fase.on .lab-n{background:linear-gradient(180deg,#ffdb7a,#e9ad35);border-color:#f6c95a;color:#1a1203;
+  box-shadow:0 0 0 3px var(--bg2,#110e0b),0 0 0 5px rgba(var(--gold-rgb),.25),0 0 18px rgba(var(--gold-rgb),.45)}
+body.tema-premium .lab-fase.on .lab-t b{color:var(--gold2)}
+body.tema-premium .lab-fase .lab-t b{font-weight:700;letter-spacing:.005em}
+body.tema-premium .lab-fase .lab-t small{color:var(--dim2)}
+body.tema-premium .lab-fase.cerrada{opacity:.78}
+body.tema-premium .lab-side-pie{border-top-color:var(--line)}
+/* barra superior y cabecera de fase */
+body.tema-premium .lab-top{padding:.85rem 2.4rem;border-bottom-color:var(--line);background:color-mix(in srgb,var(--bg) 78%,transparent);-webkit-backdrop-filter:blur(14px) saturate(1.2);backdrop-filter:blur(14px) saturate(1.2)}
+body.tema-premium .lab-miga{letter-spacing:.16em}
+body.tema-premium .lab-cab h1{font-size:clamp(2.6rem,4.6vw,4.2rem);line-height:.92;margin:.55rem 0 .7rem;font-weight:850}
+body.tema-premium .lab-cab .preg{font-size:1.22rem;color:var(--txt);font-weight:500}
+body.tema-premium .lab-cab .sale{margin-top:1.1rem;padding-top:1rem;border-top:1px solid var(--line);gap:.6rem 2rem}
+body.tema-premium .lab-mis{padding:.18rem .6rem;background:linear-gradient(180deg,#ffdb7a,#e9ad35);box-shadow:0 4px 12px -6px rgba(var(--gold-rgb),.7)}
+body.tema-premium .aed-toc{border-radius:14px;padding:.4rem;background:color-mix(in srgb,var(--pan2) 86%,transparent);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:var(--tp-sombra)}
+body.tema-premium .aed-toc button.t{border-radius:9px;letter-spacing:.1em}
+body.tema-premium .aed-toc button.t.on{box-shadow:inset 0 -2px 0 var(--gold);background:rgba(var(--gold-rgb),.08);color:var(--ink)}
+body.tema-premium .lab-bloq .cand{border-color:rgba(var(--gold-rgb),.4);background:radial-gradient(circle at 30% 25%,rgba(var(--gold-rgb),.18),transparent 70%)}
+body.tema-premium .m2-pasos{border-radius:14px;box-shadow:var(--tp-sombra);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+body.tema-premium .m2-paso.on span{background:linear-gradient(180deg,#ffdb7a,#e9ad35);box-shadow:0 0 12px rgba(var(--gold-rgb),.4)}
+body.tema-premium .m2-pz{border-left-width:2px}
+body.tema-premium .ab{border-radius:18px;background-image:radial-gradient(rgba(237,228,211,.07) 1px,transparent 1.2px);background-size:20px 20px}
+body.tema-premium .ab-nodo{border-radius:12px;box-shadow:var(--tp-sombra)}
+body.tema-premium .calchip{border-radius:12px}
+
+/* ---------- recorrido completo (menú lateral y cabecera) ---------- */
+html:not([data-theme="blanco"]) body.tema-premium .rail{background:linear-gradient(180deg,#120f0b,#0d0b08)}
+body.tema-premium .tab{border-radius:12px}
+html:not([data-theme="blanco"]) body.tema-premium .tab[aria-selected="true"]{background:linear-gradient(90deg,rgba(var(--gold-rgb),.16),rgba(var(--gold-rgb),.03));border-color:rgba(var(--gold-rgb),.35)}
+body.tema-premium .top{-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+body.tema-premium .toast{border-radius:12px;box-shadow:var(--tp-sombra-alta)}
+
+/* ---------- prueba en 3 pasos (BASIC) ---------- */
+body.tema-premium .bx-hero h1{font-weight:850;letter-spacing:.005em}
+body.tema-premium .bx-paso{border-radius:16px}
+
+/* ---------- microinteracciones (solo si la persona no pide menos movimiento) ---------- */
+@media (prefers-reduced-motion:no-preference){
+  body.tema-premium :is(.m1p-fig,.m1t-ficha,.m1t-part,.m1p-veredicto,.m1p-rasgo){animation:tpSube .32s var(--tp-ease) both}
+  body.tema-premium .m1p-rasgo:nth-child(2){animation-delay:.04s}body.tema-premium .m1p-rasgo:nth-child(3){animation-delay:.08s}body.tema-premium .m1p-rasgo:nth-child(4){animation-delay:.12s}
+  body.tema-premium .lab-fase.on .lab-n{animation:tpLatido 2.6s ease-in-out infinite}
+}
+@keyframes tpSube{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes tpLatido{0%,100%{box-shadow:0 0 0 3px var(--bg2,#110e0b),0 0 0 5px rgba(var(--gold-rgb),.25),0 0 18px rgba(var(--gold-rgb),.45)}
+  50%{box-shadow:0 0 0 3px var(--bg2,#110e0b),0 0 0 7px rgba(var(--gold-rgb),.12),0 0 26px rgba(var(--gold-rgb),.55)}}
+@media (prefers-reduced-motion:reduce){body.tema-premium *{transition:none!important}}
+
+/* ---------- móvil ---------- */
+@media (max-width:900px){
+  body.tema-premium .lab-vista,body.tema-premium .lab-cab{padding-left:16px;padding-right:16px}
+  body.tema-premium .lab-cab{padding-top:1.4rem}
+  body.tema-premium .lab-top{padding:.6rem 16px}
+  body.tema-premium #lab #lab-v-aed{--tp-th-top:2.7rem}
+  body.tema-premium #lab #lab-v-bt{--tp-th-top:0px}
+  body.tema-premium .lab-fase{min-width:4.8rem;padding:.45rem .35rem}
+  body.tema-premium #lab-fases::before{display:none}
+  body.tema-premium .lab-fase:not(:last-child)::after{display:none}
+}
+@media (max-width:640px){
+  body.tema-premium .m1p{padding:1rem 16px 5rem;gap:1.4rem}
+  body.tema-premium .m1p-datos,body.tema-premium .m1p-fig,body.tema-premium :is(.m1t-part,.m1t-ficha),body.tema-premium .m1p-ficha{padding:1.1rem 1rem}
+  body.tema-premium .landing-card{padding:1.4rem 1.2rem}
+  body.tema-premium .lab-cab h1{font-size:2.6rem}
+  body.tema-premium .m1svg .ax{font-size:13px}
+}
+} /* fin @media screen */
+
 </style>
 </head>
 <body>
@@ -4795,6 +5142,61 @@ function syncFilt(){$$('#o-filt button').forEach(b=>b.setAttribute('aria-pressed
 (document.fonts&&document.fonts.ready?document.fonts.ready:Promise.resolve()).then(()=>{renderAll();renderTree();fitNombre()});
 
 init();
+})();
+
+/* ---------- MODO PREMIUM (capa opcional, src/extra) ----------
+   Solo añade clases y el conmutador «✦ Premium / Original». Todo el diseño está en premium.css bajo body.tema-premium:
+   en «Original» se quita la clase y la herramienta queda como siempre. Se recuerda en localStorage ('tis_premium').
+   No toca la lógica de la app: lee el DOM (botones ocupados, fases hechas) y escribe solo clases y atributos data-tp-*. */
+(function(){
+  if(window.__tisPremium)return;window.__tisPremium=true;
+  var KEY='tis_premium',B=document.body;if(!B)return;
+  var lee=function(){try{return localStorage.getItem(KEY)}catch(e){return null}},
+      guarda=function(v){try{localStorage.setItem(KEY,v)}catch(e){}};
+  var on=lee()!=='0';                      /* por defecto: premium */
+
+  /* tipografía de cuerpo (Manrope, la de la marca); si no hay red, el tema cae en la fuente que ya trae la herramienta */
+  if(!document.getElementById('tp-fuentes')){var l=document.createElement('link');l.id='tp-fuentes';l.rel='stylesheet';
+    l.href='https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap';(document.head||B).appendChild(l)}
+
+  /* el conmutador */
+  var t=document.createElement('button');t.type='button';t.id='tp-toggle';t.className='tp-toggle';
+  t.setAttribute('aria-label','Diseño premium');
+  t.innerHTML='<span class="tp-op tp-op-p" aria-hidden="true"><i>✦</i> Premium</span><span class="tp-op tp-op-o" aria-hidden="true">Original</span>';
+  function aplicar(v,guardar){on=v;B.classList.toggle('tema-premium',v);t.setAttribute('aria-pressed',String(v));
+    t.title=v?'Diseño premium activado · pulsa para volver al diseño original':'Diseño original · pulsa para activar el diseño premium';
+    if(guardar)guarda(v?'1':'0')}
+  t.addEventListener('click',function(e){e.stopPropagation();aplicar(!on,true)});
+  t.addEventListener('keydown',function(e){e.stopPropagation()});   /* que las teclas de la app (0-8, M, N, P…) no se disparen aquí */
+
+  /* dónde vive: en el laboratorio, al pie de la barra de fases; en el recorrido completo, al pie del menú; si no, flotando abajo a la izquierda */
+  function colocar(){var c=B.classList,dest=null,modo='flota';
+    if(c.contains('lab')){dest=document.querySelector('#lab .lab-side-pie');modo='lab'}
+    else if(c.contains('basic')){dest=document.querySelector('#basic .bx-pie');modo='pie'}
+    else if(!c.contains('basic')&&!c.contains('landing')&&!c.contains('misiones')&&!c.contains('mision1')){dest=document.querySelector('.app .rail-pie');modo='rail'}
+    if(!dest){dest=B;modo='flota'}
+    if(t.parentNode!==dest){if(dest===B)B.appendChild(t);else dest.insertBefore(t,dest.firstChild)}
+    t.setAttribute('data-tp-lugar',modo)}
+
+  /* estado del motor y pantallas de carga: botón ocupado → su nota recibe tp-carga y el mensaje correcto */
+  var OCUP=[['#m1-analizar','#m1-nota','#m1-calidad'],['[data-m3-correr]','#m3-nota',null],['#bx-correr','#bx-nota',null],['#pi-correr','#pi-nota',null]];
+  var MSG_FRIO='La primera vez tarda 1-4 min: se descarga y arranca el motor (Python) dentro de tu navegador. No cierres la pestaña; las siguientes veces son segundos.',
+      MSG_LISTO='Motor listo · calculando, son unos segundos.';
+  function vigilar(){var M=window.MCT_MOTOR,listo=!!(M&&M.listo);B.classList.toggle('tp-motor-listo',listo);
+    OCUP.forEach(function(o){var b=document.querySelector(o[0]);if(!b)return;
+      var ocupado=b.disabled&&/ANALIZANDO|CORRIENDO|CARGANDO/i.test(b.textContent||'');
+      [o[1],o[2]].forEach(function(s){if(!s)return;var n=document.querySelector(s);if(!n)return;
+        if(ocupado){n.classList.add('tp-carga');n.setAttribute('data-tp-msg',listo?MSG_LISTO:MSG_FRIO)}
+        else if(n.classList.contains('tp-carga')){n.classList.remove('tp-carga');n.removeAttribute('data-tp-msg')}})});
+    /* laboratorio: progreso de las fases abiertas (barra fina sobre la lista) */
+    var nav=document.getElementById('lab-fases');
+    if(nav){var ab=nav.querySelectorAll('.lab-fase.abierta').length,he=nav.querySelectorAll('.lab-fase.abierta.hecha').length,
+      txt='Tu progreso · '+he+' de '+ab;
+      if(nav.getAttribute('data-tp-prog')!==txt){nav.setAttribute('data-tp-prog',txt);nav.style.setProperty('--tp-prog',(ab?Math.round(he/ab*100):0)+'%')}}}
+
+  aplicar(on,false);colocar();vigilar();
+  try{new MutationObserver(colocar).observe(B,{attributes:true,attributeFilter:['class']})}catch(e){}
+  setInterval(function(){if(!document.hidden)vigilar()},400);
 })();
 
 </script>
