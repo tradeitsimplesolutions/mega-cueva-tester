@@ -182,6 +182,13 @@ JS_DESBORDA = """() => {const o=[];const de=document.documentElement;if(de.scrol
 JS_SOLAPE = """() => {const a=document.querySelector('#tp-toggle'),b=document.querySelector('#mb-toggle');if(!a||!b)return 'falta '+(!a?'#tp-toggle':'#mb-toggle');
   const r=a.getBoundingClientRect(),s=b.getBoundingClientRect();if(!r.width||!s.width)return '';
   return (r.left<s.right-1&&s.left<r.right-1&&r.top<s.bottom-1&&s.top<r.bottom-1)?'se tapan':''}"""
+# la caja de Cuevi: dentro de la pantalla, «Siguiente paso» y «¿Por qué?» a la vista, y si el texto no cabe, el aviso «↓ sigue»
+JS_CUEVI = """() => {const g=document.querySelector('#mb-guia');if(!g||g.hidden)return 'guía oculta';const o=[],b=g.querySelector('.mb-boc').getBoundingClientRect();
+  if(b.top<0||b.bottom>innerHeight+1)o.push('bocadillo fuera de la pantalla');
+  const den=(sel,nom)=>{const e=g.querySelector(sel);if(!e||e.hidden)return;const r=e.getBoundingClientRect();if(!r.width||r.top<b.top-1||r.bottom>b.bottom+1)o.push(nom+' tapado')};
+  den('.mb-sig','«Siguiente paso»');den('.mb-pq','«¿Por qué?»');
+  const t=g.querySelector('.mb-txt'),m=g.querySelector('.mb-mas');if(t.scrollHeight-t.clientHeight-t.scrollTop>4&&(!m||m.hidden))o.push('texto cortado sin aviso');
+  if(t.clientHeight<40)o.push('texto de '+t.clientHeight+'px');return o.join(', ')}"""
 
 
 def texto(pg, sel):
@@ -512,6 +519,34 @@ def capas(nav, url, errores, estado):
             desb += [f"{f}: {d}" for d in pg.evaluate(JS_DESBORDA)]
             pg.screenshot(path=str(CAP / f"C_{nombre.replace('+', '_').replace('á', 'a')}_{f}.png"))
         ok("C", f"{nombre}: las 5 vistas sin scroll horizontal", not desb, "; ".join(desb[:3]))
+        if bas == "1":
+            # Cuevi a 1440×900 (flota) y a 1440×1100 (se sienta en la barra), con «¿Por qué?» cerrado y abierto
+            malos = []
+            for alto in (900, 1100):
+                pg.set_viewport_size({"width": 1440, "height": alto})
+                for f in FASES:
+                    ir(pg, f)
+                    for pq in ("0", "1"):
+                        pg.evaluate("q=>{const b=document.querySelector('#mb-guia .mb-pq');if(b&&b.getAttribute('aria-expanded')!==q)b.click()}",
+                                    "true" if pq == "1" else "false")
+                        pg.wait_for_timeout(150)
+                        r = pg.evaluate(JS_CUEVI)
+                        if r:
+                            malos.append(f"{alto} {f}{' ¿por qué?' if pq == '1' else ''}: {r}")
+            ok("C", f"{nombre}: la caja de Cuevi se lee entera (1440×900 y ×1100)", not malos, "; ".join(malos[:3]))
+            if prem == "1":
+                # Fase 02, camino B, en «Piezas»: Cuevi explica las etiquetas ENCAJA / CHOCA / SIN DATO que se ven
+                pg.evaluate("(()=>{const e=JSON.parse(localStorage.getItem('mb_estado')||'{}');delete e.m2entregada;localStorage.setItem('mb_estado',JSON.stringify(e))})()")
+                pg.reload()   # la puerta recuerda la clave en la sesión: se abre sola
+                pg.wait_for_selector("#lab-fases .lab-fase", timeout=60000)
+                pg.wait_for_timeout(600)
+                ir(pg, "hip")
+                pg.evaluate("(s=>{const b=document.querySelector(s);if(b)b.click()})('#lab-v-hip [data-m2-sub=\"piezas\"]')")
+                pg.wait_for_timeout(500)
+                etq = pg.evaluate("[...document.querySelectorAll('#lab-v-hip .m2-cs')].filter(n=>n.offsetParent).map(n=>n.textContent.trim())")
+                guia = texto(pg, "#mb-guia")
+                ok("C", f"{nombre}: Cuevi explica ENCAJA / CHOCA en la Fase 02",
+                   bool(etq) and all(e in guia for e in set(etq)) and "¿Por qué?" in guia, f"etiquetas {etq}")
         # el conmutador cambia de verdad y se puede volver
         pg.click("#tp-toggle")
         pg.wait_for_timeout(200)
@@ -526,7 +561,7 @@ def capas(nav, url, errores, estado):
         n0 = len(errores)
         ctx, pg = pagina(nav, 390, 844, errores, nombre, estado={**base, "tis_premium": "1", "mb_on": bas}, movil=True)
         entrar_lab(pg, url)
-        desb, solapes = [], []
+        desb, solapes, cuevi_m = [], [], []
         for f in FASES:
             cerrar_fiestas(pg)
             pg.evaluate("(s=>{const b=document.querySelector(s);if(b)b.click()})('" +
@@ -537,8 +572,19 @@ def capas(nav, url, errores, estado):
             if s:
                 solapes.append(f"{f}: {s}")
             pg.screenshot(path=str(CAP / f"C_{nombre.replace(' ', '_').replace('+', '_').replace('á', 'a').replace('ó', 'o')}_{f}.png"))
+            if bas == "1":
+                # en pantalla estrecha Cuevi empieza plegado (no tapa la página) y al abrirlo se lee entero
+                if f == FASES[0]:
+                    ok("C", f"{nombre}: Cuevi abre plegado", pg.is_hidden("#mb-guia") and pg.is_visible("#mb-mini"))
+                    pg.click("#mb-mini")
+                    pg.wait_for_timeout(300)
+                r = pg.evaluate(JS_CUEVI)
+                if r:
+                    cuevi_m.append(f"{f}: {r}")
         ok("C", f"{nombre}: sin scroll horizontal", not desb, "; ".join(desb[:3]))
         ok("C", f"{nombre}: los conmutadores no se tapan", not solapes, "; ".join(solapes[:3]))
+        if bas == "1":
+            ok("C", f"{nombre}: la caja de Cuevi se lee entera", not cuevi_m, "; ".join(cuevi_m[:3]))
         ok("C", f"{nombre}: sin errores en la consola", len(errores) == n0, errores[n0] if len(errores) > n0 else "")
         ctx.close()
 

@@ -30,11 +30,13 @@
     G=D.createElement('aside');G.className='mb-guia';G.id='mb-guia';G.hidden=true;G.setAttribute('role','complementary');G.setAttribute('aria-labelledby','mb-tit');
     G.innerHTML='<img class="mb-cuevi" alt="" width="76" height="76">'+
       '<div class="mb-boc"><div class="mb-cab"><p class="mb-etapa mono" id="mb-etapa"></p><button type="button" class="mb-x" data-mb="plegar" aria-expanded="true" aria-controls="mb-guia" aria-label="Plegar la guía" title="Plegar la guía (Esc)">▾</button></div>'+
-      '<h2 class="mb-tit" id="mb-tit"></h2><ul class="mb-ruta" aria-label="Tu recorrido"></ul><div class="mb-txt" aria-live="polite" aria-atomic="true"></div>'+
+      '<h2 class="mb-tit" id="mb-tit"></h2><ul class="mb-ruta" aria-label="Tu recorrido"></ul><div class="mb-txt-w"><div class="mb-txt" aria-live="polite" aria-atomic="true"></div>'+
+      '<button type="button" class="mb-mas" data-mb="mas" tabindex="-1" aria-hidden="true" hidden>↓ sigue</button></div>'+
       '<div class="mb-acc"><button type="button" class="mb-sig" data-mb="sig">Siguiente paso →</button></div></div>';
     G.addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;var a=b.dataset.mb;
       if(a==='plegar'){plegar(true);return}
-      if(a==='pq'){var ab=LS.get('mb_porque')!=='1';LS.set('mb_porque',ab?'1':'0');b.setAttribute('aria-expanded',String(ab));b.textContent=(ab?'▾':'▸')+' ¿Por qué?';var t=q('#mb-pq',G);if(t)t.hidden=!ab;ultimoHtml='';reserva();colocar();return}
+      if(a==='pq'){var ab=LS.get('mb_porque')!=='1';LS.set('mb_porque',ab?'1':'0');b.setAttribute('aria-expanded',String(ab));b.textContent=(ab?'▾':'▸')+' ¿Por qué?';var t=q('#mb-pq',G),tx=q('.mb-txt',G);if(t)t.hidden=!ab;if(ab&&t&&tx)tx.scrollTop=Math.max(0,t.offsetTop-6);ultimoHtml='';reserva();colocar();return}
+      if(a==='mas'){var tm=q('.mb-txt',G);tm.scrollBy({top:Math.max(40,tm.clientHeight*.8),behavior:RM?'auto':'smooth'});return}
       if(a==='sig'){var p=PASO;if(!p)return;if(p.hacer)p.hacer();else if(p.obj)resaltar(p.obj);setTimeout(aplicar,60);return}
       if(a==='extra'){var x=PASO&&PASO.extra&&PASO.extra[+b.dataset.i];if(x&&x.f){x.f();setTimeout(aplicar,60)}}});
     G.addEventListener('keydown',function(e){if(e.key==='Escape'){e.preventDefault();plegar(true)}});
@@ -121,6 +123,9 @@
     if(q('.lab-bloq',V)||!hayAed())return {k:'hip-sin',e:'Fase 02 · Misión 2',t:'Primero, la Fase 01',pose:'duda',hacer:function(){abrirFase('aed')},
       h:'<p>Pulsa «Siguiente paso» y vamos a la Fase 01.</p>',p:'<p>Tu idea sale de lo que viste en tu activo. Sin eso, no hay de dónde sacarla.</p>'};
     var sub=M2.sub||'piezas',X=x6(),B=M2.camino==='B';
+    /* etiquetas de contraste con la ficha (camino B): ENCAJA / CHOCA / SIN DATO, las que se vean */
+    var etq=qa('#lab-v-hip .m2-cs').filter(visible).map(function(n){return n.textContent.trim()}).filter(function(t,i,a){return /^(ENCAJA|CHOCA|SIN DATO)$/.test(t)&&a.indexOf(t)===i});
+    etq=etq.length?etq.map(esc).join('</b> o <b>'):'';
     if(EST.m2entregada)return {k:'hip-fin',e:'Fase 02 · Misión 2 · hecha',t:'¡Misión 2 entregada!',pose:'bien',hacer:function(){abrirFase('reg')},
       h:'<p>Siguiente: la <b>Fase 03 · Reglas</b>. Pulsa «Siguiente paso».</p>',p:'<p>Tu idea ya está escrita sin dudas. En la Fase 03 se convierte en bloques que la máquina entiende.</p>'};
     if(sub==='piezas'&&(!B||!M2.doc))return {k:'hip-doc'+(B?'B':'A'),e:et+'1 de 3',t:'Parte de una estrategia conocida',pose:'senala',obj:B?'[data-m2-doc]':'[data-m2-camino="B"]',
@@ -130,8 +135,11 @@
         '<p>Lo más fácil para empezar: copiar una estrategia <b>documentada</b>, publicada por un autor y probada por otros.</p>',
       extra:B?[{t:'Elegir la primera de mi familia',f:function(){elegirOpcion('[data-m2-doc]',function(o){return o.className==='fam'})}}]:null};
     if(sub==='piezas')return {k:'hip-pz',e:et+'2 de 3',t:'Marca las 3 casillas y sigue',pose:'senala',obj:'#lab-v-hip .m2-sesgos',hacer:function(){pulsa('#lab-v-hip .m2-pzs [data-m2-sub="arbol"]')},
-      h:'<p>Las piezas ya están rellenas. Lee las 3 casillas «sin sesgos», márcalas si son verdad y pulsa «Siguiente paso».</p>',
-      p:'<p>Las 5 piezas llevan las reglas del autor. No las cambies: son suyas.</p><p>Un <b>sesgo</b> es una trampa de la cabeza: elegir algo porque te gusta la historia o porque acaba de pasar. Las casillas te obligan a pararte a pensarlo.</p>',
+      h:'<p>Las piezas ya están rellenas. Lee las 3 casillas «sin sesgos», márcalas si son verdad y pulsa «Siguiente paso».</p>'+
+        (etq?'<p>¿Ves <b>'+etq+'</b> junto a una pieza? Te lo explico en «¿Por qué?».</p>':''),
+      p:(etq?'<p><b>ENCAJA</b>: esa pieza va a favor de lo que viste en tu activo en la Fase 01. <b>CHOCA</b>: tu activo hizo justo lo contrario. <b>SIN DATO</b>: tu ficha no dice ni sí ni no.</p>'+
+        '<p>Un CHOCA no te prohíbe seguir: es un aviso para que lo tengas en cuenta. Quien decide de verdad es el examen del final, con años que la regla no ha visto.</p>':'')+
+        '<p>Las 5 piezas llevan las reglas del autor. No las cambies: son suyas.</p><p>Un <b>sesgo</b> es una trampa de la cabeza: elegir algo porque te gusta la historia o porque acaba de pasar. Las casillas te obligan a pararte a pensarlo.</p>',
       extra:[{t:'Llévame a las casillas',f:function(){resaltar('#lab-v-hip .m2-sesgos')}}]};
     if(sub==='arbol')return {k:'hip-arbol',e:et+'3 de 3',t:'Tu idea en preguntas de sí o no',pose:'guia',obj:'#lab-v-hip .m2-arbol-w',hacer:function(){pulsa('#lab-v-hip [data-m2-sub="pseudo"]')},
       h:'<p>Lee tu árbol de arriba abajo y pulsa «Siguiente paso».</p>',
@@ -201,8 +209,10 @@
     var pq=LS.get('mb_porque')==='1',firma=p.k+'|'+p.h+'|'+p.p+'|'+pq+'|'+htmlR+'|'+extra+'|'+p.pose;if(firma===ultimoHtml){colocar();return}
     var nueva=p.k!==ultimaClave;ultimoHtml=firma;ultimaClave=p.k;
     q('#mb-etapa',G).textContent=p.e||'';q('#mb-tit',G).textContent=p.t||'';q('.mb-ruta',G).innerHTML=htmlR;
-    var tx=q('.mb-txt',G);tx.innerHTML=(p.h||'')+(p.p?'<button type="button" class="mb-pq" data-mb="pq" aria-expanded="'+pq+'" aria-controls="mb-pq">'+(pq?'▾':'▸')+' ¿Por qué?</button><div class="mb-pqt" id="mb-pq"'+(pq?'':' hidden')+'>'+p.p+'</div>':'');if(nueva)tx.scrollTop=0;
-    var ac=q('.mb-acc',G),sig=q('.mb-sig',ac);qa('.mb-otro',ac).forEach(function(n){n.remove()});sig.hidden=!!p.sinBtn;sig.insertAdjacentHTML('afterend',extra);
+    var tx=q('.mb-txt',G);tx.innerHTML=(p.h||'')+(p.p?'<div class="mb-pqt" id="mb-pq"'+(pq?'':' hidden')+'>'+p.p+'</div>':'');if(nueva)tx.scrollTop=0;
+    /* «¿Por qué?» va con los botones, no dentro del texto: así no se queda escondido si el texto no cabe */
+    var ac=q('.mb-acc',G),sig=q('.mb-sig',ac);qa('.mb-otro,.mb-pq',ac).forEach(function(n){n.remove()});sig.hidden=!!p.sinBtn;
+    sig.insertAdjacentHTML('afterend',(p.p?'<button type="button" class="mb-pq" data-mb="pq" aria-expanded="'+pq+'" aria-controls="mb-pq">'+(pq?'▾':'▸')+' ¿Por qué?</button>':'')+extra);
     var im=q('.mb-cuevi',G),I=IMG[p.pose==='trofeo'?'guia':p.pose]||IMG.guia;if(I&&im.getAttribute('src')!==I[2])im.src=I[2];
     var mi=q('img',M);if(I&&mi&&mi.getAttribute('src')!==I[2])mi.src=I[2];
     var pu=q('.mb-punto',M);if(pu&&nueva&&!M.hidden)pu.hidden=false;if(pu&&!M.hidden)M.setAttribute('aria-label','Abrir la guía de Cuevi: '+(p.t||''));
@@ -214,9 +224,13 @@
     else if(T.parentNode!==D.body){D.body.appendChild(T);T.classList.remove('mb-en-cab')}}
   function lado(){var si=false;if(D.body.classList.contains('lab')&&window.innerWidth>900){var u=q('#lab-fases [data-unidad]')||q('#lab-fases .lab-fase[data-fase="bt"]'),pie=q('.lab-side-pie');
       if(u&&visible(u)){var top=u.getBoundingClientRect().bottom+10,bot=pie&&visible(pie)?pie.getBoundingClientRect().top-8:window.innerHeight-90,h=bot-top;
-        if(h>=230){si=true;G.style.setProperty('--mb-maxh',Math.floor(h-62)+'px');G.style.setProperty('--mb-bot',Math.ceil(window.innerHeight-bot)+'px');M.style.setProperty('--mb-bot',Math.ceil(window.innerHeight-bot)+'px')}}}
+        /* solo si cabe un bocadillo legible (unas 5 líneas + botones); si no, flota y esquiva lo que hay que tocar */
+        if(h>=340){si=true;G.style.setProperty('--mb-maxh',Math.floor(h-62)+'px');G.style.setProperty('--mb-bot',Math.ceil(window.innerHeight-bot)+'px');M.style.setProperty('--mb-bot',Math.ceil(window.innerHeight-bot)+'px')}}}
     var vis=si&&!G.hidden;if(G.classList.contains('mb-lado')!==si)G.classList.toggle('mb-lado',si);if(D.body.classList.contains('mb-lado-on')!==vis)D.body.classList.toggle('mb-lado-on',vis);return si}
-  function colocar(){if(!G)return;if(G.hidden&&D.body.classList.contains('mb-lado-on'))D.body.classList.remove('mb-lado-on');if(G.hidden&&M.hidden)return;var der=false;if(lado()){if(G.classList.contains('mb-der')){G.classList.remove('mb-der');M.classList.remove('mb-der')}return}
+  /* si el texto no cabe en el bocadillo, se difumina abajo y aparece «↓ sigue» (hasta llegar al final) */
+  function hayMas(){var w=q('.mb-txt-w',G),tx=q('.mb-txt',G),b=q('.mb-mas',G);if(!w||G.hidden)return;
+    var mas=tx.scrollHeight-tx.clientHeight-tx.scrollTop>4;if(w.classList.contains('mb-hay')!==mas)w.classList.toggle('mb-hay',mas);if(b.hidden===mas)b.hidden=!mas}
+  function colocar(){if(!G)return;if(G.hidden&&D.body.classList.contains('mb-lado-on'))D.body.classList.remove('mb-lado-on');if(G.hidden&&M.hidden)return;var der=false,si=lado();hayMas();if(si){if(G.classList.contains('mb-der')){G.classList.remove('mb-der');M.classList.remove('mb-der')}return}
     if(window.innerWidth>700&&PASO&&PASO.obj){var el=q(PASO.obj);if(el&&visible(el)){var r=el.getBoundingClientRect(),gr=G.getBoundingClientRect(),w=gr.width||400,h=G.hidden?64:(gr.height||300),
       xi=D.body.classList.contains('lab')&&window.innerWidth>900?parseFloat(getComputedStyle(D.documentElement).fontSize)*17.5+14:14,xd=window.innerWidth-14-w,
       choca=function(x0,bot){var y0=window.innerHeight-bot-h;return r.left<x0+w&&r.right>x0&&r.top<y0+h&&r.bottom>y0};der=choca(xi,64)&&!choca(xd,104)}}
@@ -331,7 +345,8 @@
   function programa(){if(pend)return;pend=true;(window.requestAnimationFrame||setTimeout)(aplicar)}
   function iniciar(){if(!D.body||q('#mb-toggle'))return;montar();
     antes.m1=m1Hecho();sitioToggle();setTimeout(sitioToggle,300);
-    if(LS.get('mb_on')==='1')activar(true,false);
+    /* en pantallas estrechas la guía abre plegada (Cuevi como botón, con su punto si tiene algo que decir): el bocadillo no tapa la página */
+    if(LS.get('mb_on')==='1'){if(window.innerWidth<=700)LS.set('mb_plegado','1');activar(true,false)}
     if(window.MutationObserver)new MutationObserver(function(){if(on())programa()}).observe(D.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class','hidden']});
     window.addEventListener('hashchange',programa);
     /* la app restaura la ficha y repinta un poco después de cargar */

@@ -30,10 +30,15 @@ body.lab .mb-guia{left:calc(17.5rem + 14px)}
 .mb-x{flex:none;border:1px solid var(--line2,#3F4C53);background:transparent;color:var(--dim,#B9B5AB);border-radius:6px;font:700 .9rem/1 var(--f-mono,monospace);cursor:pointer;width:30px;height:30px;padding:0}
 .mb-x:hover{color:var(--txt,#ECE8DF);border-color:var(--gold,#FFD23F)}
 .mb-tit{margin:.25rem 0 .35rem;font:800 1.18rem/1.15 var(--f-disp,sans-serif);letter-spacing:.02em;color:var(--ink,#FFFBF2)}
-.mb-txt{overflow:auto;min-height:0;font-size:.95rem;line-height:1.45;padding-right:.2rem}
+.mb-txt-w{position:relative;min-height:0;display:flex;flex-direction:column}
+.mb-txt{overflow:auto;min-height:0;font-size:.95rem;line-height:1.45;padding-right:.2rem;position:relative}
+/* el texto sigue más abajo: se difumina y sale «↓ sigue» */
+.mb-txt-w.mb-hay .mb-txt{-webkit-mask-image:linear-gradient(#000 calc(100% - 1.6rem),transparent);mask-image:linear-gradient(#000 calc(100% - 1.6rem),transparent)}
+.mb-mas{position:absolute;right:.1rem;bottom:0;padding:.15rem .5rem;border-radius:999px;border:1px solid var(--gold,#FFD23F);background:var(--pan2,#1C2327);color:var(--gold,#FFD23F);font:600 .72rem/1.2 var(--f-mono,monospace);cursor:pointer}
+.mb-mas[hidden]{display:none}
 .mb-txt p{margin:0 0 .5rem}.mb-txt ol,.mb-txt ul{margin:0 0 .5rem;padding-left:1.15rem}.mb-txt li{margin:.15rem 0}
 .mb-txt b{color:var(--ink,#FFFBF2)}
-.mb-pq{display:inline-flex;align-items:center;gap:.3rem;margin:0 0 .4rem;padding:.25rem .55rem;min-height:30px;border:1px solid var(--line2,#3F4C53);border-radius:999px;background:transparent;color:var(--gold,#FFD23F);font:600 .8rem var(--f-mono,monospace);cursor:pointer}
+.mb-pq{display:inline-flex;align-items:center;gap:.3rem;margin:0;padding:.25rem .55rem;min-height:30px;border:1px solid var(--line2,#3F4C53);border-radius:999px;background:transparent;color:var(--gold,#FFD23F);font:600 .8rem var(--f-mono,monospace);cursor:pointer}
 .mb-pq:hover{border-color:var(--gold,#FFD23F)}
 .mb-pqt{border-left:3px solid var(--gold,#FFD23F);padding:.1rem 0 .1rem .6rem;margin:0 0 .3rem}
 .mb-pqt[hidden]{display:none}
@@ -56,7 +61,9 @@ body.lab .mb-guia.mb-lado .mb-boc::before{left:22px;top:-11px;bottom:auto;border
 body.lab .mb-guia.mb-lado .mb-boc::after{left:24px;top:-7px;bottom:auto;border:7px solid transparent;border-bottom-color:var(--pan2,#1C2327);border-top:0}
 body.lab .mb-guia.mb-lado .mb-tit{font-size:1.08rem}
 body.lab .mb-guia.mb-lado .mb-txt{font-size:.9rem}
-body.lab .mb-guia.mb-lado .mb-ruta{gap:.2rem;margin-bottom:.4rem}body.lab .mb-guia.mb-lado .mb-ruta li{padding:.22rem .32rem;font-size:.6rem}
+/* en la barra el hueco es corto: el recorrido ya lo dice la propia barra (✓ en cada fase), así que se quita y el texto gana sitio */
+body.lab .mb-guia.mb-lado .mb-ruta{display:none}
+body.lab .mb-guia.mb-lado .mb-acc{gap:.35rem;margin-top:.4rem}body.lab .mb-guia.mb-lado .mb-sig{padding:.5rem .7rem}body.lab .mb-guia.mb-lado .mb-pq{padding:.25rem .45rem}
 body.lab .mb-guia.mb-lado .mb-boc{padding:.6rem .7rem .6rem}body.lab .mb-guia.mb-lado .mb-etapa{font-size:.64rem}
 /* mientras la guía ocupa ese hueco, las fases 05-08 (aún cerradas) se apartan: así no tapa nada que se pueda pulsar */
 body.modo-basico.mb-lado-on #lab-fases .lab-fase.cerrada,body.modo-basico.mb-lado-on #lab-fases .lab-grupo:nth-of-type(2){display:none}
