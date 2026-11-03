@@ -141,3 +141,12 @@ moría con «sin respuesta del motor». Si aun así no cupiera, se guarda sin la
   depósito inicial en el HTML de MT5, en inglés o en español. No sustituye a la reconciliación operación a operación.
 - El árbol de decisión y la «ruta de hoy» se adaptan a cualquier `arbol` y `estado`, pero la frase de hoy
   está pensada para filtros de media (`estado.sma200`). En otro caso, manda `estado.ruta` (lista de ids de nodo).
+- **CLARA por suerte en la ficha del AED** (medido el 2026-11-02, sin cambiar el criterio). Si se barajan las velas
+  del propio activo (se destruye toda estructura real, se mantienen los mismos retornos), el AED sigue sacando algún
+  CLARA de vez en cuando. Oro diario, 200 barajados: 0,17 CLARA por ficha y el 14 % de las fichas con al menos uno
+  (máximo 3). NAS100 de 15 min, 30 barajados: 0,47 por ficha y el 33 % con al menos uno. Salen sobre todo en las pruebas
+  de mecanismo (rachas de 3 velas, subida o caída fuerte, memoria a 1 vela). Es lo esperable: unas 26-33 pruebas,
+  cada una con un ~2,5 % de pasar el rango 97,5 por azar y una de cada cuatro de mantener el signo en las 3 épocas.
+  Por eso un CLARA es una pista para escribir la hipótesis, no una prueba de ventaja: **el juez sigue siendo el examen**
+  (años fuera de la muestra, abiertos una sola vez). Lo comprueba `perfil_activo` sobre velas barajadas (permutación de
+  los retornos de cierre, con apertura, máximo y mínimo de cada vela movidos con ella, semillas 1000+).
