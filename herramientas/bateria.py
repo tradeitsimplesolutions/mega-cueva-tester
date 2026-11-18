@@ -212,6 +212,11 @@ def laboratorio(nav, url, errores):
     ok("B", "puerta: una clave mala no abre", pg.query_selector("#lab-fases") is None and pg.is_visible("#k"))
     entrar_lab(pg, url)
     ok("B", "puerta: la clave buena abre el laboratorio", pg.evaluate("document.body.classList.contains('lab')"))
+    ok("B", "dock: las 8 fases van en una barra horizontal abajo, en una sola fila", pg.evaluate(
+        "(()=>{const d=document.querySelector('#lab-dock');if(!d)return false;const r=d.getBoundingClientRect();"
+        "const t=[...document.querySelectorAll('#lab-fases [data-fase]')].map(b=>b.getBoundingClientRect().top);"
+        "return t.length===8&&r.bottom>innerHeight-30&&Math.max(...t)-Math.min(...t)<30})()"))
+    ok("B", "dock: sin curva todavía, avisa «Aún sin curva»", "Aún sin curva" in texto(pg, "#lab-dock"))
     bloqueadas = [f for f in ("hip", "reg", "bt") if (ir(pg, f), "IR A LA FASE 01" in texto(pg, f"#lab-v-{f}"))[1]]
     ok("B", "sin AED, las fases 02-04 piden hacer antes el AED", len(bloqueadas) == 3, ",".join(bloqueadas))
 
@@ -277,6 +282,10 @@ def laboratorio(nav, url, errores):
                    bt_pf_sin_mejor=num(tras("¿Gana sin su mejor operación?", r"PF\s*([\d,]+)")))
     ok("B", "Fase 04: el backtest da veredicto X/4 y las 4 cifras", v and None not in (medidos["bt_pf"], medidos["bt_caida"], medidos["bt_pf_sin_mejor"]))
     ok("B", "Fase 04: la curva del diseño se pinta", pg.evaluate("!!document.querySelector('#lab-v-bt svg, #lab-v-bt canvas')"))
+    pg.wait_for_timeout(1800)
+    ok("B", "dock: la miniatura «Tu curva» dibuja la curva del backtest", pg.evaluate("document.querySelectorAll('#lab-dock .dk-spark path').length")>0
+       and "Aún sin curva" not in texto(pg, "#lab-dock"))
+    ok("B", "dock: la fase actual está resaltada", pg.evaluate("(()=>{const b=document.querySelector('#lab-fases .lab-fase.on');return !!b&&b.dataset.fase==='bt'})()"))
     ok("B", "Fase 04: el examen y la validación siguen cerrados", "🔒 VER EL EXAMEN" in bt and "🔒 VER LA VALIDACIÓN" in bt)
     pg.screenshot(path=str(CAP / "B4_backtest.png"), full_page=True)
 

@@ -6157,7 +6157,7 @@ init();
     var cab=D.body.classList.contains('lab')&&window.innerWidth>900?q('#lab .lab-top-r'):null;
     if(cab){if(T.parentNode!==cab){cab.insertBefore(T,cab.firstChild);T.classList.add('mb-en-cab')}}
     else if(T.parentNode!==D.body){D.body.appendChild(T);T.classList.remove('mb-en-cab')}}
-  function lado(){var si=false;if(D.body.classList.contains('lab')&&window.innerWidth>900){var u=q('#lab-fases [data-unidad]')||q('#lab-fases .lab-fase[data-fase="bt"]'),pie=q('.lab-side-pie');
+  function lado(){var si=false;if(D.body.classList.contains('lab-dock')){if(G.classList.contains('mb-lado'))G.classList.remove('mb-lado');if(D.body.classList.contains('mb-lado-on'))D.body.classList.remove('mb-lado-on');return false}if(D.body.classList.contains('lab')&&window.innerWidth>900){var u=q('#lab-fases [data-unidad]')||q('#lab-fases .lab-fase[data-fase="bt"]'),pie=q('.lab-side-pie');
       /* el último botón de la barra es el que manda (desde las fases 05-08, «Tu unidad» ya no va al final) */
       var bs=Array.prototype.slice.call(document.querySelectorAll('#lab-fases button')),mb=-1;bs.forEach(function(b){if(visible(b)){var bb=b.getBoundingClientRect().bottom;if(bb>mb){mb=bb;u=b}}});
       if(u&&visible(u)){var top=u.getBoundingClientRect().bottom+10,bot=pie&&visible(pie)?pie.getBoundingClientRect().top-8:window.innerHeight-90,h=bot-top;
@@ -6169,8 +6169,8 @@ init();
     var mas=tx.scrollHeight-tx.clientHeight-tx.scrollTop>4;if(w.classList.contains('mb-hay')!==mas)w.classList.toggle('mb-hay',mas);if(b.hidden===mas)b.hidden=!mas}
   function colocar(){if(!G)return;if(POS&&movible()){posAplica();G.classList.remove('mb-lado','mb-der');M.classList.remove('mb-der');if(D.body.classList.contains('mb-lado-on'))D.body.classList.remove('mb-lado-on');hayMas();return}if(G.hidden&&D.body.classList.contains('mb-lado-on'))D.body.classList.remove('mb-lado-on');if(G.hidden&&M.hidden)return;var der=false,si=lado();hayMas();if(si){if(G.classList.contains('mb-der')){G.classList.remove('mb-der');M.classList.remove('mb-der')}return}
     if(window.innerWidth>700&&PASO&&PASO.obj){var el=q(PASO.obj);if(el&&visible(el)){var r=el.getBoundingClientRect(),gr=G.getBoundingClientRect(),w=gr.width||400,h=G.hidden?64:(gr.height||300),
-      xi=D.body.classList.contains('lab')&&window.innerWidth>900?parseFloat(getComputedStyle(D.documentElement).fontSize)*17.5+14:14,xd=window.innerWidth-14-w,
-      choca=function(x0,bot){var y0=window.innerHeight-bot-h;return r.left<x0+w&&r.right>x0&&r.top<y0+h&&r.bottom>y0};der=choca(xi,64)&&!choca(xd,104)}}
+      xi=D.body.classList.contains('lab')&&!D.body.classList.contains('lab-dock')&&window.innerWidth>900?parseFloat(getComputedStyle(D.documentElement).fontSize)*17.5+14:14,xd=window.innerWidth-14-w,
+      choca=function(x0,bot){var y0=window.innerHeight-bot-h;return r.left<x0+w&&r.right>x0&&r.top<y0+h&&r.bottom>y0};var dk=D.body.classList.contains('lab-dock')&&q('#lab-dock'),off=dk?Math.round(window.innerHeight-dk.getBoundingClientRect().top)+14:0;der=choca(xi,64+off)&&!choca(xd,104+off)}}
     if(G.classList.contains('mb-der')!==der){G.classList.toggle('mb-der',der);M.classList.toggle('mb-der',der)}}
 
   /* ===== «ver detalle»: un botón delante de cada bloque técnico plegado ===== */

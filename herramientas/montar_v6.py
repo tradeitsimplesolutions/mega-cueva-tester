@@ -8,6 +8,7 @@ El resultado abre con doble clic (sin fetch): los datos y el motor van incrustad
 import base64
 import gzip
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -118,7 +119,9 @@ def main():
         lab_js = (L / "lab.js").read_text(encoding="utf-8") if lab else ""
         # módulo «TU UNIDAD» (opcional): va detrás de lab.css / lab.js; si no existe, no pasa nada
         # fases 05-08 y barra inferior de fases (opcionales): detrás de «Tu unidad»; usan window.MCT_LAB_API, que exporta lab.js
-        for modulo in ("unidad", "fases58", "dock"):
+        # MCT_SIN=dock,fases58 … deja fuera módulos del laboratorio (para montar lo que ya está probado mientras otro se escribe)
+        sin = [m for m in os.environ.get("MCT_SIN", "").split(",") if m]
+        for modulo in [m for m in ("unidad", "fases58", "dock") if m not in sin]:
             if lab and (L / f"{modulo}.css").exists():
                 lab_css += "\n" + (L / f"{modulo}.css").read_text(encoding="utf-8")
             if lab and (L / f"{modulo}.js").exists():
