@@ -832,12 +832,13 @@ function actualizarPI(inicial){const pre=$('#pi-codigo');
   {const sl=$('#pi-fuente-sello'),nc=datosNoCuadran(SPEC),d=datosCargados();if(sl){sl.className='fuente-sello '+(nc?'ko':d?'ok':'tuyo');sl.textContent=nc?'✕ no son de tu activo':d?'✓ cuadran con tu regla':'tu CSV: revisa que sea de '+(SPEC.activo.simbolo||'tu activo')}const fz=$('#pi-fuente');if(fz)fz.classList.toggle('mal',!!nc)}
   const btn=$('#pi-correr');if(!corriendo){btn.disabled=mal>0;btn.title=mal?'Completa lo marcado en rojo':'Corre las 5 fases con el motor TIS'}
   pintarAvisoPegado();
-  if(!corriendo)$('#pi-nota-motor').innerHTML=pegadoActivo()?`<b class="c-red">No corro todavía: la regla del formulario no es la que pegaste</b>${PEGADO.previo!=null?` (se probaría la anterior, «${esc(PEGADO.previo||'sin nombre')}»)`:''}. Mira el aviso rojo de «pega aquí sus piezas», ponla a mano en los bloques${mal>1?' y completa lo demás en rojo':''}. <button type="button" class="link" data-pegado-ok>Ya lo sé: correr la regla del formulario</button>`:mal?`Faltan ${mal} punto(s) en rojo.`:motorFn()?'Motor TIS listo: calcula las 5 fases de tu regla.':'Sin motor: se enseñan los resultados de la demo.';
+  if(!corriendo)$('#pi-nota-motor').innerHTML=pegadoActivo()?`<b class="c-red">No corro todavía: la regla del formulario no es la que pegaste</b>${PEGADO.previo!=null?` (se probaría la anterior, «${esc(PEGADO.previo||'sin nombre')}»)`:''}. Mira el aviso rojo de «pega aquí sus piezas», ponla a mano en los bloques${mal>1?' y completa lo demás en rojo':''}. <button type="button" class="link" data-pegado-ok>Ya lo sé: correr la regla del formulario</button>`:mal?`Faltan ${mal} punto(s) en rojo.`:motorFn()?(ideaSucia()?'Ojo: has cambiado el texto de la idea y no lo has traducido; se correrá el formulario tal como está.':'Motor TIS listo: calcula las 5 fases de tu regla.'):'Sin motor: se enseñan los resultados de la demo.';
   const cs=corteFechas();$('#f-corte-vis').innerHTML=cs.pctOOS!=null&&cs.pctOOS>0&&cs.pctOOS<100?`<div class="is" style="width:${100-cs.pctOOS}%">DISEÑO ${yr(SPEC.datos.desde)}–${yr(cs.ini)}</div><div class="oos" style="width:${cs.pctOOS}%">PRUEBA ${nf(cs.pctOOS,0)} %</div>`:'';
   $('#f-corte-auto').innerHTML=SPEC.corte.tipo==='auto'&&cs.ini?`Automático: 70/30 de los datos disponibles → la prueba honesta empieza el <b>${fd(cs.ini)}</b>.`:'';
   $('#f-corte-f').disabled=SPEC.corte.tipo!=='fecha';$('#f-corte-p').disabled=SPEC.corte.tipo!=='pct';
   $('#f-stop-v').disabled=SPEC.gestion.stop.tipo==='ninguno';$('#f-obj-v').disabled=SPEC.gestion.objetivo.tipo==='ninguno';
   $('#f-costes-fuente').textContent=SPEC.costes.perfil==='darwinex_mt5'?perfilDe(SPEC.activo.simbolo).fuente:'Costes introducidos a mano.';syncSesion();
+  {const pv=$('#pi-viejo');if(pv)pv.hidden=!bxStale()}
   store.set('mct_spec2',JSON.stringify(SPEC))}
 
 /* ---------- pegar lo del agente 04 VALIDADOR (mesa TIS) → formulario ---------- */
@@ -1007,7 +1008,7 @@ async function correrPI(){const btn=$('#pi-correr');if(btn.disabled||corriendo)r
   try{res=await correrMotor(spec,CSV?CSV.texto:CSV_EJEMPLO)}catch(e){err=e}
   if(M)M.progreso=prev||null;
   if(res&&res.error){err=new Error(res.error);res=null}
-  if(res){const v=validarRes(res);if(v)err=new Error(v);else{pintarEtapa('Listo',100);try{sessionStorage.setItem('mct_tras','prueba');sessionStorage.setItem('mct_spec_res',JSON.stringify(spec))}catch(e){}if(cargarResultados(res))return}}
+  if(res){const v=validarRes(res);if(v)err=new Error(v);else{pintarEtapa('Listo',100);if(cargarResultados(res,spec))return;err=new Error('el navegador no ha dejado guardar el resultado para pintarlo')}}
   corriendo=false;btn.disabled=false;$('#pi-prog').style.width='0';$('#pi-etapas').innerHTML='';actualizarPI();
   $('#pi-nota-motor').innerHTML='<b class="c-red">No se pudo correr:</b> '+esc(err?err.message:'sin respuesta del motor')}
 function mostrarResPI(real,err){
@@ -1018,7 +1019,7 @@ function mostrarResPI(real,err){
     ['Sharpe · prueba',nf(OOS.sharpe,2),'q-neu','informativo'],['Expectancy · op.',usd(CU.expectancy_usd_oos!=null?CU.expectancy_usd_oos:OOS.media_trade*CAP,0,true),(OOS.media_trade||0)>0?'q-ok':'q-ko','cuenta de 100.000 USD']];
   const pasa=!!F1.pasa;
   const n4html=numeros4();
-  const av=real?`<div class="pathtxt"><b>Calculado por el motor TIS</b> para tu especificación${D.n_velas?' · '+nf(D.n_velas,0)+' velas':''}. Toda la app muestra ahora <b>tu</b> estrategia.</div>${Array.isArray(D.avisos)&&D.avisos.length?'<ul class="avisos">'+D.avisos.map(a=>'<li>'+esc(a)+'</li>').join('')+'</ul>':''}`:
+  const av=real?`<div class="pathtxt"><b>Calculado por el motor TIS</b> para tu especificación${D.n_velas?' · '+nf(D.n_velas,0)+' velas':''}. Toda la app muestra ahora <b>tu</b> estrategia.</div><p class="bx-viejo" id="pi-viejo"${bxStale()?'':' hidden'}>Has cambiado la regla o los datos desde esta corrida: este resultado es de la versión anterior. Pulsa CORRER para actualizarlo.</p>${Array.isArray(D.avisos)&&D.avisos.length?'<ul class="avisos">'+D.avisos.map(a=>'<li>'+esc(a)+'</li>').join('')+'</ul>':''}`:
     `<div class="pathtxt"><b>${err?esc(err.message)+'. ':''}Resultados de la demo (${esc(NOMBRE)}).</b></div>`;
   const esEj=real&&NAS&&NOMBRE===NAS.nombre?`<div class="pathtxt" style="margin-top:.5rem"><b>Ejemplo didáctico, no una estrategia ganadora.</b> Es la regla de la ficha de tu mesa (NAS100, apertura de Nueva York) probada tal cual, con los costes del perfil Darwinex del Nasdaq. Que no apruebe es justo lo útil: el protocolo frena una idea que «tiene lógica» antes de que arriesgues dinero.</div>`:'';
   $('#pi-res').innerHTML=`<section class="panel"><div class="ph"><h3>Resultado · <em>${esc(NOMBRE)}</em></h3></div>${av}${esEj}</section>${n4html}
@@ -1223,12 +1224,13 @@ function validarRes(j){if(!j||typeof j!=='object')return 'La respuesta del motor
 function porColumnas(json){const v=json.velas_full;if(!Array.isArray(v)||!v.length)return json;
   const col={};Object.keys(v[0]).forEach(k=>col[k]=v.map(x=>x[k]===undefined?null:x[k]));
   return Object.assign({},json,{velas_full:col})}
-function cargarResultados(json){const err=validarRes(json);if(err){toast('No se puede pintar: '+err);return false}
+function cargarResultados(json,spec){const err=validarRes(json);if(err){toast('No se puede pintar: '+err);return false}
   const guardar=o=>{try{sessionStorage.setItem('mct_res',JSON.stringify(o));return true}catch(e){return false}};
   if(!guardar(porColumnas(json))){
     const sin=Object.assign({},json);delete sin.velas_full;
     if(!guardar(sin)){toast('El navegador no deja guardar el resultado para pintarlo');return false}
     toast('Resultado muy grande: el gráfico de velas se pinta con la muestra, los números son los mismos')}
+  if(spec){try{sessionStorage.setItem('mct_tras','prueba');sessionStorage.setItem('mct_spec_res',JSON.stringify(spec))}catch(e){}}
   location.reload();return true}
 window.cargarResultados=cargarResultados;
 
@@ -1263,6 +1265,8 @@ const bxMovil=()=>window.matchMedia('(max-width:759px)').matches;
 let bxModo='',bxForzar=false,bxEnCurso=false,bxErr='';
 const bxGet=()=>{try{return JSON.parse(store.get('bx_idea')||'null')||{}}catch(e){return{}}};
 const bxHecha=()=>!!bxGet().ok||!ES_DEMO;
+/* texto de la idea tal y como se tradujo al formulario: si el alumno lo cambia y no vuelve a traducir, el tester correria la regla vieja */
+const ideaSucia=()=>{const t=$('#pi-idea-t'),g=store.get('idea_trad');return !!t&&g!=null&&t.value.trim()!==g};
 const bxStale=()=>!ES_DEMO&&!!SPEC_RES&&JSON.stringify(specLimpio())!==JSON.stringify(SPEC_RES);
 /* pseudocódigo sin costes, corte, meseta ni tamaño (en BASIC no se tocan) */
 const bxPlano=()=>pseudo().filter(l=>!/^<span class="kw">(COSTES|CORTE|MESETA)</.test(l)&&!/tamaño:/.test(l)).map(l=>l.replace(/\s*<span class="(cm|ojo)"># [^<]*(GMT|UTC|hora|bróker|Nueva York|Madrid)[^<]*<\/span>/g,''));
@@ -1548,6 +1552,7 @@ function m1Hallazgos(p){const H=p.hallazgos;if(!H)return'';const B=H.base,T=H.te
     <p class="m1p-eyebrow mono" style="margin-top:1.2rem">02 · CÓMO SE COMPORTA · LA VELA SIGUIENTE, FRENTE A UNA CUALQUIERA</p>
     <div class="c-dim m1t-leyenda m1f-ley"><p>Léelo como una <b>analítica</b>: cada prueba mide un rasgo con razón detrás, y la barra dice dónde cae su fuerza frente al <b>rango de referencia</b> de tu activo. El azar son <b>tus mismos datos barajados</b>${AZ?' '+nf(AZ.barajados,0)+' veces':''} (los mismos movimientos, en otro orden).</p>
       <p><span class="sem nada">NADA</span> ruido: por debajo del ${nf(L,0)} % del azar · <span class="sem insinua">SE INSINÚA</span> en el límite: ${nf(L,0)}–${nf(C,1)} % · <span class="sem clara">CLARA</span> por encima del ${nf(C,1)} % y con el mismo signo en las 3 épocas. El calendario (día, hora, mes) compite contra el <b>mejor</b> día, hora o mes de cada barajado: es más exigente porque tiene menos razón detrás.</p></div>
+    ${window.MCT_GLOSARIO&&window.MCT_GLOSARIO.leyendaAED?`<details class="m1f-colsley"><summary>¿Qué significan las columnas de esta tabla? (efecto, fuerza, épocas…)</summary>${window.MCT_GLOSARIO.leyendaAED()}<p><button type="button" class="link" onclick="window.MCT_GLOSARIO.abrir('efecto')">Abrir el glosario completo →</button></p></details>`:''}
     ${AZ?'':'<p class="m1f-nota">Esta ficha se hizo con una versión anterior: vuelve a analizar el activo para ver la fuerza de cada hallazgo.</p>'}
     <ul class="m1f-lista">${vis.map(x=>m1fTarjeta(x,L,C)).join('')||'<li class="m1f nada"><p class="m1f-ef">Ningún hallazgo sale del ruido en este diseño. También es información: este activo no regala nada en la vela siguiente.</p></li>'}</ul>
     ${nada.length?`<div class="m1f-desc"><p class="m1p-eyebrow mono">DESCARTADO, CON EVIDENCIA · lo que se tira vale tanto como lo que se queda</p><ul>${m1fDescartes(nada,AZ)}</ul>
@@ -1789,8 +1794,8 @@ function bxVacioHTML(){return `<p class="bx-h">Aquí verás si aprueba</p><ul cl
   <p class="bx-cap">Los 4 números que mira tu agente 04, con costes reales, y la curva de una cuenta de 100.000 USD.</p>`}
 function bxPaso3(){const btn=$('#bx-correr'),hecha=bxHecha(),C=checklist().filter(x=>x.e==='falla'&&x.t!=='Datos'),nc=datosNoCuadran(SPEC),movil=bxMovil()&&!bxForzar;
   $('#bx-movil').hidden=!movil;btn.hidden=movil;$('#bx-nota').hidden=movil;$('#bx-prog').parentNode.hidden=movil;
-  if(!corriendo){btn.disabled=!hecha||C.length>0||!!nc;btn.textContent=!ES_DEMO&&!bxStale()?'▶ CORRER DE NUEVO':'▶ CORRER LA PRUEBA';
-    $('#bx-nota').innerHTML=bxErr?bxErr:!hecha?'Primero escribe tu idea y tradúcela (paso 1).':C.length?'Falta: '+C.map(x=>esc(x.t.toLowerCase())+' ('+x.d.replace(/<[^>]+>/g,'')+')').join(' · '):nc?'Elige datos de tu activo (paso 2).':'Lista para correr. La primera vez tarda unos segundos.'}
+  if(!corriendo){btn.disabled=!hecha||C.length>0||!!nc||ideaSucia();btn.textContent=!ES_DEMO&&!bxStale()?'▶ CORRER DE NUEVO':'▶ CORRER LA PRUEBA';
+    $('#bx-nota').innerHTML=bxErr?bxErr:!hecha?'Primero escribe tu idea y tradúcela (paso 1).':ideaSucia()?'Has cambiado el texto de tu idea: pulsa «Traducir» (paso 1) para que el tester use la nueva.':C.length?'Falta: '+C.map(x=>esc(x.t.toLowerCase())+' ('+x.d.replace(/<[^>]+>/g,'')+')').join(' · '):nc?'Elige datos de tu activo (paso 2).':'Lista para correr. La primera vez tarda unos segundos.'}
   $('#bx-p1').classList.toggle('hecho',hecha&&!C.length);$('#bx-p3').classList.toggle('hecho',!ES_DEMO&&!bxStale())}
 function bxSync(idea){if(idea!==false)bxIdea();bxDatos();bxPaso3()}
 function bxEntrar(){const t=$('#bx-idea'),pt=$('#pi-idea-t');if(t&&pt&&t.value!==pt.value)t.value=pt.value;bxSync();
@@ -1806,7 +1811,7 @@ async function bxCorrer(){if(corriendo)return;bxErr='';
   await correrPI();
   if(!corriendo){bxEnCurso=false;if(/No se pudo/.test($('#pi-nota-motor').textContent))bxErr=$('#pi-nota-motor').innerHTML;$('#bx-prog').style.width='0';bxSync(false)}}
 function initBasic(){const ta=$('#bx-idea'),pt=$('#pi-idea-t');ta.value=pt.value;
-  ta.addEventListener('input',()=>{pt.value=ta.value;store.set('idea',ta.value)});
+  ta.addEventListener('input',()=>{pt.value=ta.value;store.set('idea',ta.value);bxPaso3()});
   const vacia=()=>{if(ta.value.trim().length<8){toast('Escribe primero tu idea (o pulsa «ver un ejemplo»)');ta.focus();return true}pt.value=ta.value;return false};
   $('#bx-ej').onclick=()=>{ta.value=EJ_IDEA;pt.value=EJ_IDEA;store.set('idea',EJ_IDEA);ta.focus()};
   $('#bx-trad').onclick=()=>{if(vacia())return;bxModo='';bxErr='';$('#pi-trad').click();bxLeer();bxSync()};
@@ -2148,7 +2153,7 @@ DESLIZAMIENTO:
 REPARTO: 70/30
 En ENTRADA y SALIDA usa solo cierre, apertura, máximo, mínimo, RSI(n), media de n, EMA(n), ATR(n), máximo o mínimo de n velas y números, unidos con «y», con los comparadores >, <, cruza hacia arriba o cruza hacia abajo.`}
 function initIdea(){const ta=$('#pi-idea-t'),out=$('#pi-idea-out');try{const g=store.get('idea');if(g)ta.value=g}catch(e){}
-  ta.addEventListener('input',()=>store.set('idea',ta.value));
+  ta.addEventListener('input',()=>{store.set('idea',ta.value);actualizarPI(true)});
   $('#pi-idea-ej').onclick=()=>{ta.value=EJ_IDEA;store.set('idea',ta.value);ta.focus()};
   const vacia=()=>{if(ta.value.trim().length<8){toast('Escribe primero tu idea (o pulsa «ver un ejemplo»)');ta.focus();return true}return false};
   $('#pi-a03').onclick=()=>{if(vacia())return;const msg=mensaje03(ta.value);out.hidden=false;out.className='idea-out a03';
@@ -2162,7 +2167,7 @@ function initIdea(){const ta=$('#pi-idea-t'),out=$('#pi-idea-out');try{const g=s
       <p class="io-eco">${ecoIdea(ta.value,r.marcas)}</p>
       <ul class="res">${r.it.map(o=>`<li class="${o.e}"><span>${o.e==='ok'?'✓':o.e==='no'?'✕':'!'}</span><span>${esc(o.t)}</span></li>`).join('')}</ul>
       <p class="csvhelp">${r.spec?'He rellenado el formulario de abajo: revísalo antes de correr.':'No he tocado el formulario: reescribe la idea o rellénalo a mano.'} Para ideas más complejas, pásasela a tu agente 03.</p>`;
-    if(r.spec){SPEC=r.spec;piPrev=[];rellenarForm();toast(nok+' piezas al formulario'+(nno?' · '+nno+' sin entender (en rojo)':''))}else toast('No he podido traducir la entrada')}}
+    if(r.spec){SPEC=r.spec;store.set('idea_trad',ta.value.trim());piPrev=[];rellenarForm();toast(nok+' piezas al formulario'+(nno?' · '+nno+' sin entender (en rojo)':''))}else toast('No he podido traducir la entrada')}}
 
 /* =====================================================================
    TU IDEA → IA (DeepSeek, desde el navegador con la clave del alumno)
@@ -2389,7 +2394,7 @@ function initIA(){const k=$('#pi-ia-k'),est=$('#pi-ia-k-est'),btn=$('#pi-ia'),ta
     ocupado=true;btn.disabled=true;out.hidden=false;out.className='idea-out ia';
     out.innerHTML='<div class="ia-carga" role="status" aria-live="polite"><span class="ia-spin" aria-hidden="true"></span>La IA está leyendo tu idea…</div>';
     try{const res=await iaTraducir(idea,clave);const extra=[];const n=iaASpec(res.r.spec,extra);
-      SPEC=n;piPrev=[];rellenarForm();iaPintar(out,res,extra);window.MCT_IA_ULTIMA={seg:res.seg,usd:res.usd,uso:res.uso,intentos:res.intentos,r:res.r,extra};
+      SPEC=n;store.set('idea_trad',idea);piPrev=[];rellenarForm();iaPintar(out,res,extra);window.MCT_IA_ULTIMA={seg:res.seg,usd:res.usd,uso:res.uso,intentos:res.intentos,r:res.r,extra};
       toast('Formulario rellenado por la IA · confirma los supuestos')}
     catch(e){out.innerHTML=`<p class="ia-err" role="alert"><b>No se pudo traducir con IA.</b> ${esc(e.message)}</p>
       <p class="csvhelp" style="margin:0">Mientras tanto, <button type="button" class="link" data-ia-alt="pi-a03">pásasela a tu agente 03 Reglas</button> o <button type="button" class="link" data-ia-alt="pi-trad">tradúcela aquí sin IA</button>.</p>`;

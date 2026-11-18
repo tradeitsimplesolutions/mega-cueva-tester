@@ -3702,6 +3702,81 @@ def backtest_lab_json(texto_csv, spec_json) -> str:
                                     "stop y objetivo mayores que 0). Detalle: " + str(e)[:160], "tipo": "ErrorInterno"}, ensure_ascii=False)
 
 
+_INDS_CATEGORICOS = ("dia_semana", "hora", "mes", "en_sesion", "vela_sesion", "sesion_", "vela_sesion_")
+
+
+def _parametrizar_lab(s: dict) -> dict:
+    """La regla del laboratorio lleva sus números escritos dentro de cada condición (periodos, umbrales, stop, objetivo,
+    tope de tiempo), no como parámetros: así no hay nada que «mover». Esto saca cada número movible a un parámetro con un
+    nombre que el alumno entienda (rsi_periodo, rsi_umbral, stop_pct…), sin cambiar la regla: el valor es el mismo. Los
+    números de categoría (hora, día, mes, nº de vela de la sesión) se quedan quietos: moverlos da OTRA regla."""
+    P = dict(s.get("parametros") or {})
+
+    def nombre(base: str) -> str:
+        n, i = base, 2
+        while n in P:
+            n = f"{base}_{i}"; i += 1
+        return n
+
+    def num(v) -> bool:
+        return isinstance(v, (int, float)) and not isinstance(v, bool)
+
+    def categorico(ind: str) -> bool:
+        return any(ind == c or ind.startswith(c) for c in _INDS_CATEGORICOS)
+
+    def op_param(op: dict) -> dict:
+        ind = str(op.get("indicador", ""))
+        if ind in ("", "nivel", "valor") or categorico(ind):
+            return op
+        out = dict(op)
+        for campo, etq in (("n", "periodo"), ("k", "k"), ("factor", "factor")):
+            v = out.get(campo)
+            if num(v) and v != 0 and not (campo == "factor" and v == 1):
+                nom = nombre(f"{ind}_{etq}"); P[nom] = v; out[campo] = "$" + nom
+        return out
+
+    def grupo(g):
+        if not g:
+            return
+        for b in g["bloques"]:
+            if "bloques" in b:
+                grupo(b)
+                continue
+            izq, der = b["izq"], b["der"]
+            b["izq"] = op_param(izq)
+            if der.get("indicador") == "valor":
+                ind = str(izq.get("indicador", ""))
+                if num(der.get("valor")) and not categorico(ind):
+                    nom = nombre(f"{ind}_umbral"); P[nom] = der["valor"]; b["der"] = {**der, "valor": "$" + nom}
+            else:
+                b["der"] = op_param(der)
+
+    grupo(s["filtros"])
+    for lado in ("largo", "corto"):
+        r = s[lado]
+        for k in ("filtros", "entrada", "salida"):
+            grupo(r[k])
+        for p in r.get("pasos") or []:
+            grupo(p["cuando"])
+    for clave in ("stop", "objetivo"):
+        cfg = s.get(clave)
+        if not cfg:
+            continue
+        cfg = dict(cfg)
+        tipo = cfg.get("tipo")
+        campos = {"pct": ("valor",), "atr": ("n", "k"), "r": ("k",), "trailing": ("n", "k")}.get(tipo, ())
+        for campo in campos:
+            if num(cfg.get(campo)) and cfg[campo] != 0:
+                nom = nombre(f"{clave}_{tipo}" if campo == "valor" else f"{clave}_{tipo}_{campo}")
+                P[nom] = cfg[campo]; cfg[campo] = "$" + nom
+        s[clave] = cfg
+    if num(s.get("salida_tiempo")) and s["salida_tiempo"]:
+        nom = nombre("tope_velas"); P[nom] = s["salida_tiempo"]; s["salida_tiempo"] = "$" + nom
+    s["parametros"] = P
+    _comprobar_refs(s)
+    return s
+
+
 def fases_lab(texto_csv, spec, semilla: int = 7) -> dict:
     """Fases 05-06 del Laboratorio Reto Cueva (y la base de la 07-08): la regla del alumno con el protocolo vigente sobre el
     tramo NO sellado = diseño + examen (la misma partición que el AED y que `backtest_lab`). El tramo sellado se corta ANTES
@@ -3717,7 +3792,7 @@ def fases_lab(texto_csv, spec, semilla: int = 7) -> dict:
         raise ErrorDatos("Los datos son NO APTA en la calidad (fase 01): con NO APTA no se sigue.")
     part, _ = _particion_tis(df)
     i_ex, i_val = _cortes_tis(df.index)
-    s = normalizar_spec(spec)
+    s = _parametrizar_lab(normalizar_spec(spec))
     df = df[[c for c in ("open", "high", "low", "close", "volumen", "spread") if c in df.columns]].astype(float).iloc[:i_val]
     D = _Datos(df)
     cache_ind: dict = {}
@@ -3734,7 +3809,12 @@ def fases_lab(texto_csv, spec, semilla: int = 7) -> dict:
         "nombres": nombres, "persistencia": {k: v for k, v in f2.items() if k != "walk_forward_pardo"},
         "robustez": {k: v for k, v in f3.items() if k != "meseta_2d"}, "mc": mc, "stress": stress,
         "hist_dd": f4.get("hist_dd", []), "hist_dd_bins": f4.get("hist_dd_bins", []),
-        "n_ops": int(len(N["c_ns"].trades)), "pseudocodigo": pseudocodigo(s)})
+        "n_ops": int(len(N["c_ns"].trades)), "pseudocodigo": pseudocodigo(s),
+        # para las fases 07-08 (tamaño y plan de incubación): el retorno de cada operación del tramo no sellado, sobre el
+        # tamaño con el que se corrió el backtest, y cuántos años abarcan
+        "rets": [round(float(x), 6) for x in N["c_ns"].trades.ret.to_numpy(float)], "sizing": s["sizing"],
+        "anios": round(float((N["c_ns"].idx[-1] - N["c_ns"].idx[0]).days / 365.25), 3),
+        "costes": s["costes"]})
 
 
 def fases_lab_json(texto_csv, spec_json) -> str:

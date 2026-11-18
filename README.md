@@ -135,6 +135,17 @@ El resultado de una prueba viaja por `sessionStorage` (tope ≈5 MB) y se pinta 
 columnas** ({t:[],o:[]…}, el mismo dato que lee `VF`): con el Nasdaq en 1 hora el array de objetos ocupaba 5,7 MB y la prueba
 moría con «sin respuesta del motor». Si aun así no cupiera, se guarda sin las velas del gráfico (los números no cambian).
 
+## Las 5 fases: protocolo vigente (motor 1.4, 2026-11-18)
+El motor sigue el protocolo de Sentinel tras su revisión de octubre-noviembre de 2026:
+- **Sello.** El último 20 % del histórico (mínimo 1 año) no puntúa en NINGUNA fase; IS/OOS (diseño/examen) se reparten lo que queda, 70/30. Es la misma partición que el AED del laboratorio. Si el resto no llega a 250 velas no se sella y se avisa. Una fecha de corte elegida a mano que cae en el tramo sellado se sustituye por el 70 % del tramo no sellado, con aviso.
+- **F1 IS/OOS.** Mismos 4 criterios de siempre (PF OOS ≥ 1,30 · ≥ 30 operaciones en total · caída menor que la de comprar y mantener · PF sin la mejor > 1) sobre diseño + examen. El tramo sellado se calcula y se guarda en `sello.resultado`, pero no entra en el veredicto.
+- **F2 Persistencia.** Ya no es walk-forward. Épocas de 3 años: en cada una se compara la regla con sus «vecinas» (los números movidos ±20/±40 %) contra la MEDIANA del entorno. Pasa con ≥ 4 épocas juzgables, percentil medio ≥ 40 % y PF > 1 en ≥ 60 % de las épocas. El walk-forward de Pardo se guarda como dato (`wf`, `wf_res`).
+- **F3 Robustez.** Se mueven TODOS los parámetros (salvo categorías: hora, día, mes, nº de vela de la sesión). ≥ 70 % del entorno con PF > 1 · ningún número quita más del 30 % del PF · no es silla de montar · no es pico. La rejilla es completa hasta 400 combinaciones (menos si el histórico es largo) y, si no, en cruz (un número cada vez). El mapa de calor 5×5 (`meseta`) queda como dato.
+- **F4 Monte Carlo + remuestreos.** 5.000 simulaciones: p5 > 0 · caída p95 < 30 % · ruina < 5 %; y además bootstrap por bloques (conserva rachas) y por regímenes (años completos con reemplazo). Se exigen los tres; si no hay con qué remuestrear (pocas operaciones o años) no se aprueba por defecto, se marca «no evaluable».
+- **F5 Stress.** Costes ×2 y sin los 2 mejores años: PF ≥ 1,10 y caída < 25 %. Régimen malo JUZGADO CONTRA EL ACTIVO: el año malo es el de mayor caída del activo (no el que peor cerró) ∪ 2022; pasa si la regla gana o se come como mucho el 50 % de la caída del activo, y suspende si se deja el 25 % pase lo que pase. Ya no existe la excepción «< 10 operaciones».
+
+**Laboratorio (fases 05-08).** `fases_lab(csv, spec)` corre F2-F5 sobre diseño + examen (el sello se corta ANTES de calcular nada) y la regla del alumno se parametriza sola (`_parametrizar_lab`: `rsi_periodo`, `rsi_umbral`, `stop_pct`…) para que haya números que mover. La Fase 07 (tamaño) y la 08 (plan de incubación) se calculan en el navegador con las operaciones de esa misma corrida. Fuente en `src/lab/fases58.{js,css}` (local, fuera de git: va cifrada en `reto/index.html`).
+
 ## Limitaciones
 - No calcula nada por sí sola: sin el motor, la prueba inicial enseña los resultados de la demo.
 - La lectura del informe del Strategy Tester es orientativa. Busca el nº de operaciones, el beneficio neto y el

@@ -1303,3 +1303,8 @@ table.m1t-t{width:100%;border-collapse:collapse;font-size:.92rem}
 @media (max-width:640px){.m1p-t th:nth-child(3),.m1p-t td:nth-child(3){display:none}.m1p-t{width:100%;table-layout:auto}.m1p-t td{white-space:normal;word-break:break-word}.m1p-ficha{overflow-x:auto}}
 
 #mis-3,#mis-3 *{text-decoration:none}
+
+/* leyenda de las columnas de la tabla 02 del AED (la pidieron los alumnos: «¿qué es efecto, T, época?») */
+.m1f-colsley{margin:.7rem 0;border:1px solid var(--line);border-radius:8px;padding:.45rem .85rem;background:rgba(var(--gold-rgb),.04)}
+.m1f-colsley summary{cursor:pointer;color:var(--gold);font-family:var(--f-mono);font-size:.8rem;letter-spacing:.04em}
+.m1f-colsley[open] summary{margin-bottom:.5rem}

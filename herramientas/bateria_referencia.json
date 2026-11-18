@@ -14,6 +14,10 @@
   "bt_pf_sin_mejor": 0.84,
   "oos_ops": 42,
   "oos_pf": 1.39,
+  "f56_fases": "-3-5",
+  "f56_variantes": 375,
+  "f56_ops": 148,
+  "f56_epocas": 6,
   "nas_aed_pruebas": 33,
   "nas_aed_clara": 4,
   "nas_aed_insinua": 2,
@@ -26,6 +30,6 @@
   "nas_bt_caida": 19.9,
   "nas_bt_pasa": false,
   "publica_ops": 204,
-  "publica_oos_ops": 67,
-  "publica_pf_oos": 3.49
+  "publica_oos_ops": 40,
+  "publica_pf_oos": 2.16
 }

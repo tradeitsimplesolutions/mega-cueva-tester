@@ -223,6 +223,8 @@
     if(cab){if(T.parentNode!==cab){cab.insertBefore(T,cab.firstChild);T.classList.add('mb-en-cab')}}
     else if(T.parentNode!==D.body){D.body.appendChild(T);T.classList.remove('mb-en-cab')}}
   function lado(){var si=false;if(D.body.classList.contains('lab')&&window.innerWidth>900){var u=q('#lab-fases [data-unidad]')||q('#lab-fases .lab-fase[data-fase="bt"]'),pie=q('.lab-side-pie');
+      /* el último botón de la barra es el que manda (desde las fases 05-08, «Tu unidad» ya no va al final) */
+      var bs=Array.prototype.slice.call(document.querySelectorAll('#lab-fases button')),mb=-1;bs.forEach(function(b){if(visible(b)){var bb=b.getBoundingClientRect().bottom;if(bb>mb){mb=bb;u=b}}});
       if(u&&visible(u)){var top=u.getBoundingClientRect().bottom+10,bot=pie&&visible(pie)?pie.getBoundingClientRect().top-8:window.innerHeight-90,h=bot-top;
         /* solo si cabe un bocadillo legible (unas 5 líneas + botones); si no, flota y esquiva lo que hay que tocar */
         if(h>=340){si=true;G.style.setProperty('--mb-maxh',Math.floor(h-62)+'px');G.style.setProperty('--mb-bot',Math.ceil(window.innerHeight-bot)+'px');M.style.setProperty('--mb-bot',Math.ceil(window.innerHeight-bot)+'px')}}}
@@ -346,6 +348,9 @@
   function iniciar(){if(!D.body||q('#mb-toggle'))return;montar();
     antes.m1=m1Hecho();sitioToggle();setTimeout(sitioToggle,300);
     /* en pantallas estrechas la guía abre plegada (Cuevi como botón, con su punto si tiene algo que decir): el bocadillo no tapa la página */
+    /* primera vez en este ordenador (no ha tocado el interruptor ni hay trabajo guardado): entra en modo básico, que es lo que pidieron
+       los alumnos («demasiada información a la vez»). Quien ya trabajó o lo apagó a mano no lo ve cambiar. */
+    try{if(LS.get('mb_on')===null&&!localStorage.getItem('lab_m3')&&!localStorage.getItem('mct_ficha')&&!sessionStorage.getItem('mct_res'))LS.set('mb_on','1')}catch(e){}
     if(LS.get('mb_on')==='1'){if(window.innerWidth<=700)LS.set('mb_plegado','1');activar(true,false)}
     if(window.MutationObserver)new MutationObserver(function(){if(on())programa()}).observe(D.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class','hidden']});
     window.addEventListener('hashchange',programa);

@@ -117,10 +117,12 @@ def main():
         lab_css = (L / "lab.css").read_text(encoding="utf-8") if lab else ""
         lab_js = (L / "lab.js").read_text(encoding="utf-8") if lab else ""
         # módulo «TU UNIDAD» (opcional): va detrás de lab.css / lab.js; si no existe, no pasa nada
-        if lab and (L / "unidad.css").exists():
-            lab_css += "\n" + (L / "unidad.css").read_text(encoding="utf-8")
-        if lab and (L / "unidad.js").exists():
-            lab_js += "\n" + (L / "unidad.js").read_text(encoding="utf-8")
+        # fases 05-08 (opcional): detrás de «Tu unidad»; usa window.MCT_LAB_API, que exporta lab.js
+        for modulo in ("unidad", "fases58"):
+            if lab and (L / f"{modulo}.css").exists():
+                lab_css += "\n" + (L / f"{modulo}.css").read_text(encoding="utf-8")
+            if lab and (L / f"{modulo}.js").exists():
+                lab_js += "\n" + (L / f"{modulo}.js").read_text(encoding="utf-8")
         js = ("window.MCT_LAB=true;\n" if lab else "") + ia + app_js.replace("/*__LAB_JS__*/", lab_js)
         # capas opcionales para las dos herramientas (modo premium, modo básico…): src/extra/*.css y *.js, en orden alfabético
         X = RAIZ / "src" / "extra"

@@ -34,7 +34,7 @@ RAIZ = Path(__file__).resolve().parent.parent
 CAP = RAIZ / "capturas" / "bateria"
 REF = RAIZ / "herramientas" / "bateria_referencia.json"
 CLAVE_F = RAIZ / "herramientas" / "clave_reto.txt"
-FASES = ["aed", "hip", "reg", "bt", "unidad"]
+FASES = ["aed", "hip", "reg", "bt", "opt", "rob", "rie", "inc", "unidad"]
 FRASE_BASIC = ("Comprar el nasdaq cuando el RSI de 2 baje de 15, solo si el precio está sobre la media de 200, "
                "y salir tras 2 velas verdes seguidas")
 # ruido conocido que no es un fallo: la IA remota no acepta 127.0.0.1 y, sin red, las fuentes de Google
@@ -140,6 +140,7 @@ class Servidor:
 def pagina(nav, w, h, errores, etiqueta, estado=None, movil=False):
     ctx = nav.new_context(viewport={"width": w, "height": h}, is_mobile=movil, has_touch=movil, device_scale_factor=1)
     if estado is not None:   # localStorage de partida (modos, misiones hechas) antes de que cargue nada
+        estado = {"mb_on": "0", **estado}   # la primera vez la app entra en modo básico: salvo que se pida, las pruebas parten del completo
         ctx.add_init_script("(e=>{if(sessionStorage.getItem('__bat'))return;sessionStorage.setItem('__bat','1');"
                             "localStorage.clear();Object.entries(e).forEach(([k,v])=>localStorage.setItem(k,v))})("
                             + json.dumps(estado) + ")")
@@ -292,6 +293,51 @@ def laboratorio(nav, url, errores):
     medidos.update(oos_ops=int(tr.group(1)) if tr else None, oos_pf=num(tr.group(2)) if tr else None)
     ok("B", "Examen: abierto, con su fila en la tabla por tramos", tr is not None and "🔒 VER EL EXAMEN" not in bt2)
     pg.screenshot(path=str(CAP / "B5_examen.png"), full_page=True)
+
+    # Fases 05-08 · una sola corrida del motor alimenta la 05 y la 06; la 07 y la 08 salen de SUS operaciones
+    ir(pg, "opt")
+    ok("B", "Fase 05: con el examen abierto ofrece correr las pruebas", pg.is_visible("[data-f58-correr]"))
+    t = time.time()
+    pg.click("[data-f58-correr]")
+    pg.wait_for_function("document.querySelectorAll('#lab-v-opt .f58-card').length===2 || !!document.querySelector('#lab-v-opt .m3-aviso.bad')", timeout=420000)
+    if ok("B", "Fase 05: el motor devuelve persistencia y robustez", pg.evaluate("document.querySelectorAll('#lab-v-opt .f58-card').length") == 2, f"{time.time() - t:.0f} s"):
+        r = pg.evaluate("JSON.parse(localStorage.getItem('lab_f56')||'null')")
+        medidos.update(f56_fases="".join(k[1] if r["fases"][k] else "-" for k in ("F2", "F3", "F4", "F5")), f56_variantes=r["n_variantes"],
+                       f56_ops=r["n_ops"], f56_epocas=r["persistencia"]["n_epocas"])
+        ult = r["persistencia"]["epocas"][-1]["epoca"][-10:]
+        ok("B", "Fase 05: ninguna época llega al tramo sellado", ult <= r["particion"]["validacion"]["desde"], f"última época hasta {ult}, sello desde {r['particion']['validacion']['desde']}")
+        ok("B", "Fase 05: las operaciones son las del diseño y el examen (sin la validación)", r["n_ops"] >= (medidos.get("bt_ops") or 0), f"{r['n_ops']} op.")
+        ok("B", "Fase 05: la robustez mueve todos los números", len(r["robustez"].get("lineas", {})) >= 2, ",".join(r["robustez"].get("lineas", {})))
+    pg.screenshot(path=str(CAP / "B5b_fase05.png"), full_page=True)
+    ir(pg, "rob")
+    ok("B", "Fase 06: Monte Carlo, remuestreos y stress sin volver a correr",
+       pg.evaluate("document.querySelectorAll('#lab-v-rob .f58-card').length") == 2 and pg.evaluate("!!document.querySelector('#lab-v-rob .f58-hist')"))
+    pg.click("#lab-v-rob .f58-costes summary")
+    for k, v in (("p", "2000"), ("s", "0,30"), ("c", "3,5"), ("u", "100"), ("d", "0,1")):
+        pg.fill(f"[data-f58c={k}]", v)
+    pg.wait_for_timeout(300)
+    cc = texto(pg, "#f58-cres")
+    ok("B", "Fase 06: la calculadora de costes da la razón con el backtest", "pb" in cc and "×" in cc, cc.replace("\n", " ")[:90])
+    pg.screenshot(path=str(CAP / "B5c_fase06.png"), full_page=True)
+    ir(pg, "rie")
+    ok("B", "Fase 07: tabla de 8 tamaños con su caída mala", pg.evaluate("document.querySelectorAll('#lab-v-rie [data-f58-tam]').length") == 8)
+    antes = texto(pg, "#lab-v-rie .f58-rec") if pg.query_selector("#lab-v-rie .f58-rec") else texto(pg, "#lab-v-rie .m3-aviso")
+    pg.select_option("[data-f58-tol]", "0.05")
+    pg.wait_for_timeout(500)
+    despues = texto(pg, "#lab-v-rie .f58-rec") if pg.query_selector("#lab-v-rie .f58-rec") else texto(pg, "#lab-v-rie .m3-aviso")
+    ok("B", "Fase 07: bajar la tolerancia cambia lo que se recomienda", antes != despues, f"{antes[:60]} -> {despues[:60]}")
+    pg.select_option("[data-f58-tol]", "0.25")
+    pg.wait_for_timeout(400)
+    pg.screenshot(path=str(CAP / "B5d_fase07.png"), full_page=True)
+    ir(pg, "inc")
+    pg.fill("[data-f58-nom]", "Alumna Prueba")
+    pg.press("[data-f58-nom]", "Tab")
+    pg.wait_for_timeout(500)
+    doc = texto(pg, "#f58-doc")
+    ok("B", "Fase 08: el plan de incubación sale con sus 6 puntos y la firma",
+       all(x in doc for x in ("1 · ", "2 · ", "3 · ", "4 · ", "5 · ", "6 · ")) and "Alumna Prueba" in doc)
+    ok("B", "Fase 08: los límites de apagado llevan números", bool(re.search(r"Apagar.*?\d+ %", doc.replace("\n", " "))))
+    pg.screenshot(path=str(CAP / "B5e_fase08.png"), full_page=True)
 
     # TU UNIDAD
     ir(pg, "unidad")
@@ -597,6 +643,12 @@ def publica(nav, url, errores, con_motor):
     pg.goto(url + "/app/index.html#basic")
     pg.wait_for_timeout(1200)
     ok("D", "abre sin el laboratorio dentro", not pg.evaluate("!!window.MCT_LAB || !!document.querySelector('#lab')"))
+    # primera vez en un ordenador limpio: entra en modo «más básico» (los alumnos pidieron menos información a la vez)
+    ctx0, pg0 = pagina(nav, 1440, 900, errores, "primera vez", estado=None)
+    pg0.goto(url + "/app/index.html")
+    pg0.wait_for_timeout(1500)
+    ok("D", "primera vez: entra en modo «más básico»", pg0.evaluate("document.body.classList.contains('modo-basico')"))
+    ctx0.close()
     pg.fill("#bx-idea", FRASE_BASIC)
     pg.click("#bx-trad")
     pg.wait_for_timeout(400)
@@ -676,7 +728,7 @@ def main():
         try:
             capas(nav, srv.url, errores, estado)
         except Exception as e:  # noqa: BLE001
-            ok("C", "el recorrido de capas llega al final", False, f"{type(e).__name__}: {str(e)[:160]}")
+            ok("C", "el recorrido de capas llega al final", False, f"{type(e).__name__}: {str(e)[:700]}")
         try:
             publica(nav, srv.url, errores, not rapida)
         except Exception as e:  # noqa: BLE001
