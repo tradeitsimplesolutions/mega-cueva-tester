@@ -453,6 +453,9 @@ function textoRegimen(R){if(!R)return'';return R.captura==null?'el activo no cay
 function critRem(ck,etq,Rm,lim){if(!Rm||Rm.pasa==null)return'';const ne=Rm.no_evaluable;return ck(!!Rm.pasa,etq,ne?'no evaluable':'caída '+pct(Rm.p95_dd,1,false)+' · p5 '+pct(Rm.p5_ret,1),lim)}
 /* el último 20 % (sello) no puntúa: «Prueba» termina donde empieza el sello */
 function selloDesde(){return (D.sello&&D.sello.sellado&&D.sello.desde)||D.hasta}
+function motivoF4pub(M){if(D.fases&&D.fases.F4)return'';const f=[];if(!(M.p5>0))f.push('el peor 5 % de retornos pierde');if(!(M.p95dd<.30))f.push('la caída del peor 5 % supera el 30 %');if(!(M.ruina<.05))f.push('la ruina pasa del 5 %');
+  if(M.bloques&&M.bloques.pasa===false&&!M.bloques.no_evaluable)f.push('«por bloques» no lo supera');if(M.regimenes&&M.regimenes.pasa===false&&!M.regimenes.no_evaluable)f.push('«por años completos» no lo supera');
+  return f.length?'<li><span class="n">!</span><span><b>Falla porque:</b> '+f.join('; ')+'</span><span class="v"></span></li>':''}
 function textoRegimenC(R){if(!R)return'';return R.captura==null?'sin caída':R.captura===0?'gana':'se come el '+nf(R.captura*100,0)+' %'}
 function fillVal(){const fs=D.fases,M=D.mc||{},W=D.wf_res||{},S=D.stress||{},Me=D.meseta;
   const fl=['F1','F2','F3','F4','F5'].filter(k=>!fs[k]);
@@ -476,7 +479,7 @@ function fillVal(){const fs=D.fases,M=D.mc||{},W=D.wf_res||{},S=D.stress||{},Me=
   const f3crit=RB.criterios&&Object.keys(RBc).length?ck(!!RBc.mayoria_del_entorno_gana,'Variantes con PF > 1',pctE(RB.pct_variantes_pf_mayor_1)+' de '+RB.n_variantes,'≥ 70 %')+ck(!!RBc.ningun_eje_hunde,'Peor número al moverlo',(RB.peor_eje?esc(RB.peor_eje)+' ':'')+'−'+pctE(RB.peor_dano),'< 30 %')+ck(!!RBc.no_es_silla_de_montar,'Silla de montar',RBc.no_es_silla_de_montar?'no':'sí','no debe ser')+ck(!!RBc.no_es_pico,'Pico',RBc.no_es_pico?'no':'sí','no debe ser'):ck(false,'Variantes con operaciones suficientes',RB.n_variantes||0,'≥ 20 op. cada una');
   const f3=card('F3','Robustez de parámetros','¿Aguanta si muevo TODOS los números de la regla?',f3crit,`<div class="fbody">${tablaLineas(RB)||ht||'<p class="c-dim">'+esc(RB.nota||'')+'</p>'}</div>`,'mes');
   const f4=card('F4','Monte Carlo y remuestreos','¿Qué pasa con otro orden de operaciones, otras rachas y otros años?',
-    M.p95dd!=null?ck(M.p5>0,'Monte Carlo · peor 5 % de retornos',pct(M.p5,1),'> 0')+ck(M.p95dd<.30,'Monte Carlo · caída en el peor 5 %',pct(-M.p95dd,1),'< 30 %')+ck(M.ruina<.05,'Monte Carlo · prob. de ruina',pct(M.ruina,1,false),'< 5 %')+critRem(ck,'Por bloques (conserva las rachas)',M.bloques,'p5 > 0 · caída < 30 %')+critRem(ck,'Por años completos (regímenes)',M.regimenes,'p5 > 0 · caída < 30 %'):'',
+    M.p95dd!=null?motivoF4pub(M)+ck(M.p5>0,'Monte Carlo · peor 5 % de retornos',pct(M.p5,1),'> 0')+ck(M.p95dd<.30,'Monte Carlo · caída en el peor 5 %',pct(-M.p95dd,1),'< 30 %')+ck(M.ruina<.05,'Monte Carlo · prob. de ruina',pct(M.ruina,1,false),'< 5 %')+critRem(ck,'Por bloques (conserva las rachas)',M.bloques,'p5 > 0 · caída < 30 %')+critRem(ck,'Por años completos (regímenes)',M.regimenes,'p5 > 0 · caída < 30 %'):'',
     `<div class="fbody"><div class="cv" id="cv-mc"><canvas role="img" aria-label="Histograma de retornos simulados"></canvas><div class="tt"></div></div></div>`,'mc');
   const sb=(l,o)=>o?`<div class="sbar"><span>${l}</span><span class="tr"><i style="width:${Math.min(100,(o.pf||0)/2*100)}%;background:${o.pf>=1.1?'var(--f5)':'var(--red)'}"></i><u style="left:${1.1/2*100}%"></u></span><span>${nf(o.pf,2)}</span></div>`:'';
   const f5=card('F5','Stress','¿Sobrevive si empeoro las condiciones a propósito?',

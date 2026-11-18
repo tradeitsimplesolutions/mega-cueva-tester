@@ -181,7 +181,7 @@ def ir(pg, fase):
 JS_DESBORDA = """() => {const o=[];const de=document.documentElement;if(de.scrollWidth>innerWidth+1)o.push('página '+(de.scrollWidth-innerWidth)+'px');
   const m=document.querySelector('.lab-main');if(m&&m.scrollWidth>m.clientWidth+2)o.push('panel '+(m.scrollWidth-m.clientWidth)+'px');return o}"""
 JS_SOLAPE = """() => {const v=document.querySelector('#vistas-btn');if(!v)return 'falta #vistas-btn';const r=v.getBoundingClientRect();if(!r.width)return 'sin tamaño';
-  const otros=[...document.querySelectorAll('.tools button,.hchips *,.lab-top-r *,.lab-top .lab-miga')].filter(e=>e!==v&&!v.contains(e)&&e.offsetParent);
+  const otros=[...document.querySelectorAll('.tools button,.hchips *,.lab-top-r *,.lab-top .lab-miga,.bx-top button,.bx-top .seg')].filter(e=>e!==v&&!v.contains(e)&&e.offsetParent);
   const t=otros.find(e=>{const q=e.getBoundingClientRect();return q.width&&r.left<q.right-1&&q.left<r.right-1&&r.top<q.bottom-1&&q.top<r.bottom-1});
   return t?'«Vistas» tapa '+(t.id||String(t.className).slice(0,30)||t.tagName):''}"""
 # la caja de Cuevi: dentro de la pantalla, «Siguiente paso» y «¿Por qué?» a la vista, y si el texto no cabe, el aviso «↓ sigue»
@@ -690,6 +690,11 @@ def vistas(nav, url, errores):
     pg.reload()
     pg.wait_for_timeout(1200)
     ok("V", "el tema elegido se recuerda al recargar", pg.evaluate("document.documentElement.dataset.theme") == "tiss-dark")
+    pg.goto(url + "/app/index.html#basic")
+    pg.wait_for_timeout(1200)
+    ok("V", "en la vista BASIC, «Vistas» no tapa el interruptor BASIC/COMPLETO", pg.evaluate(JS_SOLAPE) == "", pg.evaluate(JS_SOLAPE))
+    pg.goto(url + "/app/index.html")
+    pg.wait_for_timeout(1000)
     ok("V", "Más básico y Premium no andan sueltos por la pantalla (solo dentro de Vistas)",
        pg.evaluate("['#mb-toggle','#tp-toggle'].every(s=>{const e=document.querySelector(s);return e&&e.closest('#vistas-pan')})"))
     # Cuevi se mueve arrastrando, se recuerda y el doble clic lo devuelve a su sitio
