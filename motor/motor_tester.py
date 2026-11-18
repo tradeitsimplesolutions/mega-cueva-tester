@@ -1891,7 +1891,7 @@ def fase2_persistencia(cache: dict, claves: list, canon: dict, idx: pd.DatetimeI
             "n_variantes": len(claves), "no_evaluable": bool(not suficientes),
             "nota": (f"gana en {ganando} de {n} épocas y su percentil medio en el entorno es {pct_medio * 100:.0f} % "
                      f"(mínimo {UMBRAL['pers_percentil_medio_min'] * 100:.0f} %)" if suficientes else
-                     f"solo {n} épocas juzgables (de 3 años): con este histórico no hay con qué decidir")}
+                     f"solo {n} época{'' if n == 1 else 's'} juzgable{'' if n == 1 else 's'} (de 3 años): con este histórico no hay con qué decidir")}
 
 
 def fase3_robustez(cache: dict, claves: list, canon: dict, a_fin: int) -> dict:
@@ -2688,6 +2688,10 @@ def validar(df: pd.DataFrame, spec, semilla: int = 7, progreso=None) -> dict:
         avisos.append(f"La regla dice temporalidad {s['temporalidad']} pero el fichero parece {tf}; se usa el fichero tal cual.")
     intradia = tf not in ("D1", "W1", "MN")
     D = _Datos(df)
+    anios_hist = (df.index[-1] - df.index[0]).days / 365.25
+    if anios_hist < 5:
+        avisos.append(f"Histórico corto: solo {anios_hist:.1f} años. Con tan poco la prueba honesta tiene muy pocas operaciones y el resultado no se puede "
+                      "tomar en serio (el laboratorio pide al menos 5 años). Sube más historia.")
     cache_ind: dict = {}
     if s.get("sesion"):
         cache_ind["__sesion__"] = _InfoSesion(D, s["sesion"])

@@ -21,7 +21,7 @@
 
   /* ===== conmutador, guía, mini y celebración ===== */
   var T,G,M,F,ultimaClave='',ultimoHtml='',focoT=null;
-  function img(k,alt){var i=IMG[k];return i?'<img src="'+i[2]+'" width="'+i[0]*4+'" height="'+i[1]*4+'" alt="'+esc(alt||'')+'">':''}
+  function img(k,alt){var O=window.MCT_CUEVI_IMG,o=O&&(O[k]||O.guia||O.todas);if(o)return '<img src="'+o+'" alt="'+esc(alt||'')+'">';var i=IMG[k];return i?'<img src="'+i[2]+'" width="'+i[0]*4+'" height="'+i[1]*4+'" alt="'+esc(alt||'')+'">':''}
   function montar(){
     T=D.createElement('button');T.type='button';T.className='mb-toggle';T.id='mb-toggle';
     T.innerHTML='<span aria-hidden="true">🧩</span> Más básico <span class="mb-sw" aria-hidden="true"></span>';
@@ -29,7 +29,7 @@
     T.addEventListener('click',function(){activar(!on(),true)});
     G=D.createElement('aside');G.className='mb-guia';G.id='mb-guia';G.hidden=true;G.setAttribute('role','complementary');G.setAttribute('aria-labelledby','mb-tit');
     G.innerHTML='<img class="mb-cuevi" alt="" width="76" height="76">'+
-      '<div class="mb-boc"><div class="mb-cab"><p class="mb-etapa mono" id="mb-etapa"></p><button type="button" class="mb-x" data-mb="plegar" aria-expanded="true" aria-controls="mb-guia" aria-label="Plegar la guía" title="Plegar la guía (Esc)">▾</button></div>'+
+      '<div class="mb-boc"><div class="mb-cab"><button type="button" class="mb-mover" data-mb="mover" aria-label="Mover a Cuevi: arrastra, o usa las flechas con el foco aquí" title="Arrastra a Cuevi para moverlo (doble clic: volver a su sitio)">⠿</button><p class="mb-etapa mono" id="mb-etapa"></p><button type="button" class="mb-x" data-mb="plegar" aria-expanded="true" aria-controls="mb-guia" aria-label="Plegar la guía" title="Plegar la guía (Esc)">▾</button></div>'+
       '<h2 class="mb-tit" id="mb-tit"></h2><ul class="mb-ruta" aria-label="Tu recorrido"></ul><div class="mb-txt-w"><div class="mb-txt" aria-live="polite" aria-atomic="true"></div>'+
       '<button type="button" class="mb-mas" data-mb="mas" tabindex="-1" aria-hidden="true" hidden>↓ sigue</button></div>'+
       '<div class="mb-acc"><button type="button" class="mb-sig" data-mb="sig">Siguiente paso →</button></div></div>';
@@ -59,9 +59,41 @@
     var rq=false;D.addEventListener('scroll',function(){if(!on()||rq)return;rq=true;requestAnimationFrame(function(){rq=false;colocar()})},{capture:true,passive:true});
   }
   var pendiente=null;
+
+  /* ===== foco: un recuadro dorado que sigue al elemento y, si se pide, oscurece el resto un rato (no bloquea los clics) ===== */
+  var FO=null,focoRaf=0,focoFin=0,focoEl=null;
+  function focoQuita(){focoEl=null;cancelAnimationFrame(focoRaf);if(FO)FO.hidden=true}
+  function focoCiclo(){if(!focoEl||Date.now()>focoFin||!D.body.contains(focoEl)||!visible(focoEl)){focoQuita();return}
+    var r=focoEl.getBoundingClientRect();FO.style.left=(r.left-8)+'px';FO.style.top=(r.top-8)+'px';FO.style.width=(r.width+16)+'px';FO.style.height=(r.height+16)+'px';focoRaf=requestAnimationFrame(focoCiclo)}
+  function foco(el,dim,ms){if(!on()||!el||!visible(el))return;
+    if(!FO){FO=D.createElement('div');FO.className='mb-foco-ov';FO.hidden=true;FO.setAttribute('aria-hidden','true');D.body.appendChild(FO);
+      D.addEventListener('pointerdown',function(){if(focoEl)focoQuita()},true);D.addEventListener('keydown',function(e){if(e.key==='Escape'&&focoEl)focoQuita()},true)}
+    focoEl=el;focoFin=Date.now()+(ms||5000);FO.classList.toggle('mb-dim',!!dim);FO.hidden=false;cancelAnimationFrame(focoRaf);focoCiclo()}
+
+  /* ===== Cuevi se puede mover: arrastrándolo (a él o a su cabecera) o con las flechas sobre el asa ⠿. La posición se recuerda; doble clic la deshace ===== */
+  var POS=null;
+  function posLee(){try{var p=JSON.parse(LS.get('mb_pos')||'null');return p&&isFinite(p.x)&&isFinite(p.y)?p:null}catch(e){return null}}
+  function movible(){return window.innerWidth>700}
+  function ajustar(x,y){var n=G&&!G.hidden?G:M,r=n.getBoundingClientRect(),W=r.width||64,H=r.height||64;
+    return {x:Math.max(6,Math.min(window.innerWidth-W-6,x)),y:Math.max(6,Math.min(window.innerHeight-H-6,y))}}
+  function posAplica(){if(!G)return;var libre=!!POS&&movible();[G,M].forEach(function(n){n.classList.toggle('mb-libre',libre)});
+    if(libre){var a=ajustar(POS.x,POS.y);[G,M].forEach(function(n){n.style.setProperty('--mb-x',Math.round(a.x)+'px');n.style.setProperty('--mb-y',Math.round(a.y)+'px')})}}
+  function posGuarda(x,y){POS={x:x,y:y};LS.set('mb_pos',JSON.stringify(POS));posAplica()}
+  function iniciarArrastre(){var drag=null;POS=posLee();
+    G.addEventListener('pointerdown',function(e){if(!movible()||e.button>0||!e.target.closest('.mb-cuevi,.mb-cab,.mb-mover'))return;
+      if(e.target.closest('button:not(.mb-mover)'))return;var r=G.getBoundingClientRect();drag={dx:e.clientX-r.left,dy:e.clientY-r.top};
+      try{G.setPointerCapture(e.pointerId)}catch(_){}G.classList.add('mb-arrastra');e.preventDefault()});
+    G.addEventListener('pointermove',function(e){if(!drag)return;var a=ajustar(e.clientX-drag.dx,e.clientY-drag.dy);POS={x:a.x,y:a.y};posAplica()});
+    function fin(){if(!drag)return;drag=null;G.classList.remove('mb-arrastra');if(POS)LS.set('mb_pos',JSON.stringify(POS));reserva();colocar()}
+    G.addEventListener('pointerup',fin);G.addEventListener('pointercancel',fin);
+    G.addEventListener('dblclick',function(e){var bajo=(D.elementsFromPoint?D.elementsFromPoint(e.clientX,e.clientY):[e.target]).some(function(n){return n.closest&&n.closest('.mb-cuevi,.mb-cab')&&!n.closest('button:not(.mb-mover)')});if(bajo){POS=null;LS.set('mb_pos','');posAplica();colocar();reserva()}});
+    G.addEventListener('keydown',function(e){var b=e.target.closest&&e.target.closest('.mb-mover');if(!b||!movible())return;
+      var d={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]}[e.key];if(!d)return;e.preventDefault();e.stopPropagation();
+      var r=G.getBoundingClientRect(),st=e.shiftKey?64:16,a=ajustar((POS?POS.x:r.left)+d[0]*st,(POS?POS.y:r.top)+d[1]*st);posGuarda(a.x,a.y)},true);
+    window.addEventListener('resize',function(){posAplica()})}
   function plegar(si){LS.set('mb_plegado',si?'1':'0');pintarCaja();if(si)M.focus();else{var b=q('.mb-sig',G);if(b&&!b.disabled)b.focus();else q('.mb-x',G).focus()}}
   function pintarCaja(){var o=on(),pl=LS.get('mb_plegado')==='1';G.hidden=!o||pl;M.hidden=!o||!pl;q('.mb-x',G).setAttribute('aria-expanded',String(!pl));reserva();colocar()}
-  function reserva(){if(!D.body||!on())return;var h=on()&&G&&!G.hidden&&!G.classList.contains('mb-lado')?G.getBoundingClientRect().height+80:on()?90:0;D.body.style.setProperty('--mb-reserva',Math.round(h)+'px')}
+  function reserva(){if(!D.body||!on())return;var h=POS&&movible()?0:on()&&G&&!G.hidden&&!G.classList.contains('mb-lado')?G.getBoundingClientRect().height+80:on()?90:0;D.body.style.setProperty('--mb-reserva',Math.round(h)+'px')}
   function activar(si,usuario){LS.set('mb_on',si?'1':'0');D.body.classList.toggle('modo-basico',si);T.setAttribute('aria-pressed',String(si));
     if(!si){limpiar();G.hidden=true;M.hidden=true;D.body.style.removeProperty('--mb-reserva');if(D.body.getAttribute('style')==='')D.body.removeAttribute('style');ultimaClave='';ultimoHtml='';return}
     if(usuario)LS.set('mb_plegado','0');antes.m1=m1Hecho();pintarCaja();aplicar();if(usuario){var b=q('.mb-sig',G);if(b&&!b.disabled)b.focus()}}
@@ -76,6 +108,7 @@
     try{el.scrollIntoView({block:window.innerWidth<=700?'start':'center',behavior:RM?'auto':'smooth'})}catch(e){el.scrollIntoView()}setTimeout(colocar,RM?30:600);
     var f=el.matches('button,select,input,textarea,a[href],[tabindex]')?el:q('button:not([disabled]),select,input,textarea,a[href]',el);
     if(f)setTimeout(function(){try{f.focus({preventScroll:true})}catch(e){}},RM?0:350);
+    setTimeout(function(){foco(el,true,6000)},RM?30:450);
     clearTimeout(focoT);focoT=setTimeout(function(){if(el.classList.contains('mb-foco'))el.classList.remove('mb-foco')},6000);return true}
   function pulsa(sel){var el=q(sel);if(el&&!el.disabled){el.click();return true}return false}
   function abrirFase(id){if(window.MCT_LAB_ABRIR){window.MCT_LAB_ABRIR(id);var m=q('.lab-main');if(m&&m.scrollTo)m.scrollTo({top:0});window.scrollTo(0,0)}}
@@ -230,18 +263,21 @@
     var extra=(p.extra||[]).map(function(x,i){return '<button type="button" class="mb-otro" data-mb="extra" data-i="'+i+'">'+esc(x.t)+'</button>'}).join('');
     var pq=LS.get('mb_porque')==='1',firma=p.k+'|'+p.h+'|'+p.p+'|'+pq+'|'+htmlR+'|'+extra+'|'+p.pose;if(firma===ultimoHtml){colocar();return}
     var nueva=p.k!==ultimaClave;ultimoHtml=firma;ultimaClave=p.k;
+    if(nueva&&p.obj){var oe=q(p.obj);if(oe&&visible(oe))setTimeout(function(){foco(oe,false,3500)},700)}
     q('#mb-etapa',G).textContent=p.e||'';q('#mb-tit',G).textContent=p.t||'';q('.mb-ruta',G).innerHTML=htmlR;
     var tx=q('.mb-txt',G);tx.innerHTML=(p.h||'')+(p.p?'<div class="mb-pqt" id="mb-pq"'+(pq?'':' hidden')+'>'+p.p+'</div>':'');if(nueva)tx.scrollTop=0;
     /* «¿Por qué?» va con los botones, no dentro del texto: así no se queda escondido si el texto no cabe */
     var ac=q('.mb-acc',G),sig=q('.mb-sig',ac);qa('.mb-otro,.mb-pq',ac).forEach(function(n){n.remove()});sig.hidden=!!p.sinBtn;
     sig.insertAdjacentHTML('afterend',(p.p?'<button type="button" class="mb-pq" data-mb="pq" aria-expanded="'+pq+'" aria-controls="mb-pq">'+(pq?'▾':'▸')+' ¿Por qué?</button>':'')+extra);
-    var im=q('.mb-cuevi',G),I=IMG[p.pose==='trofeo'?'guia':p.pose]||IMG.guia;if(I&&im.getAttribute('src')!==I[2])im.src=I[2];
+    var im=q('.mb-cuevi',G),I=IMG[p.pose==='trofeo'?'guia':p.pose]||IMG.guia;var O=window.MCT_CUEVI_IMG,o3=O&&(O[p.pose]||O.guia||O.todas);if(o3){if(im.getAttribute('src')!==o3)im.src=o3;D.body.classList.add('mb-3d')}else if(I&&im.getAttribute('src')!==I[2])im.src=I[2];
     var mi=q('img',M);if(I&&mi&&mi.getAttribute('src')!==I[2])mi.src=I[2];
     var pu=q('.mb-punto',M);if(pu&&nueva&&!M.hidden)pu.hidden=false;if(pu&&!M.hidden)M.setAttribute('aria-label','Abrir la guía de Cuevi: '+(p.t||''));
     if(nueva&&p.auto&&p.obj)setTimeout(function(){resaltar(p.obj)},250);
     reserva();colocar()}
   /* si lo que hay que tocar queda debajo de la guía, la guía se pasa al otro lado (en escritorio) */
-  function sitioToggle(){if(!T)return;var cab=D.body.classList.contains('lab')&&window.innerWidth>900?q('#lab .lab-top-r'):null;
+  function sitioToggle(){if(!T)return;var V=window.MCT_VISTAS&&window.MCT_VISTAS.slot&&window.MCT_VISTAS.slot('modo');
+    if(V){if(T.parentNode!==V){V.appendChild(T);T.classList.add('mb-en-cab')}return}
+    var cab=D.body.classList.contains('lab')&&window.innerWidth>900?q('#lab .lab-top-r'):null;
     if(cab){if(T.parentNode!==cab){cab.insertBefore(T,cab.firstChild);T.classList.add('mb-en-cab')}}
     else if(T.parentNode!==D.body){D.body.appendChild(T);T.classList.remove('mb-en-cab')}}
   function lado(){var si=false;if(D.body.classList.contains('lab')&&window.innerWidth>900){var u=q('#lab-fases [data-unidad]')||q('#lab-fases .lab-fase[data-fase="bt"]'),pie=q('.lab-side-pie');
@@ -254,7 +290,7 @@
   /* si el texto no cabe en el bocadillo, se difumina abajo y aparece «↓ sigue» (hasta llegar al final) */
   function hayMas(){var w=q('.mb-txt-w',G),tx=q('.mb-txt',G),b=q('.mb-mas',G);if(!w||G.hidden)return;
     var mas=tx.scrollHeight-tx.clientHeight-tx.scrollTop>4;if(w.classList.contains('mb-hay')!==mas)w.classList.toggle('mb-hay',mas);if(b.hidden===mas)b.hidden=!mas}
-  function colocar(){if(!G)return;if(G.hidden&&D.body.classList.contains('mb-lado-on'))D.body.classList.remove('mb-lado-on');if(G.hidden&&M.hidden)return;var der=false,si=lado();hayMas();if(si){if(G.classList.contains('mb-der')){G.classList.remove('mb-der');M.classList.remove('mb-der')}return}
+  function colocar(){if(!G)return;if(POS&&movible()){posAplica();G.classList.remove('mb-lado','mb-der');M.classList.remove('mb-der');if(D.body.classList.contains('mb-lado-on'))D.body.classList.remove('mb-lado-on');hayMas();return}if(G.hidden&&D.body.classList.contains('mb-lado-on'))D.body.classList.remove('mb-lado-on');if(G.hidden&&M.hidden)return;var der=false,si=lado();hayMas();if(si){if(G.classList.contains('mb-der')){G.classList.remove('mb-der');M.classList.remove('mb-der')}return}
     if(window.innerWidth>700&&PASO&&PASO.obj){var el=q(PASO.obj);if(el&&visible(el)){var r=el.getBoundingClientRect(),gr=G.getBoundingClientRect(),w=gr.width||400,h=G.hidden?64:(gr.height||300),
       xi=D.body.classList.contains('lab')&&window.innerWidth>900?parseFloat(getComputedStyle(D.documentElement).fontSize)*17.5+14:14,xd=window.innerWidth-14-w,
       choca=function(x0,bot){var y0=window.innerHeight-bot-h;return r.left<x0+w&&r.right>x0&&r.top<y0+h&&r.bottom>y0};der=choca(xi,64)&&!choca(xd,104)}}
@@ -367,7 +403,7 @@
     try{pliegues()}catch(e){}try{cartaM1()}catch(e){}try{cartaBt()}catch(e){}
     try{pintarGuia()}catch(e){if(window.console)console.warn('modo básico:',e)}}
   function programa(){if(pend)return;pend=true;(window.requestAnimationFrame||setTimeout)(aplicar)}
-  function iniciar(){if(!D.body||q('#mb-toggle'))return;montar();
+  function iniciar(){if(!D.body||q('#mb-toggle'))return;montar();iniciarArrastre();
     antes.m1=m1Hecho();sitioToggle();setTimeout(sitioToggle,300);
     /* en pantallas estrechas la guía abre plegada (Cuevi como botón, con su punto si tiene algo que decir): el bocadillo no tapa la página */
     /* primera vez en este ordenador (no ha tocado el interruptor ni hay trabajo guardado): entra en modo básico, que es lo que pidieron

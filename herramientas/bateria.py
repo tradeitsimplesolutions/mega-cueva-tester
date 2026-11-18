@@ -180,9 +180,10 @@ def ir(pg, fase):
 
 JS_DESBORDA = """() => {const o=[];const de=document.documentElement;if(de.scrollWidth>innerWidth+1)o.push('página '+(de.scrollWidth-innerWidth)+'px');
   const m=document.querySelector('.lab-main');if(m&&m.scrollWidth>m.clientWidth+2)o.push('panel '+(m.scrollWidth-m.clientWidth)+'px');return o}"""
-JS_SOLAPE = """() => {const a=document.querySelector('#tp-toggle'),b=document.querySelector('#mb-toggle');if(!a||!b)return 'falta '+(!a?'#tp-toggle':'#mb-toggle');
-  const r=a.getBoundingClientRect(),s=b.getBoundingClientRect();if(!r.width||!s.width)return '';
-  return (r.left<s.right-1&&s.left<r.right-1&&r.top<s.bottom-1&&s.top<r.bottom-1)?'se tapan':''}"""
+JS_SOLAPE = """() => {const v=document.querySelector('#vistas-btn');if(!v)return 'falta #vistas-btn';const r=v.getBoundingClientRect();if(!r.width)return 'sin tamaño';
+  const otros=[...document.querySelectorAll('.tools button,.hchips *,.lab-top-r *,.lab-top .lab-miga')].filter(e=>e!==v&&!v.contains(e)&&e.offsetParent);
+  const t=otros.find(e=>{const q=e.getBoundingClientRect();return q.width&&r.left<q.right-1&&q.left<r.right-1&&r.top<q.bottom-1&&q.top<r.bottom-1});
+  return t?'«Vistas» tapa '+(t.id||String(t.className).slice(0,30)||t.tagName):''}"""
 # la caja de Cuevi: dentro de la pantalla, «Siguiente paso» y «¿Por qué?» a la vista, y si el texto no cabe, el aviso «↓ sigue»
 JS_CUEVI = """() => {const g=document.querySelector('#mb-guia');if(!g||g.hidden)return 'guía oculta';const o=[],b=g.querySelector('.mb-boc').getBoundingClientRect();
   if(b.top<0||b.bottom>innerHeight+1)o.push('bocadillo fuera de la pantalla');
@@ -397,7 +398,7 @@ def laboratorio(nav, url, errores):
 
 # ---------------------------------------------------------------- I · impresión (las entregas se suben en PDF)
 # lo que queda a la vista al imprimir y nunca debe salir en el papel
-JS_IMP_OCULTOS = """() => ['#tp-toggle','#mb-toggle','#mb-guia','.lab-side','#fb-abrir','.lab-top'].filter(s=>{const e=document.querySelector(s);
+JS_IMP_OCULTOS = """() => ['#vistas-btn','#vistas-pan','#tp-toggle','#mb-toggle','#mb-guia','.lab-side','#fb-abrir','.lab-top'].filter(s=>{const e=document.querySelector(s);
   return e&&getComputedStyle(e).display!=='none'&&e.offsetParent!==null&&e.getBoundingClientRect().height>0})"""
 ENTREGAS = [  # (nombre, fase, botón, clase que pone el botón, debe salir, no debe salir)
     ("ficha Misión 1", "aed", "#m1-imprimir", None,
@@ -443,13 +444,13 @@ def impresiones(pg):
             if fase == "unidad":
                 ok("I", f"{nombre}: lleva la firma", pg.evaluate(
                     "[...document.querySelectorAll('#lab-v-unidad img')].some(i=>i.src.startsWith('data:image/png')&&i.offsetParent!==null&&/firma/i.test(i.closest('[class]').className+i.alt))"))
+            if fase == "inc":
+                # el fallo que vio un alumno de prueba: el PDF salía con páginas pero SIN texto (todo en visibility:hidden)
+                vis_h2 = pg.evaluate("(()=>{const e=document.querySelector('#f58-doc h2');return e?getComputedStyle(e).visibility:'sin h2'})()")
+                ok("I", f"{nombre}: el PDF lleva texto visible", len(t.strip()) > 400 and vis_h2 == "visible", f"{len(t.strip())} caracteres · h2 {vis_h2}")
             pdf = pg.pdf(path=str(CAP / f"I_{fase}.pdf"), format="A4", print_background=True)
             pags = len(re.findall(rb"/Type\s*/Page[^s]", pdf))
             ok("I", f"{nombre}: el PDF se genera", pags >= 1, f"{pags} pág.")
-            if fase == "inc":
-                # el fallo que vio un alumno de prueba: el PDF salía con páginas pero SIN texto (todo en visibility:hidden)
-                ok("I", f"{nombre}: el PDF lleva texto visible", len(t.strip()) > 400 and pg.evaluate(
-                    "(()=>{const e=document.querySelector('#f58-doc h2');return !!e&&getComputedStyle(e).visibility==='visible'})()"))
         finally:
             pg.emulate_media(media="screen")
             if clase:
@@ -614,10 +615,12 @@ def capas(nav, url, errores, estado):
                 ok("C", f"{nombre}: Cuevi explica ENCAJA / CHOCA en la Fase 02",
                    bool(etq) and all(e in guia for e in set(etq)) and "¿Por qué?" in guia, f"etiquetas {etq}")
         # el conmutador cambia de verdad y se puede volver
+        pg.click("#vistas-btn")
         pg.click("#tp-toggle")
         pg.wait_for_timeout(200)
         cambia = pg.evaluate("document.body.classList.contains('tema-premium')") != (prem == "1")
         pg.click("#tp-toggle")
+        pg.keyboard.press("Escape")
         ok("C", f"{nombre}: el conmutador premium va y vuelve", cambia and pg.evaluate("document.body.classList.contains('tema-premium')") == (prem == "1"))
         ok("C", f"{nombre}: sin errores en la consola", len(errores) == n0, errores[n0] if len(errores) > n0 else "")
         ctx.close()
@@ -653,6 +656,76 @@ def capas(nav, url, errores, estado):
             ok("C", f"{nombre}: la caja de Cuevi se lee entera", not cuevi_m, "; ".join(cuevi_m[:3]))
         ok("C", f"{nombre}: sin errores en la consola", len(errores) == n0, errores[n0] if len(errores) > n0 else "")
         ctx.close()
+
+
+
+# ---------------------------------------------------------------- V · Vistas arriba a la derecha, temas, Cuevi movible y con foco
+def vistas(nav, url, errores):
+    print("\nV · VISTAS (arriba a la derecha), TEMAS Y CUEVI MOVIBLE")
+    n0 = len(errores)
+    ctx, pg = pagina(nav, 1440, 900, errores, "vistas", estado={"mb_on": "1", "mb_plegado": "0"})
+    pg.goto(url + "/app/index.html")
+    pg.wait_for_timeout(1500)
+    ok("V", "Cuevi ilumina lo que señala (foco)", pg.evaluate("(()=>{const f=document.querySelector('.mb-foco-ov');return !!f&&!f.hidden&&f.getBoundingClientRect().width>20})()"))
+    r = pg.evaluate("(()=>{const b=document.querySelector('#vistas-btn');if(!b)return null;const q=b.getBoundingClientRect();return {der:innerWidth-q.right,top:q.top}})()")
+    ok("V", "el botón Vistas está arriba a la derecha", r is not None and r["der"] < 40 and r["top"] < 30, str(r))
+    pg.click("#vistas-btn")
+    grupos = pg.evaluate("[...document.querySelectorAll('#vistas-pan [data-slot]')].map(s=>s.dataset.slot+':'+s.querySelectorAll('button').length)")
+    ok("V", "el panel trae Modo, Diseño (premium/original) y Tema (3)", grupos == ["modo:1", "diseno:1", "tema:3"], str(grupos))
+    for th in ("tiss-dark", "tiss-clear", "cueva"):
+        pg.click(f"#vistas-pan [data-th={th}]")
+        pg.wait_for_timeout(200)
+        ok("V", f"tema {th}: se aplica", pg.evaluate("document.documentElement.dataset.theme") == th)
+    pg.click("#vistas-pan [data-th=tiss-dark]")
+    pg.keyboard.press("Escape")
+    pg.reload()
+    pg.wait_for_timeout(1200)
+    ok("V", "el tema elegido se recuerda al recargar", pg.evaluate("document.documentElement.dataset.theme") == "tiss-dark")
+    ok("V", "Más básico y Premium no andan sueltos por la pantalla (solo dentro de Vistas)",
+       pg.evaluate("['#mb-toggle','#tp-toggle'].every(s=>{const e=document.querySelector(s);return e&&e.closest('#vistas-pan')})"))
+    # Cuevi se mueve arrastrando, se recuerda y el doble clic lo devuelve a su sitio
+    antes = pg.evaluate("(()=>{const r=document.querySelector('#mb-guia').getBoundingClientRect();return [Math.round(r.left),Math.round(r.top)]})()")
+    box = pg.query_selector("#mb-guia .mb-cuevi").bounding_box()
+    pg.mouse.move(box["x"] + 20, box["y"] + 20)
+    pg.mouse.down()
+    pg.mouse.move(box["x"] + 420, box["y"] - 260, steps=8)
+    pg.mouse.up()
+    pg.wait_for_timeout(300)
+    desp = pg.evaluate("(()=>{const r=document.querySelector('#mb-guia').getBoundingClientRect();return [Math.round(r.left),Math.round(r.top)]})()")
+    ok("V", "Cuevi se mueve al arrastrarlo", abs(desp[0] - antes[0]) > 200 and abs(desp[1] - antes[1]) > 100, f"{antes} → {desp}")
+    ok("V", "Cuevi se queda dentro de la pantalla", pg.evaluate("(()=>{const r=document.querySelector('#mb-guia').getBoundingClientRect();return r.left>=0&&r.top>=0&&r.right<=innerWidth&&r.bottom<=innerHeight})()"))
+    pg.reload()
+    pg.wait_for_timeout(1200)
+    tras = pg.evaluate("(()=>{const r=document.querySelector('#mb-guia').getBoundingClientRect();return [Math.round(r.left),Math.round(r.top)]})()")
+    ok("V", "la posición de Cuevi se recuerda al recargar", abs(tras[0] - desp[0]) <= 2 and abs(tras[1] - desp[1]) <= 2, f"{desp} → {tras}")
+    # con las flechas sobre el asa
+    pg.focus("#mb-guia .mb-mover")
+    pg.keyboard.press("ArrowLeft")
+    pg.wait_for_timeout(200)
+    flecha = pg.evaluate("(()=>{const r=document.querySelector('#mb-guia').getBoundingClientRect();return Math.round(r.left)})()")
+    ok("V", "Cuevi se mueve también con las flechas (asa ⠿)", flecha < tras[0], f"{tras[0]} → {flecha}")
+    box = pg.query_selector("#mb-guia .mb-cuevi").bounding_box()
+    pg.mouse.dblclick(box["x"] + 20, box["y"] + 20)
+    pg.wait_for_timeout(300)
+    ok("V", "doble clic en Cuevi lo devuelve a su sitio", pg.evaluate("localStorage.getItem('mb_pos')") in ("", None))
+    # CSV propio en la pública: la página se recarga tras cada corrida; el CSV no puede esfumarse y dejar correr con el oro de ejemplo
+    pg.goto(url + "/app/index.html#prueba")
+    pg.evaluate("sessionStorage.clear()")
+    pg.reload()
+    pg.wait_for_timeout(800)
+    pg.set_input_files("#pi-csv", str(RAIZ / "datos" / "XAUUSD_D1_ejemplo.csv"))
+    pg.wait_for_function("/XAUUSD_D1_ejemplo/.test(document.querySelector('#pi-csv-n')?.textContent||'')", timeout=30000)
+    pg.reload()
+    pg.wait_for_timeout(1200)
+    ok("V", "CSV propio: tras recargar la página sigue cargado (no vuelve al oro de ejemplo)",
+       "XAUUSD_D1_ejemplo" in texto(pg, "#pi-csv-n"), texto(pg, "#pi-csv-n")[:80])
+    pg.evaluate("sessionStorage.removeItem('mct_csv_propio')")
+    pg.reload()
+    pg.wait_for_timeout(1200)
+    ok("V", "CSV propio perdido: se avisa y no se corre con otros datos",
+       "ya no está cargado" in texto(pg, "#pi-csv-n"), texto(pg, "#pi-csv-n")[:80])
+    ok("V", "sin errores en la consola", len(errores) == n0, errores[n0] if len(errores) > n0 else "")
+    ctx.close()
 
 
 # ---------------------------------------------------------------- D · Cueva Tester pública
@@ -749,6 +822,10 @@ def main():
             capas(nav, srv.url, errores, estado)
         except Exception as e:  # noqa: BLE001
             ok("C", "el recorrido de capas llega al final", False, f"{type(e).__name__}: {str(e)[:700]}")
+        try:
+            vistas(nav, srv.url, errores)
+        except Exception as e:  # noqa: BLE001
+            ok("V", "el recorrido de Vistas llega al final", False, f"{type(e).__name__}: {str(e)[:400]}")
         try:
             publica(nav, srv.url, errores, not rapida)
         except Exception as e:  # noqa: BLE001

@@ -117,8 +117,8 @@ def main():
         lab_css = (L / "lab.css").read_text(encoding="utf-8") if lab else ""
         lab_js = (L / "lab.js").read_text(encoding="utf-8") if lab else ""
         # módulo «TU UNIDAD» (opcional): va detrás de lab.css / lab.js; si no existe, no pasa nada
-        # fases 05-08 (opcional): detrás de «Tu unidad»; usa window.MCT_LAB_API, que exporta lab.js
-        for modulo in ("unidad", "fases58"):
+        # fases 05-08 y barra inferior de fases (opcionales): detrás de «Tu unidad»; usan window.MCT_LAB_API, que exporta lab.js
+        for modulo in ("unidad", "fases58", "dock"):
             if lab and (L / f"{modulo}.css").exists():
                 lab_css += "\n" + (L / f"{modulo}.css").read_text(encoding="utf-8")
             if lab and (L / f"{modulo}.js").exists():

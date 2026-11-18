@@ -1,0 +1,29 @@
+/* ---------- «VISTAS» (barra.js): botón fijo arriba a la derecha + panel ---------- */
+.vistas-btn{position:fixed;top:10px;right:12px;z-index:62;display:inline-flex;align-items:center;gap:.4rem;min-height:34px;padding:.3rem .8rem;border-radius:999px;
+  border:1px solid var(--line2,#3F4C53);background:var(--pan2,#1C2327);color:var(--txt,#ECE8DF);font:600 .82rem/1 var(--f-mono,ui-monospace,monospace);letter-spacing:.06em;
+  text-transform:uppercase;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.3)}
+.vistas-btn:hover,.vistas-btn.on{border-color:var(--gold,#FFD23F);color:var(--gold,#FFD23F)}
+.vistas-btn:focus-visible{outline:2px solid var(--gold,#FFD23F);outline-offset:3px}
+.vistas-btn .vb-ic{font-size:1rem;line-height:1}
+.vistas-pan{position:fixed;top:52px;right:12px;z-index:63;width:min(330px,calc(100vw - 24px));padding:.85rem .95rem .9rem;border-radius:14px;
+  background:var(--pan2,#1C2327);color:var(--txt,#ECE8DF);border:1px solid var(--line2,#3F4C53);box-shadow:0 18px 50px rgba(0,0,0,.5);display:flex;flex-direction:column;gap:.7rem}
+.vistas-pan[hidden]{display:none}
+.vp-t{margin:0;font:700 .72rem/1 var(--f-mono,ui-monospace,monospace);letter-spacing:.14em;text-transform:uppercase;color:var(--dim,#8E9AA0)}
+.vp-g{display:flex;flex-direction:column;gap:.35rem}
+.vp-l{font:600 .74rem/1 var(--f-mono,ui-monospace,monospace);letter-spacing:.08em;text-transform:uppercase;color:var(--gold,#FFD23F)}
+.vp-g small{font-size:.78rem;line-height:1.35;color:var(--dim,#8E9AA0)}
+.vp-s{display:flex;flex-wrap:wrap;gap:.4rem}
+.vp-temas{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.35rem}
+.vp-tema{padding:.5rem .3rem;border-radius:9px;border:1px solid var(--line2,#3F4C53);background:transparent;color:var(--txt,#ECE8DF);font:600 .78rem/1.1 var(--f-mono,ui-monospace,monospace);cursor:pointer}
+.vp-tema:hover{border-color:var(--gold,#FFD23F)}
+.vp-tema[aria-pressed="true"]{background:var(--gold,#FFD23F);color:var(--on-acc,#161200);border-color:var(--gold,#FFD23F)}
+.vp-tema:focus-visible{outline:2px solid var(--gold,#FFD23F);outline-offset:2px}
+/* los conmutadores de basico.js y premium.js, dentro del panel: sin posición fija */
+.vistas-pan .mb-toggle,.vistas-pan .mb-toggle.mb-en-cab{position:static!important;left:auto;bottom:auto;margin:0;width:100%;justify-content:space-between;box-shadow:none}
+.vistas-pan .tp-toggle,.vistas-pan .tp-toggle[data-tp-lugar]{position:static!important;margin:0;align-self:flex-start}
+/* hueco para el botón: la cabecera de cada pantalla no queda debajo */
+body.vistas-on.vistas-on .top{padding-right:7.2rem}
+body.vistas-on.vistas-on .lab-top{padding-right:7.2rem}
+@media (max-width:700px){.vistas-btn{top:8px;right:8px;padding:.3rem .6rem}.vistas-btn .vb-t{display:none}.vistas-pan{top:48px;right:8px}
+  body.vistas-on.vistas-on .top,body.vistas-on.vistas-on .lab-top{padding-right:3.4rem}}
+@media print{.vistas-btn,.vistas-pan{display:none!important}}

@@ -1001,7 +1001,9 @@ function datosNoCuadran(spec){const d=datosCargados();if(!d)return null;const s=
   const quiero=(spec.activo&&spec.activo.simbolo||'?')+' · '+(TFN[tf]||tf);
   const m=libPara(s,tf),sug=m?' o pulsa «'+libEtiq(m)+'» en la librería de datos':'';
   return 'Tu regla es de '+quiero+', pero los datos cargados son '+d.txt+'. No la corro para no darte números de otro activo. Sube tu CSV de '+(spec.activo&&spec.activo.simbolo||'tu activo')+sug}
-async function correrPI(){const btn=$('#pi-correr');if(btn.disabled||corriendo)return;corriendo=true;btn.disabled=true;
+async function correrPI(){const btn=$('#pi-correr');if(btn.disabled||corriendo)return;
+  if(csvPerdido()){toast('Tu CSV ya no está cargado (la página se recargó). Súbelo otra vez: no corro con otros datos.');const x=$('#pi-csv-n');if(x)x.scrollIntoView({block:'center'});return}
+  corriendo=true;btn.disabled=true;
   {const nc=datosNoCuadran(specLimpio());if(nc){corriendo=false;btn.disabled=false;toast('Los datos no son de tu activo');mostrarResPI(null,new Error(nc));return}}
   $('#pi-etapas').innerHTML=ETAPAS.map(e=>`<span>${e}</span>`).join('');pintarEtapa('Preparando…',2);
   const M=window.MCT_MOTOR,f=motorFn();
@@ -1081,10 +1083,16 @@ async function cargarNAS(soloDatos){const b=$('#pi-nas');if(!NAS||typeof CSV_NAS
 function leerCSV(file,listo){const r=new FileReader();r.onload=()=>{const txt=String(r.result||'');
     const F=fechasCSV(txt);
     if(F.length<300){toast(F.length?'Ese CSV tiene '+F.length+' velas con fecha legible; el motor pide al menos 300.':'No leo las fechas de ese CSV. Formatos válidos: 2024-03-15, 2024.03.15 o 15/03/2024 (con o sin hora). NO se ha cargado: sigues con los datos anteriores.');return}
-    CSV={nombre:file.name,texto:txt,n:F.length};csvFechas=F;SPEC.datos.fuente='csv_propio';SPEC.datos.desde=F[0];SPEC.datos.hasta=F[F.length-1];
+    CSV={nombre:file.name,texto:txt,n:F.length};csvFechas=F;SPEC.datos.fuente='csv_propio';try{sessionStorage.setItem('mct_csv_propio',JSON.stringify({nombre:file.name,texto:txt}))}catch(e){}SPEC.datos.desde=F[0];SPEC.datos.hasta=F[F.length-1];
     $('#pi-csv-n').innerHTML='<b class="c-ink">'+esc(file.name)+'</b> · '+nf(F.length,0)+' velas · '+fd(F[0])+' → '+fd(F[F.length-1]);$('#pi-csv-x').hidden=false;rellenarForm();toast('CSV cargado: '+nf(F.length,0)+' velas');if(listo)listo()};
   r.onerror=()=>toast('No se pudo leer el fichero');r.readAsText(file)}
-function quitarCSV(){CSV=null;csvFechas=null;SPEC.datos=clone(DEMO_SPEC.datos);$('#pi-csv-n').textContent='Datos de ejemplo del oro (XAUUSD D1)';$('#pi-csv-x').hidden=true;rellenarForm()}
+/* tras cada corrida la página se recarga: el CSV propio se guarda en la pestaña para no perderlo. Si no se puede recuperar, se avisa y NO se corre con el oro de ejemplo en su lugar */
+function restaurarCSVPropio(){if(CSV||SPEC.datos.fuente!=='csv_propio'||(NAS&&SPEC.nombre===NAS.nombre))return;
+  try{const g=JSON.parse(sessionStorage.getItem('mct_csv_propio')||'null');if(g&&g.texto){const F=fechasCSV(g.texto);if(F.length>=300){CSV={nombre:g.nombre,texto:g.texto,n:F.length};csvFechas=F;
+    $('#pi-csv-n').innerHTML='<b class="c-ink">'+esc(g.nombre)+'</b> · '+nf(F.length,0)+' velas · '+fd(F[0])+' → '+fd(F[F.length-1]);$('#pi-csv-x').hidden=false;return}}}catch(e){}
+  $('#pi-csv-n').innerHTML='<b class="c-red">Tu CSV ya no está cargado</b> (la página se recargó): súbelo otra vez para correr con tus datos.'}
+const csvPerdido=()=>!CSV&&SPEC.datos.fuente==='csv_propio'&&!(NAS&&SPEC.nombre===NAS.nombre);
+function quitarCSV(){try{sessionStorage.removeItem('mct_csv_propio')}catch(e){}CSV=null;csvFechas=null;SPEC.datos=clone(DEMO_SPEC.datos);$('#pi-csv-n').textContent='Datos de ejemplo del oro (XAUUSD D1)';$('#pi-csv-x').hidden=true;rellenarForm()}
 function initPI(){try{const g=store.get('mct_spec2');if(g){const o=JSON.parse(g);if(o&&o.version===1&&o.reglas)SPEC=o}}catch(e){}
   if(SPEC.sizing.tipo==='lotes_fijos')SPEC.sizing={tipo:'pct_capital',valor:100};normSpec();if(!['apertura_siguiente','cierre_misma_vela'].includes(SPEC.ejecucion.momento))SPEC.ejecucion.momento='apertura_siguiente';
   const f=$('#pi-form');['input','change'].forEach(t=>f.addEventListener(t,e=>{const x=e.target;if(x.closest('.bloque'))onBloque(e);else if(x.closest('.nivel-f'))onNivel(e);else if(x.closest('.paso-h'))onPaso(e);else if(x.closest('#f-stop-nv'))onStopNv(e);
@@ -1114,7 +1122,7 @@ function initPI(){try{const g=store.get('mct_spec2');if(g){const o=JSON.parse(g)
     if(!confirm('La regla del formulario NO es la que pegaste'+(PEGADO&&PEGADO.previo!=null?' (es la anterior, «'+(PEGADO.previo||'sin nombre')+'»)':'')+'. ¿Correr igualmente la regla que hay ahora en los bloques?'))return;
     PEGADO=null;actualizarPI();toast('Vale: se correrá la regla que ves en los bloques')});
   $('#pi-csv-ayuda').onclick=()=>openDlg('csv-dlg');
-  rellenarForm();if(NAS&&SPEC.nombre===NAS.nombre&&SPEC.datos.fuente==='csv_propio'&&!CSV)cargarNAS(true);
+  rellenarForm();restaurarCSVPropio();if(NAS&&SPEC.nombre===NAS.nombre&&SPEC.datos.fuente==='csv_propio'&&!CSV)cargarNAS(true);
   else if(!CSV&&SPEC.datos.fuente==='darwinex_mt5'){   /* volvió una spec guardada que ya usaba un juego de la librería */
     const e=LIB.find(x=>x.gz&&x.tf===SPEC.temporalidad&&simNorm(x.sim)===simNorm(SPEC.activo.simbolo)&&SPEC.datos.desde===x.desde);
     if(e)usarLib(e.id,true)}}
@@ -1881,8 +1889,9 @@ function openDlg(id){const o=$('#'+id);o.classList.add('on');o._ret=document.act
 function closeDlg(){$$('.ovl.on').forEach(o=>{o.classList.remove('on');o._ret&&o._ret.focus&&o._ret.focus()})}
 
 /* ---------- diseño (oscuro / blanco / venta) y letra ---------- */
-const TEMAS=['cueva','oscuro','blanco'];
-function temaActual(){const t=store.get('theme');return TEMAS.includes(t)?t:(t==='claro'?'blanco':t==='neon'||t==='sobrio'?'oscuro':'cueva')}
+const TEMAS=['cueva','tiss-dark','tiss-clear'];
+/* «oscuro» y «blanco» (los de antes) pasan a ser los temas de marca TISS dark y TISS clear */
+function temaActual(){const t=store.get('theme');return TEMAS.includes(t)?t:(t==='oscuro'||t==='neon'||t==='sobrio'?'tiss-dark':t==='blanco'||t==='claro'?'tiss-clear':'cueva')}
 /* curvas de nivel de la cueva (fondo del diseño CUEVA), como en la versión topografía */
 function contornos(){const st=getComputedStyle(document.documentElement).getPropertyValue('--line').trim()||'#2B353A';let s='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600">';
   for(let k=0;k<11;k++){const r=60+k*34;let d='';for(let a=0;a<=64;a++){const t=a/64*Math.PI*2,w=1+.18*Math.sin(3*t+k*.5)+.1*Math.sin(5*t-k*.3)+.05*Math.sin(9*t+k);
@@ -1941,9 +1950,12 @@ function colPersona(L,P){return{H:L.hair,S:L.piel,E:'#1A1410',M:'#8E4436',C:L.sh
 function pintaSprite(px,rows,col,x0,y0,maxRow,out){const n=Math.min(rows.length,maxRow==null?99:maxRow);const on=(r,c)=>r>=0&&r<n&&c>=0&&c<14&&rows[r][c]!=='.';
   if(out)for(let r=-1;r<=n;r++)for(let c=-1;c<=14;c++){if(on(r,c))continue;if(on(r-1,c)||on(r+1,c)||on(r,c-1)||on(r,c+1))px(x0+c,y0+r,1,1,out)}
   for(let r=0;r<n;r++)for(let c=0;c<14;c++){const k=rows[r][c];if(k!=='.')px(x0+c,y0+r,1,1,col[k]||'#f0f')}}
+window.MCT_TEMA=th=>{store.set('theme',th);applySettings()};
 function palOficina(){const th=document.documentElement.dataset.theme;const P=({
   cueva:{wall:'#13181B',wall2:'#192024',roca:'#222A2E',floorA:'#1B2124',floorB:'#171C1F',desk:'#463828',deskTop:'#68523E',deskSh:'#2F261C',chair:'#2B353A',mon:'#0A0D0F',monOff:'#1C2428',tape:'#FFD23F',tape2:'#121212',line:'#46545B',out:'#06080A',paper:'#ECE8DF',cork:'#5A4632',sombra:'rgba(0,0,0,.35)'},
   oscuro:{wall:'#0A1A2E',wall2:'#0D213A',roca:'#11294A',floorA:'#0B1D33',floorB:'#09182B',desk:'#33445A',deskTop:'#4E6480',deskSh:'#223044',chair:'#1A3352',mon:'#040B16',monOff:'#12263E',tape:'#3FD6FF',tape2:'#062033',line:'#2C506F',out:'#02060C',paper:'#E4F1FB',cork:'#2A4058',sombra:'rgba(0,0,0,.35)'},
+  'tiss-dark':{wall:'#0B1410',wall2:'#0F1A15',roca:'#15221C',floorA:'#0E1813',floorB:'#0B140F',desk:'#3A3226',deskTop:'#5A4D39',deskSh:'#241F18',chair:'#1E2B24',mon:'#050907',monOff:'#13201A',tape:'#2FD592',tape2:'#0B1410',line:'#34463C',out:'#030604',paper:'#ECE5D4',cork:'#4A3F2E',sombra:'rgba(0,0,0,.35)'},
+  'tiss-clear':{wall:'#E9E2D1',wall2:'#E1D9C6',roca:'#D6CDB8',floorA:'#F3EEE2',floorB:'#ECE5D5',desk:'#B49A78',deskTop:'#D0B892',deskSh:'#8C7457',chair:'#9AA79E',mon:'#1A2720',monOff:'#3A4A41',tape:'#0B6B46',tape2:'#C9BFA9',line:'#BDB4A0',out:'#3A443D',paper:'#FFFDF8',cork:'#C9B38E',sombra:'rgba(40,44,28,.12)'},
   blanco:{wall:'#E6E9EE',wall2:'#DCE0E7',roca:'#CDD3DC',floorA:'#F4F5F8',floorB:'#ECEEF2',desk:'#B49A78',deskTop:'#D0B892',deskSh:'#8C7457',chair:'#98A3B3',mon:'#1B2430',monOff:'#3A4656',tape:'#C5CBD4',tape2:'#AEB5C0',line:'#B9C0CB',out:'#3A4250',paper:'#FFFFFF',cork:'#C9B38E',sombra:'rgba(30,40,60,.12)'}})[th]||{};
   P.th=th;P.acc=css('--cy');P.ok=css('--ok');P.red=css('--red');P.dim=css('--dim2');return P}
 function estadoMesa(ms){const W=2600,M=900,ciclo=M+PASOS.length*(W+M);let r=ms%ciclo;if(r<M)return{paso:-1,mov:{de:'in',a:0,p:r/M}};
@@ -2385,7 +2397,8 @@ function iaPintar(out,res,extra){const r=res.r,sup=[...(r.supuestos||[]).map(Str
   const L=$('#pi-ia-sup',out);if(L)L.addEventListener('change',e=>{const li=e.target.closest('li');if(li)li.classList.toggle('ok',e.target.checked);
     if($$('input',L).every(x=>x.checked))toast('Supuestos confirmados')})}
 async function iaProbar(base,ms){try{const ac=new AbortController(),t=setTimeout(()=>ac.abort(),ms);const r=await fetch(base+'/estado',{signal:ac.signal});clearTimeout(t);if(r.ok){const j=await r.json();if(j&&j.ok)return Object.assign(j,{url:base})}}catch(e){}return null}
-async function iaDetectarLocal(){iaLocal=await iaProbar(IA_LOCAL,900);if(!iaLocal&&IA_REMOTA)iaLocal=await iaProbar(IA_REMOTA,4000);return iaLocal}
+/* el servidor de IA LOCAL (127.0.0.1:8787) es de desarrollo: solo se busca si se activa a mano (localStorage mct_ia_local=1); así no hay errores en la consola del alumno */
+async function iaDetectarLocal(){iaLocal=store.get('ia_local')==='1'||(()=>{try{return localStorage.getItem('mct_ia_local')==='1'}catch(e){return false}})()?await iaProbar(IA_LOCAL,900):null;if(!iaLocal&&IA_REMOTA)iaLocal=await iaProbar(IA_REMOTA,4000);return iaLocal}
 function initIA(){const k=$('#pi-ia-k'),est=$('#pi-ia-k-est'),btn=$('#pi-ia'),ta=$('#pi-idea-t'),out=$('#pi-idea-out');let ocupado=false;
   const pinta=()=>{const v=iaClave.get();est.textContent=v?'Clave guardada.':(iaLocal?(iaLocal.url===IA_LOCAL?'IA local conectada ('+(iaLocal.motor==='claude'?'Claude Code':'DeepSeek')+')':'IA de la Mega Cueva conectada (Gemini)')+': no hace falta clave.':'');$('#pi-ia-borrar').hidden=!v};
   window.MCT_IA_PINTA=pinta;iaDetectarLocal().then(pinta);

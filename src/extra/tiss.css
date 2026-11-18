@@ -1,0 +1,301 @@
+/* =====================================================================
+   TEMAS DE MARCA TISS · Cueva Tester y Laboratorio Reto Cueva (capa opcional, src/extra)
+   Dos temas nuevos junto a cueva / oscuro / blanco, con los mismos tokens:
+     tiss-dark  → negro verdoso, texto marfil, un solo acento vivo esmeralda, detalles champán
+     tiss-clear → marfil cálido, texto verde-negro, esmeralda profundo, detalles champán bronce
+   Se activan con <html data-theme="tiss-dark"> o data-theme="tiss-clear".
+   Reparto de papeles: --cy = esmeralda (acción, selección, foco) · --gold = champán (antetítulos,
+   números, filetes, detalles). Funciona en «Original» y debajo de «Premium» (body.tema-premium):
+   las reglas premium que pintan negro u oro a mano se reescriben aquí para estos dos temas.
+   Sin peticiones de red: los títulos usan serif de sistema (Bodoni/Didot si existen; si no, Palatino o Georgia).
+   ===================================================================== */
+
+/* serif de títulos sin red: un alias a la Didone instalada (Bodoni/Didot); si no hay ninguna, sigue la pila (Palatino, Georgia).
+   El alias fija el corte Bold aunque la app pida 800, para no caer en el «Black» de póster. */
+@font-face{font-family:"TISS Display";font-style:normal;font-weight:100 900;
+  src:local("Bodoni MT Bold"),local("BodoniMT-Bold"),local("Bodoni 72 Bold"),local("BodoniSvtyTwoITCTT-Bold"),local("Didot Bold"),local("Didot-Bold")}
+
+/* ---------- TOKENS · TISS DARK ---------- */
+:root[data-theme="tiss-dark"],
+html[data-theme="tiss-dark"] body.tema-premium{
+  --rad:6px;
+  --bg:#060A08; --bg2:#09110D; --pan:#0D1612; --pan2:#121D18;
+  --line:rgba(222,204,166,.12); --line2:rgba(222,204,166,.30);
+  --cy:#2FD592; --cy2:#A4EFCB; --cy-rgb:47,213,146;
+  --gold:#D9C49A; --gold2:#EEE0C0; --gold-rgb:217,196,154;
+  --red:#FF7B6E; --red2:#FFB8B0; --red-rgb:255,123,110;
+  --ok:#49C978; --ok2:#A2E9BB; --ok-rgb:73,201,120; --on-acc:#04120B;
+  --warn:#EBB45E; --warn-rgb:235,180,94;
+  --f1:#A5B1A8; --f2:#A5B1A8; --f3:#A5B1A8; --f4:#A5B1A8; --f5:#A5B1A8; --fmt:#A5B1A8;
+  --txt:#ECE5D4; --dim:#BDB6A4; --dim2:#A39C8A; --ink:#FBF6EA;
+  --glow:none; --glowg:none; --tglow:none; --tglowg:none; --cglow:0;
+  --gridln:transparent;
+  --f-disp:"TISS Display","Cormorant Garamond","Playfair Display","Palatino Linotype","Book Antiqua",Palatino,Georgia,serif;
+  --f-head:"Palatino Linotype","Book Antiqua",Palatino,"Iowan Old Style",Georgia,serif;
+  --up-head:none;
+  --tiss-filete:linear-gradient(90deg,transparent,rgba(217,196,154,.55) 18%,#2FD592 44%,#2FD592 56%,rgba(217,196,154,.55) 82%,transparent);
+  --tp-hi:rgba(236,229,212,.035); --tp-glow:rgba(47,213,146,.14);
+  --tp-sombra:0 1px 0 rgba(236,229,212,.05) inset,0 1px 2px rgba(0,0,0,.5),0 22px 44px -26px rgba(0,0,0,.95);
+  --tp-sombra-alta:0 1px 0 rgba(236,229,212,.07) inset,0 2px 6px rgba(0,0,0,.45),0 34px 60px -30px rgba(0,0,0,.95),0 0 0 1px rgba(217,196,154,.10);
+}
+
+/* ---------- TOKENS · TISS CLEAR ---------- */
+:root[data-theme="tiss-clear"],
+html[data-theme="tiss-clear"] body.tema-premium{
+  --rad:6px;
+  --bg:#F3EEE2; --bg2:#ECE5D5; --pan:#FBF8F1; --pan2:#F7F2E8;
+  --line:rgba(22,38,30,.12); --line2:rgba(22,38,30,.30);
+  --cy:#0B6B46; --cy2:#07523A; --cy-rgb:11,107,70;
+  --gold:#7A5D25; --gold2:#5E4719; --gold-rgb:122,93,37;
+  --red:#B42A20; --red2:#8E1F17; --red-rgb:180,42,32;
+  --ok:#17773F; --ok2:#0F5A2F; --ok-rgb:23,119,63; --on-acc:#FFFDF6;
+  --warn:#94590A; --warn-rgb:148,89,10;
+  --f1:#4E5C54; --f2:#4E5C54; --f3:#4E5C54; --f4:#4E5C54; --f5:#4E5C54; --fmt:#4E5C54;
+  --txt:#1A2720; --dim:#48544D; --dim2:#58625C; --ink:#0B1610;
+  --glow:none; --glowg:none; --tglow:none; --tglowg:none; --cglow:0;
+  --gridln:transparent;
+  --f-disp:"TISS Display","Cormorant Garamond","Playfair Display","Palatino Linotype","Book Antiqua",Palatino,Georgia,serif;
+  --f-head:"Palatino Linotype","Book Antiqua",Palatino,"Iowan Old Style",Georgia,serif;
+  --up-head:none;
+  --tiss-filete:linear-gradient(90deg,transparent,rgba(122,93,37,.45) 18%,#0B6B46 44%,#0B6B46 56%,rgba(122,93,37,.45) 82%,transparent);
+  --tp-hi:rgba(255,255,255,.55); --tp-glow:rgba(11,107,70,.10);
+  --tp-sombra:0 1px 2px rgba(30,36,24,.06),0 18px 36px -24px rgba(40,44,28,.28);
+  --tp-sombra-alta:0 2px 6px rgba(30,36,24,.08),0 30px 50px -28px rgba(40,44,28,.38),0 0 0 1px rgba(122,93,37,.10);
+}
+
+/* =====================================================================
+   COMPONENTES · los dos temas (modo «Original» y base de «Premium»)
+   ===================================================================== */
+:root[data-theme^="tiss-"] body{color-scheme:dark}
+:root[data-theme="tiss-clear"] body{color-scheme:light}
+:root[data-theme^="tiss-"] :focus-visible{outline-color:var(--cy)}
+
+/* fondo: un resplandor esmeralda arriba a la izquierda (la «luz» de la marca) y un velo champán abajo */
+:root[data-theme="tiss-dark"] body{background-color:var(--bg);
+  background-image:radial-gradient(900px 560px at 8% -12%,rgba(47,213,146,.085),transparent 62%),
+    radial-gradient(1100px 640px at 105% 115%,rgba(217,196,154,.045),transparent 60%)}
+:root[data-theme="tiss-clear"] body{background-color:var(--bg);
+  background-image:radial-gradient(900px 560px at 8% -12%,rgba(11,107,70,.06),transparent 62%),
+    radial-gradient(1100px 640px at 105% 115%,rgba(122,93,37,.06),transparent 60%)}
+:root[data-theme^="tiss-"] body.lab{background-image:none}
+
+/* paneles: sin las esquinas de mira; filete fino */
+:root[data-theme^="tiss-"] .panel::before,:root[data-theme^="tiss-"] .panel::after{display:none}
+:root[data-theme="tiss-clear"] .panel{box-shadow:0 1px 2px rgba(30,36,24,.05),0 6px 18px -10px rgba(40,44,28,.16)}
+
+/* marca: serif + el filete champán con su punto esmeralda (la línea de la portada TISS) */
+:root[data-theme^="tiss-"] .brand b,:root[data-theme^="tiss-"] .lab-brand b{font-family:var(--f-disp);font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink)}
+:root[data-theme^="tiss-"] .rail .brand b{font-size:1.28rem;letter-spacing:.05em}
+:root[data-theme^="tiss-"] .brand b i,:root[data-theme^="tiss-"] .lab-brand b i{color:var(--gold)}
+:root[data-theme^="tiss-"] .brand::after{content:"";display:block;height:1px;margin-top:.55rem;background:var(--tiss-filete)}
+:root[data-theme="tiss-dark"] .brand::after{box-shadow:0 0 10px rgba(47,213,146,.35)}
+:root[data-theme^="tiss-"] .lab-brand{border-bottom:0;background:var(--tiss-filete) left bottom/100% 1px no-repeat}
+
+/* títulos: serif de lujo, sin mayúsculas forzadas */
+:root[data-theme^="tiss-"] :is(.vh h2,.mhead h1,.fhero h1,.agdet h2,.lab-cab h1,.landing-h1,.m1p-hero h1,.bx-hero h1,.glo-cab h2,.mb-tit,.mb-card-h h2){
+  font-family:var(--f-disp);font-weight:700;letter-spacing:.005em}
+:root[data-theme^="tiss-"] :is(.vh h2,.mhead h1,.agdet h2){color:var(--ink)}
+:root[data-theme^="tiss-"] .mhead h1 span{color:var(--cy)}
+:root[data-theme^="tiss-"] .ph h3{letter-spacing:.06em;text-transform:none;font-weight:700}
+:root[data-theme^="tiss-"] .ph h3 em{color:var(--gold)}
+:root[data-theme^="tiss-"] .big{font-family:var(--f-disp);font-weight:700;letter-spacing:0}
+
+/* menú lateral */
+:root[data-theme^="tiss-"] .tabs::before{border-left:1px solid var(--line2);opacity:1}
+:root[data-theme^="tiss-"] .tab[aria-selected="true"]{background:linear-gradient(90deg,rgba(var(--cy-rgb),.13),rgba(var(--cy-rgb),.02));border-color:rgba(var(--cy-rgb),.38)}
+:root[data-theme^="tiss-"] .tab[aria-selected="true"] .tn{background:var(--cy);border-color:var(--cy);color:var(--on-acc)}
+
+/* botones: secundarios sobrios; el principal, esmeralda */
+:root[data-theme^="tiss-"] .btn{background:transparent;color:var(--txt);border-color:var(--line2)}
+:root[data-theme^="tiss-"] .btn:hover{background:rgba(var(--cy-rgb),.08);border-color:rgba(var(--cy-rgb),.6);color:var(--ink)}
+:root[data-theme^="tiss-"] .btn.gold{background:var(--cy);color:var(--on-acc);border-color:var(--cy)}
+:root[data-theme="tiss-dark"] .btn.gold:hover{background:#5BE3AB;border-color:#5BE3AB;color:var(--on-acc)}
+:root[data-theme="tiss-clear"] .btn.gold:hover{background:#085A3B;border-color:#085A3B;color:var(--on-acc)}
+:root[data-theme^="tiss-"] .btn[aria-pressed="true"],:root[data-theme^="tiss-"] .seg button[aria-pressed="true"]{background:var(--cy);color:var(--on-acc)}
+:root[data-theme^="tiss-"] .hoychip{border-color:rgba(var(--gold-rgb),.45)}
+:root[data-theme^="tiss-"] .dot{background:var(--cy)}
+
+/* sellos y fichas de fase */
+:root[data-theme^="tiss-"] .sello{font-family:var(--f-disp);font-weight:700;letter-spacing:.08em;border-width:2px;border-radius:2px;transform:none;
+  box-shadow:0 0 0 1px currentColor inset;padding:.25rem .8rem}
+:root[data-theme^="tiss-"] .sello.xl{border-width:2px}
+:root[data-theme^="tiss-"] .fase .ph h3 .fcod,:root[data-theme^="tiss-"] .pfb .c{color:var(--bg)}
+:root[data-theme^="tiss-"] .est b{font-family:var(--f-disp);font-weight:700}
+
+/* laboratorio: fase activa en esmeralda, hecha en verde, abierta en champán */
+:root[data-theme^="tiss-"] .lab-fase:hover{background:rgba(var(--gold-rgb),.06)}
+:root[data-theme^="tiss-"] .lab-fase.on{background:rgba(var(--cy-rgb),.11)}
+:root[data-theme^="tiss-"] .lab-fase.on .lab-n{background:var(--cy);border-color:var(--cy);color:var(--on-acc)}
+:root[data-theme^="tiss-"] .lab-fase.on .lab-t b{color:var(--ink)}
+:root[data-theme^="tiss-"] .lab-fase.hecha .lab-n{color:var(--on-acc)}
+:root[data-theme="tiss-dark"] .lab-fase.hecha .lab-n{color:#04120B}
+:root[data-theme^="tiss-"] :is(.m2-paso.on span,.m3-gn,.lab-mis){background:var(--cy);border-color:var(--cy);color:var(--on-acc)}
+:root[data-theme^="tiss-"] .m2-cs.ok{color:var(--on-acc)}
+:root[data-theme="tiss-clear"] .m2-cs.bad{color:#fff}
+:root[data-theme^="tiss-"] .lab-cab .num{color:var(--gold)}
+:root[data-theme^="tiss-"] .lab-main{background-image:none}
+
+/* glosario y guía de Cuevi: lo «pulsado» y el paso siguiente, esmeralda */
+:root[data-theme^="tiss-"] .glo-chip[aria-pressed="true"]{background:var(--cy);border-color:var(--cy);color:var(--on-acc)}
+:root[data-theme^="tiss-"] .glo-btn:hover,:root[data-theme^="tiss-"] .glo-btn:focus-visible,:root[data-theme^="tiss-"] .glo-btn[aria-expanded="true"]{border-color:var(--cy);color:var(--cy)}
+:root[data-theme^="tiss-"] :is(.mb-sig,.mb-toggle[aria-pressed="true"]){background:var(--cy);border-color:var(--cy);color:var(--on-acc)}
+:root[data-theme^="tiss-"] .mb-boc::before{border-right-color:var(--gold)}
+
+/* tema claro: lo que la base pinta oscuro a mano */
+:root[data-theme="tiss-clear"] .form input[type=date]{color-scheme:light}
+:root[data-theme="tiss-clear"] :is(.form input,.form select,#pi-idea-t,.ia-clave input){background:#FFFDF8}
+:root[data-theme="tiss-clear"] .idea-out{background:#FBF8F1}
+:root[data-theme="tiss-clear"] :is(.nd rect,.el rect){fill:#FFFDF8}
+:root[data-theme="tiss-clear"] #pi-form .fs{background:linear-gradient(hsl(var(--h) 45% 45% / .055),hsl(var(--h) 45% 45% / .055)),var(--pan);border-color:hsl(var(--h) 30% 40% / .26)}
+:root[data-theme="tiss-clear"] .fsn{background:hsl(var(--h) 40% 34%);color:#fff}
+:root[data-theme="tiss-clear"] .ovl{background:rgba(22,30,24,.38)}
+:root[data-theme="tiss-clear"] .glo-dlg::backdrop{background:rgba(22,30,24,.42)}
+:root[data-theme="tiss-clear"] :is(.tt,#tip){box-shadow:0 3px 12px rgba(40,44,28,.18)}
+:root[data-theme="tiss-clear"] .chip.ok{color:var(--ok2)}
+:root[data-theme="tiss-clear"] .chip.ko{color:var(--red2)}
+:root[data-theme="tiss-clear"] .un-fan .hov rect:hover{fill:rgba(22,38,30,.05)}
+:root[data-theme="tiss-clear"] .un-n,:root[data-theme="tiss-clear"] .un-ch li.mal .un-sev,:root[data-theme="tiss-clear"] .un-sev{color:#fff}
+/* semáforos y marcas rellenas: la base escribe tinta negra sobre el color; en claro el color es oscuro, así que va marfil */
+:root[data-theme="tiss-clear"] :is(.sem.clara,.sem.insinua,.sem.bad,.m1q-i,.m1q-l li.aviso .m1q-i,.m1q-l li.falla .m1q-i,.m1t-ver.ok,.m1t-ver.bad,.m1t-ver.gold,.m2-cs.ok,.m2-cs.bad){color:var(--on-acc)}
+:root[data-theme="tiss-dark"] .un-n,:root[data-theme="tiss-dark"] .un-ch li.mal .un-sev{color:#1A0604}
+
+/* =====================================================================
+   PREMIUM encima de TISS: reescribe lo que premium.css pinta con negro cálido y oro a mano
+   ===================================================================== */
+@media screen{
+/* fondo */
+html[data-theme="tiss-dark"] body.tema-premium{background-color:var(--bg);
+  background-image:radial-gradient(1000px 620px at 6% -14%,rgba(47,213,146,.11),transparent 62%),
+    radial-gradient(1100px 680px at 104% 112%,rgba(217,196,154,.06),transparent 60%);
+  background-repeat:no-repeat;background-size:auto;background-attachment:fixed}
+html[data-theme="tiss-clear"] body.tema-premium{background-color:var(--bg);
+  background-image:radial-gradient(1000px 620px at 6% -14%,rgba(11,107,70,.07),transparent 62%),
+    radial-gradient(1100px 680px at 104% 112%,rgba(122,93,37,.07),transparent 60%);
+  background-repeat:no-repeat;background-size:auto;background-attachment:fixed}
+html[data-theme^="tiss-"] body.tema-premium.lab{background-image:none}
+html[data-theme="tiss-dark"] body.tema-premium .lab-main{background-image:radial-gradient(900px 520px at 100% 0%,rgba(47,213,146,.06),transparent 62%);background-attachment:local}
+html[data-theme="tiss-clear"] body.tema-premium .lab-main{background-image:radial-gradient(900px 520px at 100% 0%,rgba(11,107,70,.05),transparent 62%);background-attachment:local}
+html[data-theme="tiss-clear"] body.tema-premium::after{mix-blend-mode:multiply;opacity:.035}
+html[data-theme^="tiss-"] body.tema-premium ::selection{background:rgba(var(--cy-rgb),.30);color:var(--ink)}
+html[data-theme^="tiss-"] body.tema-premium *{scrollbar-color:rgba(var(--gold-rgb),.35) transparent}
+
+/* títulos grandes: marfil→champán en oscuro, tinta sólida en claro; el acento del título, esmeralda */
+html[data-theme="tiss-dark"] body.tema-premium :is(.m1p-hero h1,.lab-cab h1,.landing-h1,.bx-hero h1,.fhero h1,.mhead h1,.un-head h2){
+  background:linear-gradient(180deg,#FFFBF0 25%,#DCCBA6);-webkit-background-clip:text;background-clip:text;color:transparent}
+html[data-theme="tiss-dark"] body.tema-premium :is(.m1p-hero h1,.lab-cab h1,.landing-h1,.bx-hero h1,.fhero h1,.mhead h1) span{
+  background:linear-gradient(180deg,#7CEBBF,#2FD592);-webkit-background-clip:text;background-clip:text;color:transparent}
+html[data-theme="tiss-clear"] body.tema-premium :is(.m1p-hero h1,.lab-cab h1,.landing-h1,.bx-hero h1,.fhero h1,.mhead h1,.un-head h2){
+  background:none;color:var(--ink);-webkit-text-fill-color:currentColor}
+html[data-theme="tiss-clear"] body.tema-premium :is(.m1p-hero h1,.lab-cab h1,.landing-h1,.bx-hero h1,.fhero h1,.mhead h1) span{
+  background:none;color:var(--cy);-webkit-text-fill-color:currentColor}
+html[data-theme^="tiss-"] body.tema-premium :is(.m1p-hero h1,.lab-cab h1,.landing-h1,.bx-hero h1){font-weight:700;letter-spacing:.005em}
+html[data-theme^="tiss-"] body.tema-premium :is(.m1p-hero .m1p-eyebrow,.lab-cab .num)::before{background:var(--tiss-filete);width:2.4rem}
+
+/* tarjetas */
+html[data-theme^="tiss-"] body.tema-premium :is(.panel,.m1p-fig,.m1t-part,.m1t-ficha,.m1p-ficha,.hip-hoja,.hip-guia,.lab-bloq,.m2-ps,.m2-obj,.m2-ayuda,.m2-sesgos){
+  background-color:color-mix(in srgb,var(--pan) 95%,transparent)}
+html[data-theme^="tiss-"] body.tema-premium .m1p-veredicto{border-color:rgba(var(--gold-rgb),.5);
+  background:radial-gradient(120% 140% at 0% 0%,rgba(var(--cy-rgb),.10),transparent 55%),linear-gradient(180deg,var(--tp-hi),transparent 120px),var(--pan2);
+  box-shadow:var(--tp-sombra-alta)}
+html[data-theme^="tiss-"] body.tema-premium .m1p-ind{background:linear-gradient(90deg,rgba(var(--gold-rgb),.10),rgba(var(--gold-rgb),.02))}
+html[data-theme^="tiss-"] body.tema-premium .bx-n{border-color:rgba(var(--gold-rgb),.55);color:var(--gold)}
+
+/* botones */
+html[data-theme^="tiss-"] body.tema-premium .btn{background-color:transparent;color:var(--txt)}
+html[data-theme^="tiss-"] body.tema-premium .btn:hover:not(:disabled){border-color:rgba(var(--cy-rgb),.65);color:var(--ink)}
+html[data-theme="tiss-dark"] body.tema-premium .btn:hover:not(:disabled){box-shadow:0 10px 22px -14px rgba(0,0,0,.95)}
+html[data-theme="tiss-clear"] body.tema-premium .btn:hover:not(:disabled){box-shadow:0 10px 22px -14px rgba(40,44,28,.45)}
+html[data-theme="tiss-dark"] body.tema-premium .btn.gold{color:#03130B;border-color:#45DDA0;
+  background:linear-gradient(180deg,#5FE6AE 0%,#2FD592 55%,#22B97C 100%);
+  box-shadow:0 1px 0 rgba(255,255,255,.35) inset,0 -1px 0 rgba(0,0,0,.18) inset,0 10px 26px -12px rgba(47,213,146,.55)}
+html[data-theme="tiss-dark"] body.tema-premium .btn.gold:hover:not(:disabled){background:linear-gradient(180deg,#7AECBE 0%,#40DC9D 55%,#2AC487 100%);color:#021009;
+  box-shadow:0 1px 0 rgba(255,255,255,.4) inset,0 14px 32px -12px rgba(47,213,146,.7)}
+html[data-theme="tiss-dark"] body.tema-premium .btn.gold:disabled{background:#24463A;color:#D4E8DD;border-color:#24463A;opacity:1;box-shadow:none}
+html[data-theme="tiss-clear"] body.tema-premium .btn.gold{color:#FFFDF6;border-color:#0A5F3E;
+  background:linear-gradient(180deg,#127A51 0%,#0B6B46 55%,#08593A 100%);
+  box-shadow:0 1px 0 rgba(255,255,255,.22) inset,0 10px 24px -14px rgba(11,107,70,.6)}
+html[data-theme="tiss-clear"] body.tema-premium .btn.gold:hover:not(:disabled){background:linear-gradient(180deg,#0F6F49 0%,#085C3C 55%,#064A30 100%);color:#FFFDF6}
+html[data-theme="tiss-clear"] body.tema-premium .btn.gold:disabled{background:#A9B8AE;color:#1A2720;border-color:#A9B8AE;opacity:1;box-shadow:none}
+html[data-theme^="tiss-"] body.tema-premium #lab :is(#m1-guardar,#m1-perfil .btn.gold){background:transparent;color:var(--cy);border-color:rgba(var(--cy-rgb),.6);box-shadow:none}
+html[data-theme^="tiss-"] body.tema-premium :is(.btn,.seg button,.bx-ej,.landing-card,.link,.lab-fase,.lab-side-link,.m2-paso,.calchip,.tp-toggle,select,input,textarea,summary,a):focus-visible{
+  outline-color:var(--cy);box-shadow:0 0 0 6px rgba(var(--cy-rgb),.16)}
+html[data-theme="tiss-dark"] body.tema-premium .seg button[aria-pressed="true"]{background:#E9DFC6;color:#0B1410}
+html[data-theme="tiss-clear"] body.tema-premium .seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+html[data-theme^="tiss-"] body.tema-premium .bx-ej[aria-pressed="true"]{border-color:var(--cy);box-shadow:0 0 0 1px var(--cy) inset,0 14px 30px -16px rgba(var(--cy-rgb),.4);
+  background:radial-gradient(120% 120% at 0 0,rgba(var(--cy-rgb),.14),transparent 60%),var(--pan2)}
+
+/* campos */
+html[data-theme="tiss-dark"] body.tema-premium :is(select,input[type="text"],input[type="number"],input[type="email"],textarea){border-color:var(--line2);background-color:#08100C}
+html[data-theme="tiss-clear"] body.tema-premium :is(select,input[type="text"],input[type="number"],input[type="email"],textarea){border-color:var(--line2);background-color:#FFFDF8;color:var(--ink)}
+html[data-theme^="tiss-"] body.tema-premium :is(select,input,textarea):hover{border-color:rgba(var(--cy-rgb),.5)}
+
+/* tablas y gráficos */
+html[data-theme="tiss-clear"] body.tema-premium :is(.m1p-t,.m1t-t) tbody tr:nth-child(even) td{background:rgba(22,38,30,.03)}
+html[data-theme^="tiss-"] body.tema-premium :is(.m1p-t,.m1t-t) tbody tr:hover td{background:rgba(var(--cy-rgb),.06)}
+html[data-theme="tiss-dark"] body.tema-premium .m1svg .ax{fill:#CFC7B2}
+html[data-theme="tiss-clear"] body.tema-premium .m1svg .ax{fill:#3E4A43}
+html[data-theme="tiss-clear"] body.tema-premium .m1svg .gr{stroke:rgba(22,38,30,.14)}
+html[data-theme="tiss-dark"] body.tema-premium .m1svg .ln-p{stroke:#F2ECDC}
+html[data-theme="tiss-clear"] body.tema-premium .m1svg .ln-p{stroke:#1A2720}
+html[data-theme="tiss-clear"] body.tema-premium .ab{background-image:radial-gradient(rgba(22,38,30,.10) 1px,transparent 1.2px)}
+
+/* portada y misiones */
+html[data-theme^="tiss-"] body.tema-premium .landing-card .landing-ic{border-color:rgba(var(--gold-rgb),.4);color:var(--gold);
+  background:radial-gradient(circle at 30% 25%,rgba(var(--gold-rgb),.16),transparent 70%)}
+html[data-theme^="tiss-"] body.tema-premium .landing-card.primary .landing-ic{background:var(--cy);color:var(--on-acc);border-color:var(--cy);
+  box-shadow:0 0 0 6px rgba(var(--cy-rgb),.10),0 10px 24px -10px rgba(var(--cy-rgb),.55)}
+html[data-theme^="tiss-"] body.tema-premium .landing-card.primary{border-color:rgba(var(--cy-rgb),.55);
+  background:radial-gradient(130% 100% at 0% 0%,rgba(var(--cy-rgb),.10),transparent 55%),linear-gradient(180deg,var(--tp-hi),transparent 140px),var(--pan2)}
+html[data-theme^="tiss-"] body.tema-premium .landing-card.lab-card{border-color:rgba(var(--gold-rgb),.45);
+  background:radial-gradient(130% 100% at 100% 0%,rgba(var(--gold-rgb),.10),transparent 55%),linear-gradient(180deg,var(--tp-hi),transparent 140px),var(--pan2)}
+html[data-theme^="tiss-"] body.tema-premium .landing-card::after{background:radial-gradient(140% 90% at 50% 0%,rgba(var(--cy-rgb),.12),transparent 60%)}
+html[data-theme^="tiss-"] body.tema-premium .landing-card:hover{border-color:rgba(var(--cy-rgb),.6)}
+html[data-theme^="tiss-"] body.tema-premium .brand::after{height:1px;margin-top:.55rem;opacity:1;background:var(--tiss-filete)}
+
+/* carga del motor */
+html[data-theme^="tiss-"] body.tema-premium .prog{background:rgba(var(--cy-rgb),.10);box-shadow:0 0 0 1px rgba(var(--cy-rgb),.14) inset}
+html[data-theme="tiss-dark"] body.tema-premium .prog i{background:linear-gradient(90deg,#1E9E6B,#2FD592 60%,#A4EFCB);box-shadow:0 0 14px rgba(47,213,146,.5)}
+html[data-theme="tiss-clear"] body.tema-premium .prog i{background:linear-gradient(90deg,#08593A,#0B6B46 60%,#2F9A6E);box-shadow:none}
+html[data-theme^="tiss-"] body.tema-premium :is(#m1-nota,#m3-nota,#bx-nota,#pi-nota).tp-carga{border-color:rgba(var(--cy-rgb),.35);background:linear-gradient(90deg,rgba(var(--cy-rgb),.08),rgba(var(--cy-rgb),.02))}
+html[data-theme^="tiss-"] body.tema-premium :is(#m1-nota,#m3-nota,#bx-nota,#pi-nota).tp-carga::before{border-color:rgba(var(--cy-rgb),.25);border-top-color:var(--cy)}
+
+/* laboratorio */
+html[data-theme="tiss-dark"] body.tema-premium .lab-side{background:linear-gradient(180deg,#0B1410,#070C0A);border-right-color:var(--line)}
+html[data-theme="tiss-clear"] body.tema-premium .lab-side{background:linear-gradient(180deg,#EFE9DB,#E9E2D1);border-right-color:var(--line)}
+html[data-theme^="tiss-"] body.tema-premium .lab-fase:hover{background:rgba(var(--gold-rgb),.06)}
+html[data-theme^="tiss-"] body.tema-premium .lab-fase.abierta .lab-n{border-color:rgba(var(--gold-rgb),.65);color:var(--gold)}
+html[data-theme^="tiss-"] body.tema-premium .lab-fase.on{background:linear-gradient(90deg,rgba(var(--cy-rgb),.14),rgba(var(--cy-rgb),.02));box-shadow:0 0 0 1px rgba(var(--cy-rgb),.30) inset}
+html[data-theme^="tiss-"] body.tema-premium .lab-fase.on .lab-n{background:var(--cy);border-color:var(--cy);color:var(--on-acc);
+  box-shadow:0 0 0 3px var(--bg2),0 0 0 5px rgba(var(--cy-rgb),.22),0 0 16px rgba(var(--cy-rgb),.35);animation:none}
+html[data-theme^="tiss-"] body.tema-premium .lab-fase.on .lab-t b{color:var(--ink)}
+html[data-theme="tiss-clear"] body.tema-premium .lab-fase.hecha .lab-n{background:var(--ok);color:#FFFDF6}
+html[data-theme="tiss-dark"] body.tema-premium .lab-fase.hecha .lab-n{color:#04120B;border-color:var(--ok)}
+:root[data-theme^="tiss-"] .lab-fase.hecha.abierta .lab-n{border-color:var(--ok)}
+html[data-theme="tiss-clear"] body.tema-premium #lab-fases::before{background:linear-gradient(90deg,var(--ok),#3D9C66) 0 0/var(--tp-prog,0%) 3px no-repeat,linear-gradient(rgba(22,38,30,.12),rgba(22,38,30,.12)) 0 0/100% 3px no-repeat}
+html[data-theme^="tiss-"] body.tema-premium .lab-mis{background:var(--cy);color:var(--on-acc);box-shadow:none}
+html[data-theme^="tiss-"] body.tema-premium .m2-paso.on span{background:var(--cy);color:var(--on-acc);box-shadow:none}
+html[data-theme^="tiss-"] body.tema-premium .aed-toc button.t.on{box-shadow:inset 0 -2px 0 var(--cy);background:rgba(var(--cy-rgb),.08)}
+html[data-theme^="tiss-"] body.tema-premium .lab-bloq .cand{border-color:rgba(var(--gold-rgb),.4);background:radial-gradient(circle at 30% 25%,rgba(var(--gold-rgb),.16),transparent 70%)}
+
+/* recorrido completo */
+html[data-theme="tiss-dark"] body.tema-premium .rail{background:linear-gradient(180deg,#0B1410,#070C0A)}
+html[data-theme="tiss-clear"] body.tema-premium .rail{background:linear-gradient(180deg,#EFE9DB,#E9E2D1)}
+html[data-theme^="tiss-"] body.tema-premium .tab[aria-selected="true"]{background:linear-gradient(90deg,rgba(var(--cy-rgb),.14),rgba(var(--cy-rgb),.02));border-color:rgba(var(--cy-rgb),.38)}
+
+/* botones flotantes (feedback, glosario, premium) */
+html[data-theme="tiss-dark"] body.tema-premium :is(.fb-btn,.glo-btn){background:rgba(8,14,11,.82);border-color:rgba(var(--gold-rgb),.4)}
+html[data-theme="tiss-clear"] body.tema-premium :is(.fb-btn,.glo-btn){background:rgba(251,248,241,.9);color:var(--txt);border-color:var(--line2);box-shadow:0 6px 18px -10px rgba(40,44,28,.45)}
+html[data-theme^="tiss-"] body.tema-premium :is(.fb-btn,.glo-btn):hover{background:var(--cy);color:var(--on-acc);border-color:var(--cy)}
+} /* fin @media screen */
+
+/* el conmutador Premium/Original: en claro, pastilla marfil en vez de negra */
+html[data-theme="tiss-clear"] .tp-toggle{background:rgba(251,248,241,.92);border-color:var(--line2);color:var(--dim);box-shadow:0 6px 18px -10px rgba(40,44,28,.4)}
+html[data-theme="tiss-clear"] .tp-op{color:var(--dim)}
+html[data-theme="tiss-clear"] .tp-op i{color:var(--gold)}
+html[data-theme="tiss-clear"] .tp-toggle[aria-pressed="true"] .tp-op-p,html[data-theme="tiss-clear"] .tp-toggle[aria-pressed="false"] .tp-op-o{background:var(--ink);color:var(--bg)}
+html[data-theme="tiss-clear"] .tp-toggle[aria-pressed="true"] .tp-op-p i{color:#E3CF9F}
+html[data-theme^="tiss-"] .tp-toggle:hover{border-color:rgba(var(--cy-rgb),.7)}
+html[data-theme^="tiss-"] .tp-toggle:focus-visible{outline-color:var(--cy)}
+html[data-theme="tiss-dark"] .tp-op i{color:var(--gold)}
+html[data-theme="tiss-dark"] .tp-toggle[aria-pressed="true"] .tp-op-p,html[data-theme="tiss-dark"] .tp-toggle[aria-pressed="false"] .tp-op-o{background:#E9DFC6;color:#0B1410}
+html[data-theme="tiss-dark"] .tp-toggle[aria-pressed="true"] .tp-op-p i{color:#0B6B46}

@@ -25,6 +25,8 @@
 
   /* dónde vive: en el laboratorio, al pie de la barra de fases; en el recorrido completo, al pie del menú; si no, flotando abajo a la izquierda */
   function colocar(){var c=B.classList,dest=null,modo='flota';
+    var V=window.MCT_VISTAS&&window.MCT_VISTAS.slot&&window.MCT_VISTAS.slot('diseno');
+    if(V){if(t.parentNode!==V)V.appendChild(t);t.setAttribute('data-tp-lugar','vistas');return}
     if(c.contains('lab')){dest=document.querySelector('#lab .lab-side-pie');modo='lab'}
     else if(c.contains('basic')){dest=document.querySelector('#basic .bx-pie');modo='pie'}
     else if(!c.contains('basic')&&!c.contains('landing')&&!c.contains('misiones')&&!c.contains('mision1')){dest=document.querySelector('.app .rail-pie');modo='rail'}

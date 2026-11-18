@@ -166,3 +166,22 @@ body.modo-basico:not(.mb-ver-unmapa) #lab-v-unidad .un-mapa-w{display:none!impor
 @media print{
   .mb-toggle,.mb-guia,.mb-mini,.mb-detalle,.mb-card,.mb-fiesta{display:none!important}
 }
+
+/* Cuevi movible: con posición propia manda left/top (--mb-x/--mb-y); la asa ⠿ y el cursor de arrastre */
+.mb-guia.mb-libre,.mb-mini.mb-libre,body.lab .mb-guia.mb-libre,body.lab .mb-mini.mb-libre{left:var(--mb-x,14px)!important;top:var(--mb-y,100px)!important;right:auto!important;bottom:auto!important}
+.mb-guia .mb-cuevi,.mb-guia .mb-cab{cursor:grab}
+.mb-guia.mb-arrastra,.mb-guia.mb-arrastra *{cursor:grabbing!important;user-select:none}
+.mb-guia.mb-arrastra{opacity:.95}
+.mb-mover{flex:none;width:26px;height:26px;border:1px solid var(--line2,#3F4C53);border-radius:7px;background:transparent;color:var(--dim,#8E9AA0);cursor:grab;font-size:15px;line-height:1;padding:0}
+.mb-mover:hover,.mb-mover:focus-visible{color:var(--gold,#FFD23F);border-color:var(--gold,#FFD23F);outline:none}
+/* foco: recuadro dorado que sigue al elemento; .mb-dim oscurece todo lo demás un rato */
+.mb-foco-ov{position:fixed;z-index:55;pointer-events:none;border-radius:12px;border:3px solid var(--gold,#FFD23F);
+  box-shadow:0 0 0 3px rgba(0,0,0,.35),0 0 26px 6px rgba(var(--gold-rgb,255,210,63),.45);animation:mb-late2 1.1s ease-in-out infinite}
+.mb-foco-ov.mb-dim{box-shadow:0 0 0 100vmax rgba(0,0,0,.55),0 0 26px 6px rgba(var(--gold-rgb,255,210,63),.55)}
+.mb-foco-ov[hidden]{display:none}
+@keyframes mb-late2{50%{border-color:rgba(var(--gold-rgb,255,210,63),.4)}}
+@media (prefers-reduced-motion:reduce){.mb-foco-ov{animation:none}}
+/* el robot 3D de TISS (window.MCT_CUEVI_IMG): imagen suave, no pixelada */
+body.mb-3d .mb-guia .mb-cuevi{image-rendering:auto;width:auto;height:92px;max-width:92px;object-fit:contain;filter:drop-shadow(0 6px 10px rgba(0,0,0,.5))}
+body.mb-3d .mb-mini img{image-rendering:auto;object-fit:contain}
+@media print{.mb-foco-ov{display:none!important}}
