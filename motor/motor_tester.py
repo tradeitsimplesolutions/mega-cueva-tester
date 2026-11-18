@@ -37,18 +37,32 @@ import time
 import numpy as np
 import pandas as pd
 
-VERSION = "1.3.0"
+VERSION = "1.4.0"
 MAX_VELAS = 250_000
 MIN_VELAS = 300
 PF_INF = 99.0
 
 # Umbrales del protocolo TIS (docs/PROTOCOLO_VALIDACION.md de Sentinel). No se bajan.
+# ALINEADO con el protocolo vigente (revisión 2026-10-22 → 2026-11-05) el 2026-11-18:
+#   · SELLO: el último 20 % (mín. 1 año) no puntúa en NINGUNA fase; IS/OOS se reparten lo que queda (70/30).
+#   · F2 = ¿la meseta sigue ahí época tras época? (el walk-forward de Pardo queda como dato, ya no juzga).
+#   · F3 = robustez moviendo TODOS los parámetros (±20/±40 %), sin silla de montar ni pico.
+#   · F4 = Monte Carlo + bootstrap por bloques + bootstrap por regímenes (los tres).
+#   · F5 = costes ×2, sin 2 mejores años y régimen malo JUZGADO CONTRA EL ACTIVO; sin la excepción «<10 operaciones».
 UMBRAL = dict(
     split=0.70, pf_oos=1.3, n_oos=30, dd_oos=0.20, pf_sin_mejor=1.0,
+    sello_pct=0.20,
     wf_is_anios=3, wf_oos_anios=1, wf_paso_anios=1, wf_eficiencia=0.50, wf_pct_pos=0.60, wf_dd=0.20, wf_min_trades_is=10,
     meseta_tol=0.20, meseta_cliff=0.30, meseta_min_trades=20,
-    mc_sims=5000, mc_p5_ret=0.0, mc_p95_dd=0.25, mc_ruina=0.50, mc_prob_ruina=0.05,
+    # F2 (persistencia): épocas de 3 años; percentil medio ≥ 40 % y PF > 1 en ≥ 60 % de las épocas, con ≥ 4 juzgables
+    pers_anios=3, pers_percentil_medio_min=0.40, pers_min_epocas_ganando=0.60, pers_min_epocas=4, pers_min_variantes_epoca=5,
+    # F3 (robustez): ≥ 70 % del entorno con PF > 1 · ningún eje quita > 30 % · no silla · no pico
+    rob_pasos=(-0.40, -0.20, 0.20, 0.40), rob_min_pf_global=0.70, rob_caida_eje_max=0.30, rob_min_trades=20,
+    rob_silla_ratio=2.0, rob_paso_grueso=0.35, rob_max_combos=400, rob_presupuesto=4_000_000,
+    mc_sims=5000, mc_p5_ret=0.0, mc_p95_dd=0.30, mc_ruina=0.50, mc_prob_ruina=0.05,
+    rem_bloque_min=5, rem_min_anios=5,
     stress_factor=2.0, stress_pf=1.1, stress_dd=0.25, stress_min_trades=10, stress_dd_sin_exposicion=0.10,
+    stress_captura=0.50,
     anio_regimen_fijo=2022,
 )
 
@@ -1607,12 +1621,24 @@ def _dd_bh(close, a: int, b: int) -> float:
     return float(1.0 - np.min(seg / np.maximum.accumulate(seg))) if seg.size > 1 else 0.0
 
 
-def _tramo(c: Corrida, ini, fin) -> dict:
-    a = int(np.searchsorted(c.idx.values, np.datetime64(pd.Timestamp(ini)), "left"))
-    b = int(np.searchsorted(c.idx.values, np.datetime64(pd.Timestamp(fin)), "left"))
+def _tramo_pos(c: Corrida, a: int, b: int) -> dict:
     m = (c.i_in >= a) & (c.i_in < b)
     rets = c.trades.ret.to_numpy(float)[m] if len(c.trades) else np.zeros(0)
     return _resumen(rets, c.r[a:b], c.idx[a:b])
+
+
+def _tramo(c: Corrida, ini, fin) -> dict:
+    a = int(np.searchsorted(c.idx.values, np.datetime64(pd.Timestamp(ini)), "left"))
+    b = int(np.searchsorted(c.idx.values, np.datetime64(pd.Timestamp(fin)), "left"))
+    return _tramo_pos(c, a, b)
+
+
+def _pf_n(c: Corrida, a: int, b: int) -> tuple[int, float]:
+    """(nº de operaciones, PF) con entrada entre las posiciones a y b. Sin construir nada más (rejillas grandes)."""
+    if not len(c.trades):
+        return 0, float("nan")
+    r = c.trades.ret.to_numpy(float)[(c.i_in >= a) & (c.i_in < b)]
+    return int(r.size), pf(r)
 
 
 def _tramo_rapido(c: Corrida, a: int, b: int) -> tuple[int, float]:
@@ -1621,37 +1647,70 @@ def _tramo_rapido(c: Corrida, a: int, b: int) -> tuple[int, float]:
     return n, float(c.cp[b] / c.cp[a] - 1.0)
 
 
-# ═══════════════════════════════════════════════════════════════════════════════════════════════
+def _truncar(c: Corrida, fin: int) -> Corrida:
+    """La corrida recortada a las primeras `fin` velas (el tramo NO sellado). Las operaciones que entran antes
+    del sello se quedan aunque salgan después, como en Sentinel."""
+    t = c.trades[c.trades.i_in < fin].reset_index(drop=True) if len(c.trades) else c.trades
+    return Corrida(c.p, t, c.r[:fin], c.idx[:fin])
+
+
+def _k(P: dict, upd: dict | None = None) -> tuple:
+    """Clave de una combinación de parámetros (la misma en la rejilla de la meseta y en la de robustez)."""
+    return tuple(sorted({**P, **(upd or {})}.items()))
+
+
+# ════════════════════════════════════════════════════════════════════════════
 # 6. LAS 5 FASES
-# ═══════════════════════════════════════════════════════════════════════════════════════════════
-def _fecha_split(c: Corrida, s: dict) -> pd.Timestamp:
+# ════════════════════════════════════════════════════════════════════════════
+def _fecha_split(c: Corrida, s: dict, i_val: int | None = None, avisos: list | None = None) -> pd.Timestamp:
+    """Fecha de corte IS/OOS DENTRO del tramo no sellado (las primeras `i_val` velas). Una fecha elegida a mano que cae
+    en el tramo sellado no se acepta tal cual: se usa el 70 % del tramo no sellado y se avisa."""
+    n = len(c.idx)
+    i_val = n if i_val is None else int(i_val)
     if s["corte"]["tipo"] == "fecha":
         f = pd.Timestamp(s["corte"]["valor"])
         if not (c.idx[0] < f < c.idx[-1]):
             raise ErrorSpec(f"La fecha de corte {f.date()} está fuera del histórico ({c.idx[0].date()} → {c.idx[-1].date()}).")
-        return c.idx[int(np.searchsorted(c.idx.values, np.datetime64(f)))]
-    return c.idx[int(len(c.r) * s["corte"]["valor"] / 100.0)]
+        pos = int(np.searchsorted(c.idx.values, np.datetime64(f)))
+        if pos < i_val - 1:
+            return c.idx[pos]
+        if avisos is not None:
+            avisos.append(f"Tu fecha de corte ({f.date()}) cae en el tramo SELLADO (el último 20 % del histórico, desde "
+                          f"{c.idx[min(i_val, n - 1)].date()}): no se puede usar para diseñar. Se usa el 70 % del tramo no sellado.")
+        return c.idx[int(i_val * UMBRAL["split"])]
+    return c.idx[max(1, int(i_val * s["corte"]["valor"] / 100.0))]
 
 
-def fase1(c: Corrida, fs: pd.Timestamp, close=None) -> dict:
-    fin = c.idx[-1] + pd.Timedelta(days=1)
-    IS = _tramo(c, c.idx[0], fs); OOS = _tramo(c, fs, fin)
+def fase1(c: Corrida, fs: pd.Timestamp, close=None, i_sello: int | None = None) -> dict:
+    n = len(c.idx)
+    i_sello = n if i_sello is None else int(i_sello)
+    sellado = i_sello < n
+    a = int(np.searchsorted(c.idx.values, np.datetime64(fs), "left"))
+    IS = _tramo_pos(c, 0, a); OOS = _tramo_pos(c, a, i_sello)
     # la caída se compara con comprar y mantener en el mismo tramo (el 20 % queda como objetivo, no como suspenso);
-    # las 30 operaciones se cuentan en total (diseño + prueba)
+    # las 30 operaciones se cuentan en total (diseño + prueba, sin el sello)
     if close is not None:
-        a = int(np.searchsorted(c.idx.values, np.datetime64(fs), "left"))
-        IS["maxdd_bh"] = _dd_bh(close, 0, a); OOS["maxdd_bh"] = _dd_bh(close, a, len(c.idx))
+        IS["maxdd_bh"] = _dd_bh(close, 0, a); OOS["maxdd_bh"] = _dd_bh(close, a, i_sello)
     dd_ref = OOS.get("maxdd_bh", UMBRAL["dd_oos"])
     # «PF sin su mejor operación», coherente con las 30 operaciones en total: sobre TODAS las operaciones (diseño +
-    # prueba juntas) quitando la mejor del conjunto. Con pocas operaciones en la prueba, quitar la mejor de ese tramo
-    # tumba casi siempre a las estrategias de tendencia (pocas ganadoras grandes) aunque no dependan de un solo golpe.
-    rets_tot = c.trades.ret.to_numpy(float) if len(c.trades) else np.zeros(0)
+    # prueba juntas, sin el sello) quitando la mejor del conjunto. Con pocas operaciones en la prueba, quitar la mejor de
+    # ese tramo tumba casi siempre a las estrategias de tendencia (pocas ganadoras grandes).
+    rets_tot = c.trades.ret.to_numpy(float)[c.i_in < i_sello] if len(c.trades) else np.zeros(0)
     psm_tot = pf_sin_mejor(rets_tot)
     crit = {"pf_oos": bool(OOS["pf"] >= UMBRAL["pf_oos"]), "n_oos": bool(IS["n"] + OOS["n"] >= UMBRAL["n_oos"]),
             "dd_oos": bool(OOS["maxdd"] < dd_ref), "pf_sin_mejor": bool(psm_tot > UMBRAL["pf_sin_mejor"])}
-    return {"fecha_split": str(fs.date()), "IS": IS, "OOS": OOS, "criterios": crit,
-            "pf_sin_mejor_total": psm_tot, "n_total": int(rets_tot.size),
-            "frontera": bool(1.25 <= OOS["pf"] <= 1.35), "pasa": all(crit.values())}
+    out = {"fecha_split": str(fs.date()), "IS": IS, "OOS": OOS, "criterios": crit,
+           "pf_sin_mejor_total": psm_tot, "n_total": int(rets_tot.size),
+           "frontera": bool(1.25 <= OOS["pf"] <= 1.35), "pasa": all(crit.values()),
+           "sellado": bool(sellado)}
+    # El tramo sellado se calcula pero NO entra en el veredicto: es la comprobación final, y se abre una sola vez.
+    if sellado:
+        V = _tramo_pos(c, i_sello, n)
+        if close is not None:
+            V["maxdd_bh"] = _dd_bh(close, i_sello, n)
+        out["fecha_sello"] = str(c.idx[i_sello].date())
+        out["VALIDACION_SELLADA"] = V
+    return out
 
 
 def fase2(cache: dict, idx: pd.DatetimeIndex) -> dict:
@@ -1706,7 +1765,7 @@ def fase3(cache: dict, grid: dict, canon: dict, fs) -> dict:
     matriz = np.full((5, 5), np.nan); ntr = np.zeros((5, 5), dtype=int)
     for i, a in enumerate(v1):
         for j, b in enumerate(v2):
-            m = _tramo(cache[(a, b)], ini, fs)
+            m = _tramo(cache[_k(canon, {k1: a, k2: b})], ini, fs)
             ntr[i, j] = m["n"]
             matriz[i, j] = m["pf"] if m["n"] >= UMBRAL["meseta_min_trades"] else np.nan
     ci, cj = list(v1).index(canon[k1]), list(v2).index(canon[k2])      # el canónico (normalmente el centro)
@@ -1726,6 +1785,223 @@ def fase3(cache: dict, grid: dict, canon: dict, fs) -> dict:
             "pct_celdas_pf>1": pct_pos, "criterios": crit, "pasa": all(crit.values())}
 
 
+# ── F2 (persistencia) y F3 (robustez en todos los parámetros) ─────────────────────────────────
+# Port de codigo/sentinel/robustez.py de Sentinel (revisión 2026-10-22 → 2026-11-05): el walk-forward de Pardo ya no
+# juzga (reoptimizaba, y quien opera los números de un libro no reoptimiza); se mira si la zona buena SIGUE ahí época
+# tras época, y se mueven TODOS los parámetros para que una silla de montar no se pueda esconder en el eje que no miras.
+_CATEG = ("dia", "mes", "dow", "weekday", "sistema", "modo", "tz", "zona", "lado", "tipo", "simbolo", "activo", "sesion",
+          "hora", "hhmm", "minuto")
+
+
+def _es_categorico(nombre: str) -> bool:
+    n = str(nombre).lower()
+    return any(n == c or n.startswith(c + "_") or n.endswith("_" + c) for c in _CATEG)
+
+
+def _rejilla_rob(canon: dict, grid: dict | None = None) -> dict:
+    """Valores a probar de cada parámetro numérico: el canónico ±20 % y ±40 %. Los enteros se quedan enteros (y se
+    deduplican: en un RSI de 2, −20 % y −40 % caen en el mismo 1), nunca bajan de 1, y las categorías (día, hora, sesión…)
+    no se mueven: moverlas da OTRA regla. Si la regla declara una rejilla para ese parámetro, se usan sus valores."""
+    grid = grid or {}
+    out = {}
+    for k, v in canon.items():
+        if _es_categorico(k):
+            continue
+        if not isinstance(v, (int, float)) or isinstance(v, bool) or v == 0:
+            continue
+        if k in grid and len(grid[k]) > 2 and v in grid[k]:
+            out[k] = sorted(set(grid[k]))
+            continue
+        vals = {v}
+        for p in UMBRAL["rob_pasos"]:
+            x = v * (1 + p)
+            x = int(round(x)) if isinstance(v, int) else round(float(x), 6)
+            if isinstance(v, int) and x < 1:
+                continue
+            vals.add(x)
+        if len(vals) > 1:
+            out[k] = sorted(vals)
+    return out
+
+
+def _combos_rob(rej: dict, canon: dict, max_combos: int) -> list:
+    """Todas las combinaciones de la rejilla; si son demasiadas, un diseño en cruz (mover un parámetro cada vez) más el
+    canónico: lo mínimo para ver una silla de montar."""
+    ejes = list(rej)
+    total = int(np.prod([len(rej[e]) for e in ejes])) if ejes else 0
+    if 0 < total <= max_combos:
+        import itertools
+        return [_k(canon, dict(zip(ejes, vals))) for vals in itertools.product(*[rej[e] for e in ejes])]
+    out = [_k(canon)]
+    for e in ejes:
+        for v in rej[e]:
+            if v != canon.get(e):
+                out.append(_k(canon, {e: v}))
+    return out
+
+
+def fase2_persistencia(cache: dict, claves: list, canon: dict, idx: pd.DatetimeIndex) -> dict:
+    """¿El canónico SIGUE en la zona buena de su propio entorno época tras época? Épocas de 3 años sobre el tramo no
+    sellado. En cada una se mira en qué parte del entorno cae el canónico (percentil) comparando con la MEDIANA, nunca con
+    el mejor (el mejor de cada época suele ser una variante con pocas operaciones y un PF absurdo)."""
+    anios = UMBRAL["pers_anios"]
+    t0, tN = idx[0], idx[-1]
+    iv = idx.values
+    pos = lambda t: int(np.searchsorted(iv, np.datetime64(pd.Timestamp(t)), "left"))  # noqa: E731
+    por_epoca = {}
+    k = 0
+    while True:
+        a = t0 + pd.DateOffset(years=k * anios)
+        if a >= tN:
+            break
+        b = min(a + pd.DateOffset(years=anios), tN + pd.Timedelta(days=1))
+        pa, pb = pos(a), pos(b)
+        pfs = {}
+        for key in claves:
+            if key in cache:
+                n, p = _pf_n(cache[key], pa, pb)
+                if n >= UMBRAL["wf_min_trades_is"]:
+                    pfs[key] = p
+        if pfs:
+            por_epoca[f"{a.date()} → {min(b, tN).date()}"] = pfs
+        k += 1
+    clave = _k(canon)
+    filas = []
+    for etiqueta, pfs in sorted(por_epoca.items()):
+        vals = np.array([v for v in pfs.values() if np.isfinite(v)], dtype=float)
+        pf_c = pfs.get(clave, np.nan)
+        if len(vals) < UMBRAL["pers_min_variantes_epoca"] or not np.isfinite(pf_c):
+            filas.append({"epoca": etiqueta, "pf_canonico": None, "percentil": None, "buena": None, "mediana_entorno": None})
+            continue
+        pct = float((vals <= pf_c).mean())
+        filas.append({"epoca": etiqueta, "pf_canonico": float(pf_c), "percentil": pct,
+                      "mediana_entorno": float(np.median(vals)), "buena": bool(pct >= 0.5 and pf_c > 1.0)})
+    juz = [f for f in filas if f["buena"] is not None]
+    n = len(juz)
+    buenas = sum(1 for f in juz if f["buena"])
+    ganando = sum(1 for f in juz if f["pf_canonico"] > 1.0)
+    frac_gana = (ganando / n) if n else 0.0
+    pct_medio = float(np.mean([f["percentil"] for f in juz])) if n else 0.0
+    suficientes = n >= UMBRAL["pers_min_epocas"]
+    crit = {"epocas_suficientes": bool(suficientes),
+            "no_esta_en_la_zona_mala": bool(suficientes and pct_medio >= UMBRAL["pers_percentil_medio_min"]),
+            "gana_en_la_mayoria_de_epocas": bool(suficientes and frac_gana >= UMBRAL["pers_min_epocas_ganando"])}
+    return {"pasa": all(crit.values()), "criterios": crit, "epocas": filas, "n_epocas": n, "epocas_buenas": buenas,
+            "epocas_ganando": ganando, "fraccion_ganando": frac_gana, "percentil_medio": pct_medio if n else None,
+            "n_variantes": len(claves), "no_evaluable": bool(not suficientes),
+            "nota": (f"gana en {ganando} de {n} épocas y su percentil medio en el entorno es {pct_medio * 100:.0f} % "
+                     f"(mínimo {UMBRAL['pers_percentil_medio_min'] * 100:.0f} %)" if suficientes else
+                     f"solo {n} épocas juzgables (de 3 años): con este histórico no hay con qué decidir")}
+
+
+def fase3_robustez(cache: dict, claves: list, canon: dict, a_fin: int) -> dict:
+    """Mueve TODOS los parámetros y comprueba que el entorno del canónico es una meseta: que la mayoría de las variantes
+    sigue ganando, que ningún eje hunde el resultado y que no es una silla de montar ni un pico. Se mide con el tramo de
+    DISEÑO (las primeras `a_fin` velas): lo que está sin abrir no se toca."""
+    pf_c, ntr = {}, {}
+    for key in claves:
+        if key in cache:
+            n, p = _pf_n(cache[key], 0, a_fin)
+            pf_c[key], ntr[key] = p, n
+    out = _analizar_rob(pf_c, canon, ntr)
+    # una línea por parámetro (los demás en su valor canónico): se pinta como «PF según el valor de cada número»
+    lineas = {}
+    for par, v in canon.items():
+        if not isinstance(v, (int, float)) or isinstance(v, bool):
+            continue
+        pts = []
+        for key, p in pf_c.items():
+            d = dict(key)
+            if all(d[o] == canon[o] for o in canon if o != par) and np.isfinite(p):
+                pts.append({"v": d[par], "pf": float(p), "n": int(ntr[key])})
+        if len(pts) > 1:
+            lineas[par] = sorted(pts, key=lambda x: x["v"])
+    out["lineas"] = lineas
+    return out
+
+
+def _analizar_rob(pf_por_combo: dict, canon: dict, n_por_combo: dict) -> dict:
+    clave_canon = _k(canon)
+    pf_canon = pf_por_combo.get(clave_canon, np.nan)
+    validos = {k: v for k, v in pf_por_combo.items()
+               if np.isfinite(v) and n_por_combo.get(k, UMBRAL["rob_min_trades"]) >= UMBRAL["rob_min_trades"]}
+    if not validos or not np.isfinite(pf_canon) or n_por_combo.get(clave_canon, 0) < UMBRAL["rob_min_trades"]:
+        return {"pasa": False, "no_evaluable": True, "criterios": {}, "pf_canonico": float(pf_canon) if np.isfinite(pf_canon) else None,
+                "n_variantes": len(validos), "n_ejes": 0, "dano_por_eje": {}, "ejes_paso_grueso": [],
+                "nota": "no hay variantes con operaciones suficientes (≥ 20) para juzgar la meseta"}
+    vals = np.array(list(validos.values()), dtype=float)
+    pct_pf1 = float((vals > 1.0).mean())
+    mediana = float(np.median(vals))
+    # daño por eje: cuánto cae el PF al mover SOLO ese parámetro a su vecino inmediato (arriba y abajo)
+    dano, dano_extremo = {}, {}
+    for par, v_canon in canon.items():
+        if not isinstance(v_canon, (int, float)) or isinstance(v_canon, bool):
+            continue
+        misma_linea = {dict(k)[par]: v for k, v in validos.items()
+                       if dict(k).get(par) != v_canon and all(dict(k)[o] == canon[o] for o in canon if o != par)}
+        if not misma_linea:
+            continue
+        abajo = [x for x in misma_linea if x < v_canon]
+        arriba = [x for x in misma_linea if x > v_canon]
+        inmediatos = ([misma_linea[max(abajo)]] if abajo else []) + ([misma_linea[min(arriba)]] if arriba else [])
+        if inmediatos:
+            dano[par] = float(max(0.0, (pf_canon - min(inmediatos)) / pf_canon))
+        dano_extremo[par] = float(max(0.0, (pf_canon - min(misma_linea.values())) / pf_canon))
+    # ejes de paso grueso (un RSI de 2: el vecino es 1 o 3, otro indicador): se miden y se enseñan, pero no puntúan
+    gruesos = []
+    for par, v in canon.items():
+        if not isinstance(v, (int, float)) or isinstance(v, bool) or v == 0:
+            continue
+        otros = {dict(k).get(par) for k in validos} - {v}
+        otros = {o for o in otros if isinstance(o, (int, float))}
+        if otros and min(abs(o - v) / abs(v) for o in otros) >= UMBRAL["rob_paso_grueso"]:
+            gruesos.append(par)
+    dano_fino = {p_: d for p_, d in dano.items() if p_ not in gruesos}
+    peor_eje = max(dano_fino, key=dano_fino.get) if dano_fino else None
+    peor_dano = dano_fino.get(peor_eje, 0.0) if peor_eje else 0.0
+    otros_d = [d for p_, d in dano_fino.items() if p_ != peor_eje]
+    med_otros = float(np.median(otros_d)) if otros_d else 0.0
+    es_silla = bool(peor_eje and peor_dano > UMBRAL["rob_caida_eje_max"] and peor_dano > UMBRAL["rob_silla_ratio"] * max(med_otros, 0.05))
+    es_pico = bool(mediana > 0 and pf_canon > 1.5 * mediana and pct_pf1 < 0.5)
+    crit = {"mayoria_del_entorno_gana": bool(pct_pf1 >= UMBRAL["rob_min_pf_global"]),
+            "ningun_eje_hunde": bool(peor_dano <= UMBRAL["rob_caida_eje_max"]),
+            "no_es_silla_de_montar": bool(not es_silla), "no_es_pico": bool(not es_pico)}
+    if es_silla:
+        nota = f"silla de montar: aguanta todo salvo «{peor_eje}», que le quita un {peor_dano * 100:.0f} % del PF"
+    elif es_pico:
+        nota = "pico: el canónico es mucho mejor que su entorno (no es una zona, es un punto afortunado)"
+    elif len(dano) == 1:
+        # pocos parámetros no es un aprobado flojo: es que la regla no tiene dónde esconder una silla (Mariel, 2026-11-05)
+        nota = (f"meseta sólida: la regla solo tiene {len(dano)} parámetro que mover, así que no hay dónde esconder una silla · "
+                f"{pct_pf1 * 100:.0f} % del entorno con PF>1, moverlo le quita un {peor_dano * 100:.0f} %")
+    else:
+        nota = f"{pct_pf1 * 100:.0f} % del entorno con PF>1" + (f", peor eje «{peor_eje}» −{peor_dano * 100:.0f} %" if peor_eje else "")
+    if gruesos:
+        nota += f" · ejes de paso grueso (no juzgados): {', '.join(gruesos)}"
+    return {"pasa": all(crit.values()), "criterios": crit, "pf_canonico": float(pf_canon), "pf_mediana_entorno": mediana,
+            "pct_variantes_pf_mayor_1": pct_pf1, "n_variantes": int(len(validos)), "dano_por_eje": dano,
+            "dano_por_eje_extremo": dano_extremo, "peor_eje": peor_eje, "peor_dano": float(peor_dano),
+            "ejes_paso_grueso": gruesos, "dano_ejes_gruesos": {p_: dano[p_] for p_ in gruesos if p_ in dano},
+            "es_silla_de_montar": es_silla, "es_pico": es_pico, "n_ejes": len(dano) + len(gruesos), "no_evaluable": False,
+            "nota": nota}
+
+
+# ── F4: Monte Carlo + bootstrap por bloques + bootstrap por regímenes ──────────────────────────
+def _llenar(eq, tot, dd, minimo, i0):
+    k = len(eq)
+    pico = np.maximum.accumulate(eq, axis=1)
+    tot[i0:i0 + k] = eq[:, -1] - 1.0
+    dd[i0:i0 + k] = ((eq - pico) / pico).min(axis=1)
+    minimo[i0:i0 + k] = eq.min(axis=1)
+
+
+def _crit_sims(tot, dd, minimo, ruina_nivel=None):
+    ruina = float((minimo <= 1.0 - UMBRAL["mc_ruina"]).mean())
+    p5, p50 = float(np.percentile(tot, 5)), float(np.percentile(tot, 50))
+    p95dd, p50dd = float(-np.percentile(dd, 5)), float(-np.percentile(dd, 50))
+    return p5, p50, p95dd, p50dd, ruina
+
+
 def fase4(c: Corrida, semilla: int = 7) -> dict:
     """Monte Carlo: la mitad reordena los trades, la otra mitad los remuestrea con reemplazo (mismo flujo que Sentinel)."""
     r = c.trades.ret.to_numpy(float) if len(c.trades) else np.zeros(0)
@@ -1733,76 +2009,196 @@ def fase4(c: Corrida, semilla: int = 7) -> dict:
     if n < 5:
         return {"n_trades": n, "sims": sims, "p5_ret": float("nan"), "p50_ret": float("nan"), "p95_dd": float("nan"),
                 "p50_dd": float("nan"), "prob_ruina": float("nan"), "hist_ret": [], "hist_ret_bins": [],
-                "criterios": {"p5_ret>0": False, "p95_dd<25": False, "ruina<5": False}, "pasa": False}
+                "criterios": {"p5_ret>0": False, "p95_dd<30": False, "ruina<5": False}, "pasa": False}
     rng = np.random.default_rng(semilla)
     mitad = sims // 2
     bloque = max(1, int(2e6 // n))         # bloques de ≤2 millones de celdas: cabe en la memoria del navegador
     tot = np.empty(sims); dd = np.empty(sims); minimo = np.empty(sims)
-
-    def acumular(X, i0):
-        eq = np.cumprod(1.0 + X, axis=1)
-        pico = np.maximum.accumulate(eq, axis=1)
-        k = len(X)
-        tot[i0:i0 + k] = eq[:, -1] - 1.0
-        dd[i0:i0 + k] = ((eq - pico) / pico).min(axis=1)
-        minimo[i0:i0 + k] = eq.min(axis=1)
-
     for i0 in range(0, mitad, bloque):
         k = min(bloque, mitad - i0)
-        acumular(np.stack([rng.permutation(r) for _ in range(k)]), i0)
+        _llenar(np.cumprod(1.0 + np.stack([rng.permutation(r) for _ in range(k)]), axis=1), tot, dd, minimo, i0)
     for i0 in range(mitad, sims, bloque):
         k = min(bloque, sims - i0)
-        acumular(r[rng.integers(0, n, size=(k, n))], i0)
+        _llenar(np.cumprod(1.0 + r[rng.integers(0, n, size=(k, n))], axis=1), tot, dd, minimo, i0)
     ruina = float((minimo <= 1.0 - UMBRAL["mc_ruina"]).mean())
-    tot_boot = tot[mitad:]
+    tot_boot = tot[mitad:]       # el retorno total no depende del orden: el p5 se mide sobre las simulaciones bootstrap
     p5, p50 = np.percentile(tot_boot, 5), np.percentile(tot_boot, 50)
     p95dd, p50dd = -np.percentile(dd, 5), -np.percentile(dd, 50)
     hr, hb = np.histogram(tot_boot, bins=40)
     hd, hdb = np.histogram(-dd, bins=40)
-    crit = {"p5_ret>0": bool(p5 > UMBRAL["mc_p5_ret"]), "p95_dd<25": bool(p95dd < UMBRAL["mc_p95_dd"]),
+    crit = {"p5_ret>0": bool(p5 > UMBRAL["mc_p5_ret"]), "p95_dd<30": bool(p95dd < UMBRAL["mc_p95_dd"]),
             "ruina<5": bool(ruina < UMBRAL["mc_prob_ruina"])}
     return {"n_trades": n, "sims": sims, "p5_ret": float(p5), "p50_ret": float(p50), "p95_dd": float(p95dd),
             "p50_dd": float(p50dd), "prob_ruina": ruina, "hist_ret": hr.tolist(), "hist_ret_bins": hb.tolist(),
             "hist_dd": hd.tolist(), "hist_dd_bins": hdb.tolist(), "criterios": crit, "pasa": all(crit.values())}
 
 
+def _rem_bloques(r: np.ndarray, semilla: int = 7) -> dict:
+    """Bootstrap por bloques: reordena BLOQUES de operaciones consecutivas, no operaciones sueltas; las rachas sobreviven
+    dentro de cada bloque (el Monte Carlo suelto las destruye y sale más optimista que la realidad)."""
+    n = len(r); sims = UMBRAL["mc_sims"]
+    bloque = max(UMBRAL["rem_bloque_min"], int(np.sqrt(n)))
+    if n < 3 * bloque:
+        return {"pasa": False, "no_evaluable": True, "nota": f"solo {n} operaciones para bloques de {bloque}"}
+    rng = np.random.default_rng(semilla)
+    nb = int(np.ceil(n / bloque))
+    tot = np.empty(sims); dd = np.empty(sims); minimo = np.empty(sims)
+    paso = max(1, int(2e6 // n))
+    for i0 in range(0, sims, paso):
+        k = min(paso, sims - i0)
+        ini = rng.integers(0, n - bloque + 1, size=(k, nb))
+        idx = (ini[:, :, None] + np.arange(bloque)[None, None, :]).reshape(k, -1)[:, :n]
+        _llenar(np.cumprod(1.0 + r[idx], axis=1), tot, dd, minimo, i0)
+    p5, p50, p95dd, p50dd, ruina = _crit_sims(tot, dd, minimo)
+    crit = {"p5_ret_positivo": bool(p5 > UMBRAL["mc_p5_ret"]), "p95_dd": bool(p95dd < UMBRAL["mc_p95_dd"]),
+            "ruina": bool(ruina < UMBRAL["mc_prob_ruina"])}
+    return {"p5_ret": p5, "p50_ret": p50, "p95_dd": p95dd, "prob_ruina": ruina, "bloque": int(bloque), "sims": sims,
+            "criterios": crit, "pasa": all(crit.values()), "no_evaluable": False,
+            "nota": f"bloques de {bloque} operaciones (las rachas sobreviven)"}
+
+
+def _rem_regimenes(trades: pd.DataFrame, semilla: int = 7) -> dict:
+    """Bootstrap por regímenes: remuestrea AÑOS COMPLETOS con reemplazo. Cada simulación es una historia hecha de años
+    reales en otro orden y con repeticiones: «¿y si me hubieran tocado tres 2013 seguidos?»"""
+    if not len(trades):
+        return {"pasa": False, "no_evaluable": True, "nota": "sin operaciones"}
+    anio = pd.DatetimeIndex(trades.fecha_in).year
+    ret = trades.ret.to_numpy(float)
+    por_anio = {int(a): ret[anio == a] for a in sorted(set(anio))}
+    anios = sorted(por_anio)
+    if len(anios) < UMBRAL["rem_min_anios"]:
+        return {"pasa": False, "no_evaluable": True, "nota": f"solo {len(anios)} años con operaciones: no hay regímenes que remuestrear"}
+    sims = UMBRAL["mc_sims"]
+    rng = np.random.default_rng(semilla)
+    tot = np.empty(sims); dd = np.empty(sims); minimo = np.empty(sims)
+    for i in range(sims):
+        r = np.concatenate([por_anio[anios[j]] for j in rng.integers(0, len(anios), size=len(anios))])
+        eq = np.cumprod(1.0 + r)
+        tot[i] = eq[-1] - 1.0
+        dd[i] = ((eq - np.maximum.accumulate(eq)) / np.maximum.accumulate(eq)).min()
+        minimo[i] = eq.min()
+    p5, p50, p95dd, p50dd, ruina = _crit_sims(tot, dd, minimo)
+    peor = float(min((1 + v).prod() - 1 for v in por_anio.values()))
+    crit = {"p5_ret_positivo": bool(p5 > UMBRAL["mc_p5_ret"]), "p95_dd": bool(p95dd < UMBRAL["mc_p95_dd"]),
+            "ruina": bool(ruina < UMBRAL["mc_prob_ruina"])}
+    return {"p5_ret": p5, "p50_ret": p50, "p95_dd": p95dd, "prob_ruina": ruina, "n_anios": len(anios), "peor_anio_real": peor,
+            "sims": sims, "criterios": crit, "pasa": all(crit.values()), "no_evaluable": False,
+            "nota": f"{len(anios)} años remuestreados con reemplazo; el peor real fue {peor * 100:.1f} %"}
+
+
+def fase4_remuestreos(c: Corrida, semilla: int = 7) -> dict:
+    """Los dos remuestreos que CONSERVAN la estructura temporal, al lado del Monte Carlo (no en su lugar)."""
+    try:
+        r = c.trades.ret.to_numpy(float) if len(c.trades) else np.zeros(0)
+        blq = _rem_bloques(r, semilla)
+        reg = _rem_regimenes(c.trades, semilla)
+    except Exception as ex:  # noqa: BLE001
+        return {"bloques": {}, "regimenes": {}, "pasa": True,
+                "nota": f"no se pudo remuestrear ({type(ex).__name__}): no bloquea el veredicto"}
+    # Se exigen los tres (Monte Carlo + bloques + regímenes). Si no hay con qué remuestrear (pocas operaciones o pocos
+    # años) NO se aprueba por defecto —sería una puerta trasera—: se marca «no evaluable» y se dice por qué.
+    return {"bloques": blq, "regimenes": reg, "pasa": bool(blq.get("pasa", True) and reg.get("pasa", True)),
+            "no_evaluable": bool(blq.get("no_evaluable") or reg.get("no_evaluable")),
+            "nota": f"bloques: {blq.get('nota', '—')} · regímenes: {reg.get('nota', '—')}"}
+
+
+# ── F5: stress ────────────────────────────────────────────────────────────────────────────────
 def _juzgar_stress(m: dict) -> tuple[bool, str]:
+    """Costes ×2 y sin-2-mejores-años. La excepción «<10 operaciones no se mide» se cerró (era una puerta trasera: premiaba
+    ausentarse). Con 0 operaciones no se aprueba —si al doblar los costes dejas de operar no es que aguantes, es que
+    desapareces— y con pocas se exige al menos no perder dinero."""
+    if m["n"] == 0:
+        return False, "0 operaciones en el escenario (desaparece, no aguanta)"
     if m["n"] >= UMBRAL["stress_min_trades"]:
         ok = (m["pf"] >= UMBRAL["stress_pf"]) and (m["maxdd"] < UMBRAL["stress_dd"])
         return bool(ok), "PF≥1.1 y DD<25%" if ok else "falla PF/DD"
-    ok = m["maxdd"] < UMBRAL["stress_dd_sin_exposicion"]
-    return bool(ok), ("sin exposición relevante (<10 trades, DD<10%)" if ok else "pocos trades y DD>10%")
+    ok = (float(m.get("ret_total", 0.0)) >= 0.0) and (m["maxdd"] < UMBRAL["stress_dd"])
+    return bool(ok), (f"solo {m['n']} operaciones: no pierde y DD<{UMBRAL['stress_dd'] * 100:.0f}%" if ok
+                      else f"solo {m['n']} operaciones y encima pierde")
+
+
+def _juzgar_regimen(m: dict, dd_activo: float) -> tuple[bool, str, dict]:
+    """Régimen malo: se juzga CONTRA EL ACTIVO, no contra cero. La pregunta no es «¿ganaste mientras tu mercado se
+    hundía?» sino «¿amplificaste la caída?». Pasa si gana o si se come ≤ 50 % de la caída (por drawdown) del activo;
+    suspende si se come más, o si se deja el 25 % pase lo que pase (red de ruina, absoluta)."""
+    ret = float(m.get("ret_total", float("nan")))
+    maxdd = float(m.get("maxdd", 0.0))
+    if maxdd >= UMBRAL["stress_dd"]:
+        return False, f"se deja un {maxdd * 100:.0f} % (tope de ruina {UMBRAL['stress_dd'] * 100:.0f} %)", {}
+    if ret > 0:
+        return True, "gana mientras su activo cae", {"captura": 0.0}
+    if not (dd_activo > 0):
+        return True, "el activo no cayó en esos años", {"captura": float("nan")}
+    captura = maxdd / dd_activo
+    ok = captura <= UMBRAL["stress_captura"]
+    return bool(ok), (f"se come el {captura * 100:.0f} % de la caída del activo (DD {maxdd * 100:.1f} % vs {dd_activo * 100:.1f} % del activo; "
+                      f"tope {UMBRAL['stress_captura'] * 100:.0f} %)"), {"captura": float(captura)}
+
+
+def _peor_anio_activo(cl: pd.Series, hasta_anio: int) -> int | None:
+    """El año malo del activo = aquel en que MÁS LLEGÓ A CAER (drawdown), no el que peor cerró: el covid cerró en verde y
+    cayó un 35 %. Años completos y anteriores al año en que empieza el sello."""
+    anios = sorted(set(cl.index.year))
+    peor, peor_dd = None, -np.inf
+    for a in anios[1:]:                       # el primer año del histórico suele venir cortado
+        if a >= hasta_anio:
+            continue
+        s_a = cl[cl.index.year == a]
+        if len(s_a) < 100:
+            continue
+        d = float(-(s_a / s_a.cummax() - 1).min())
+        if d > peor_dd:
+            peor, peor_dd = int(a), d
+    return peor
 
 
 def fase5(D: _Datos, s: dict, c: Corrida, fs, cache_ind: dict) -> dict:
-    fin = c.idx[-1] + pd.Timedelta(days=1)
+    """`c` = corrida del tramo NO sellado."""
+    n = len(c.idx)
+    a = int(np.searchsorted(c.idx.values, np.datetime64(pd.Timestamp(fs)), "left"))
+    # a) costes ×2 (simulación completa con los costes doblados, medida en la prueba)
     c2 = _correr(D, s, c.p, cache_ind, factor_costes=UMBRAL["stress_factor"])
-    m_costes = _tramo(c2, fs, fin)
+    m_costes = _tramo_pos(c2, a, n)
+    # b) sin los 2 mejores años (de todo el tramo no sellado), revalidando la prueba que queda
     t = c.trades
     anios_t = pd.DatetimeIndex(t.fecha_in).year if len(t) else pd.Index([])
     anual = pd.Series(t.ret.to_numpy(float), index=anios_t).groupby(level=0).sum().sort_values(ascending=False) if len(t) else pd.Series(dtype=float)
-    mejores = [int(a) for a in anual.index[:2]]
+    mejores = [int(x) for x in anual.index[:2]]
     yr_bar = c.idx.year
-    m_tr = (t.fecha_in >= fs).to_numpy() & ~np.isin(anios_t, mejores) if len(t) else np.zeros(0, bool)
-    m_r = (c.idx >= fs) & ~np.isin(yr_bar, mejores)
+    m_tr = (c.i_in >= a) & ~np.isin(anios_t, mejores) if len(t) else np.zeros(0, bool)
+    m_r = (np.arange(n) >= a) & ~np.isin(yr_bar, mejores)
     m_sin = _resumen(t.ret.to_numpy(float)[m_tr] if len(t) else np.zeros(0), c.r[m_r], c.idx[m_r])
-    # régimen malo: peor año del activo (comprar y mantener, sin el primer año incompleto) ∪ 2022
-    cl = D.df.close
-    an = cl.groupby(cl.index.year).agg(["first", "last"])
-    an = an[an.index > an.index.min()]
-    ra = an["last"] / an["first"] - 1
-    peor = int(ra.idxmin()) if len(ra) else None
-    anios_malos = sorted({a for a in [peor, UMBRAL["anio_regimen_fijo"]] if a is not None and a in set(yr_bar)})
+    # c) régimen malo: el peor año del activo (por caída) ∪ 2022, juzgado contra la caída del propio activo
+    cl = pd.Series(D.c[:n], index=c.idx)
+    fin = c.idx[-1] + pd.Timedelta(days=1)
+    peor = _peor_anio_activo(cl, fin.year)
+    anios_malos = sorted({x for x in [peor, UMBRAL["anio_regimen_fijo"]] if x is not None and x in set(yr_bar)})
     m_tr = np.isin(anios_t, anios_malos) if len(t) else np.zeros(0, bool)
     m_r = np.isin(yr_bar, anios_malos)
     m_reg = _resumen(t.ret.to_numpy(float)[m_tr] if len(t) else np.zeros(0), c.r[m_r], c.idx[m_r]) if m_r.any() else \
         _resumen(np.zeros(0), np.zeros(0), c.idx[:0])
     esc = {}
-    for nombre, m in [("costes_x2", m_costes), ("sin_2_mejores_anios", m_sin), ("regimen_malo", m_reg)]:
+    for nombre, m in [("costes_x2", m_costes), ("sin_2_mejores_anios", m_sin)]:
         ok, nota = _juzgar_stress(m)
         esc[nombre] = {**m, "pasa": ok, "nota": nota}
     esc["sin_2_mejores_anios"]["anios_quitados"] = mejores
-    esc["regimen_malo"]["anios_regimen"] = anios_malos
+    ra = cl.pct_change()
+    ra = ra[ra.index.year.isin(anios_malos)].dropna()
+    if len(ra) > 20:
+        eq_a = (1 + ra).cumprod()
+        ret_act, dd_act = float(eq_a.iloc[-1] - 1.0), float(-(eq_a / eq_a.cummax() - 1).min())
+    else:
+        ret_act, dd_act = float("nan"), float("nan")
+    ok, nota, extra = _juzgar_regimen(m_reg, dd_act)
+    n_malos = max(len(anios_malos), 1)
+    fuera = ~np.isin(anios_t, anios_malos) if len(t) else np.zeros(0, bool)
+    n_fuera_anios = max(len(set(anios_t[fuera])) if len(t) else 1, 1)
+    ops_malos, ops_fuera = m_reg["n"] / n_malos, (int(fuera.sum()) / n_fuera_anios if len(t) else 0.0)
+    intensidad = (ops_malos / ops_fuera) if ops_fuera > 0 else float("nan")
+    captura = extra.get("captura", float("nan"))
+    esc["regimen_malo"] = {**m_reg, "pasa": ok, "nota": nota, "anios_regimen": anios_malos, "ret_activo": ret_act,
+                           "dd_activo": dd_act, "captura": captura, "intensidad": float(intensidad),
+                           "coste_de_estar": float(intensidad * captura * 100) if captura == captura and intensidad == intensidad else float("nan")}
     return {"escenarios": esc, "pasa": all(e["pasa"] for e in esc.values())}
 
 
@@ -2178,7 +2574,7 @@ def _fecha_txt(ts, intradia: bool) -> str:
     return ts.strftime("%Y-%m-%d %H:%M") if intradia else ts.strftime("%Y-%m-%d")
 
 
-_NOMBRES_FASE = {"F1": "F1 IS/OOS", "F2": "F2 walk-forward", "F3": "F3 meseta", "F4": "F4 Monte Carlo", "F5": "F5 stress"}
+_NOMBRES_FASE = {"F1": "F1 IS/OOS", "F2": "F2 persistencia", "F3": "F3 robustez", "F4": "F4 Monte Carlo y remuestreos", "F5": "F5 stress"}
 
 
 def _veredicto(fases: dict) -> str:
@@ -2191,6 +2587,75 @@ def _veredicto(fases: dict) -> str:
     else:
         det = ", ".join(malas[:-1]) + " y " + malas[-1] + " no superadas"
     return f"NO PASA · {ok}/5 ({det})"
+
+
+def _pack_mc_stress(f4: dict, f5: dict) -> tuple[dict, dict]:
+    """F4 y F5 en el formato que lee la interfaz (contrato v3), con los remuestreos y el régimen contra el activo."""
+    rem = f4["remuestreos"]
+    mc = {"p5": f4["p5_ret"], "p50": f4["p50_ret"], "p95dd": f4["p95_dd"], "p50dd": f4["p50_dd"], "ruina": f4["prob_ruina"],
+          "hist": f4.get("hist_ret", []), "bins": [round(b, 5) for b in f4.get("hist_ret_bins", [])],
+          "nota": f"histograma de retorno = {UMBRAL['mc_sims'] // 2:,} remuestreos; DD y ruina sobre {UMBRAL['mc_sims']:,}".replace(",", "."),
+          "criterios": f4["criterios"], "n_trades": f4["n_trades"], "bloques": rem.get("bloques"), "regimenes": rem.get("regimenes"),
+          "remuestreos_pasa": rem.get("pasa"), "pasa": f4["pasa"]}
+    stress = {}
+    for k, e in f5["escenarios"].items():
+        stress[k] = {"pf": _rd(e["pf"], 2), "dd": _rd(e["maxdd"], 5), "n": e["n"], "pasa": e["pasa"], "nota": e["nota"],
+                     "ret": _rd(e["ret_total"], 5)}
+    stress["sin_2_mejores_anios"]["anios"] = f5["escenarios"]["sin_2_mejores_anios"]["anios_quitados"]
+    stress["regimen_malo"]["anios"] = f5["escenarios"]["regimen_malo"]["anios_regimen"]
+    for kk in ("captura", "dd_activo", "ret_activo", "coste_de_estar"):
+        stress["regimen_malo"][kk] = _rd(f5["escenarios"]["regimen_malo"].get(kk), 4)
+    return mc, stress
+
+
+def _i_sello(idx: pd.DatetimeIndex) -> int:
+    """Posición donde empieza el tramo SELLADO (último 20 %, mín. 1 año: la misma partición que el AED del laboratorio).
+    Si el resto no alcanza para diseñar y probar (< 250 velas) no se sella y se avisa: sin sello la regla se mide con
+    más datos de los que debería, y eso la favorece."""
+    i_ex, i_val = _cortes_tis(idx)
+    return i_val if i_val >= 250 else len(idx)
+
+
+def _nucleo_fases(D: _Datos, s: dict, cache_ind: dict, elegir_corte, semilla: int, marca) -> dict:
+    """Las 5 fases con el protocolo vigente, sobre el tramo NO sellado. `elegir_corte(c)` → (fecha IS/OOS, posición del sello)."""
+    P0 = dict(s["parametros"])
+    grid = s["optimizar"]
+    rej = _rejilla_rob(P0, grid)
+    presup = max(25, UMBRAL["rob_presupuesto"] // max(D.n, 1))
+    combos = _combos_rob(rej, P0, min(UMBRAL["rob_max_combos"], presup))
+    claves2d = []
+    if grid:
+        (k1, v1), (k2, v2) = list(grid.items())
+        claves2d = [_k(P0, {k1: a, k2: b}) for a in v1 for b in v2]
+    clave_c = _k(P0)
+    cache = {clave_c: _correr(D, s, P0, cache_ind)}
+    c = cache[clave_c]
+    if len(c.trades) == 0:
+        raise ErrorSpec("La regla no genera ninguna operación en este histórico. Revisa las condiciones (¿son demasiado estrictas?).")
+    for key in [*claves2d, *combos]:
+        if key not in cache:
+            cache[key] = _correr(D, s, dict(key), cache_ind)
+    marca("simulaciones_rejilla", 0.45)
+    fs, i_val = elegir_corte(c)
+    a = int(np.searchsorted(c.idx.values, np.datetime64(fs), "left"))
+    f1 = fase1(c, fs, D.c, i_val if i_val < D.n else None)
+    c_ns = _truncar(c, i_val)               # el SELLO sella para TODAS las fases: de aquí en adelante solo se ve c_ns
+    marca("F1", 0.5)
+    claves_rob = combos if combos else [clave_c]
+    f2 = fase2_persistencia(cache, claves_rob, P0, c_ns.idx)
+    f2["walk_forward_pardo"] = fase2({k: cache[k] for k in claves2d}, c_ns.idx) if grid else None    # solo dato, ya no juzga
+    marca("F2", 0.6)
+    f3 = fase3_robustez(cache, claves_rob, P0, a)
+    f3["meseta_2d"] = fase3(cache, grid, P0, fs) if grid else None                                      # solo dato, ya no juzga
+    marca("F3", 0.65)
+    f4 = fase4(c_ns, semilla)
+    f4["remuestreos"] = fase4_remuestreos(c_ns, semilla)     # Monte Carlo Y bootstrapping, no uno u otro
+    f4["pasa"] = bool(f4["pasa"] and f4["remuestreos"]["pasa"])
+    marca("F4", 0.85)
+    f5 = fase5(D, s, c_ns, fs, cache_ind)
+    marca("F5", 0.95)
+    return {"c": c, "c_ns": c_ns, "f1": f1, "f2": f2, "f3": f3, "f4": f4, "f5": f5, "P0": P0, "grid": grid, "fs": fs,
+            "i_val": i_val, "n_variantes": len(cache)}
 
 
 def validar(df: pd.DataFrame, spec, semilla: int = 7, progreso=None) -> dict:
@@ -2223,36 +2688,20 @@ def validar(df: pd.DataFrame, spec, semilla: int = 7, progreso=None) -> dict:
         avisos.append(f"La regla dice temporalidad {s['temporalidad']} pero el fichero parece {tf}; se usa el fichero tal cual.")
     intradia = tf not in ("D1", "W1", "MN")
     D = _Datos(df)
-    P0 = dict(s["parametros"])
-    grid = s["optimizar"]
     cache_ind: dict = {}
     if s.get("sesion"):
         cache_ind["__sesion__"] = _InfoSesion(D, s["sesion"])
-    cache: dict = {}
-    if grid:
-        (k1, v1), (k2, v2) = list(grid.items())
-        for a in v1:
-            for b in v2:
-                cache[(a, b)] = _correr(D, s, {**P0, k1: a, k2: b}, cache_ind)
-        c = cache[(P0[k1], P0[k2])]
-    else:
-        c = _correr(D, s, P0, cache_ind)
-        cache[("canon",)] = c
-    marca("simulaciones_rejilla", 0.45)
-    if len(c.trades) == 0:
-        raise ErrorSpec("La regla no genera ninguna operación en este histórico. Revisa las condiciones (¿son demasiado estrictas?).")
-    fs = _fecha_split(c, s)
-    f1 = fase1(c, fs, D.df.close.to_numpy(float)); marca("F1", 0.5)
-    f2 = fase2(cache, c.idx); marca("F2", 0.6)
-    if grid:
-        f3 = fase3(cache, grid, P0, fs)
-    else:
-        f3 = {"ejes": {}, "pf_is": [], "criterios": {"centro_pf>1": False, "vecinos_dentro_20pct": False,
-                                                     "anti_cliff_30pct": False, "meseta_3x3_completa": False},
-              "pct_celdas_pf>1": 0.0, "pasa": False, "nota": "sin parámetros numéricos que mover: no hay meseta que medir"}
-    marca("F3", 0.65)
-    f4 = fase4(c, semilla); marca("F4", 0.85)
-    f5 = fase5(D, s, c, fs, cache_ind); marca("F5", 0.95)
+    avisos_corte: list = []
+
+    def elegir_corte(c):
+        i_val = _i_sello(c.idx)
+        if i_val >= D.n:
+            avisos_corte.append("El histórico es demasiado corto para sellar el último 20 %: se valida SIN sello, y eso favorece a la regla.")
+        return _fecha_split(c, s, i_val, avisos_corte), i_val
+    N = _nucleo_fases(D, s, cache_ind, elegir_corte, semilla, marca)
+    avisos += avisos_corte
+    c, c_ns, fs, i_val, P0, grid = N["c"], N["c_ns"], N["fs"], N["i_val"], N["P0"], N["grid"]
+    f1, f2, f3, f4, f5 = N["f1"], N["f2"], N["f3"], N["f4"], N["f5"]
     fases = {"F1": f1["pasa"], "F2": f2["pasa"], "F3": f3["pasa"], "F4": f4["pasa"], "F5": f5["pasa"]}
     full = _resumen(c.trades.ret.to_numpy(float), c.r, c.idx)
 
@@ -2264,36 +2713,35 @@ def validar(df: pd.DataFrame, spec, semilla: int = 7, progreso=None) -> dict:
     fi = pd.DatetimeIndex(t.fecha_in); fo = pd.DatetimeIndex(t.fecha_out)
     mov = t.lado.to_numpy() * (t.px_out.to_numpy(float) / t.px_in.to_numpy(float) - 1.0)
     dias = ((fo - fi).total_seconds() / 86400.0).to_numpy()
+    sello_ts = c.idx[i_val] if i_val < len(c.idx) else c.idx[-1] + pd.Timedelta(days=3650)
     trades = []
     for i in range(len(t)):
         trades.append({"n": i + 1, "fi": _fecha_txt(fi[i], intradia), "fo": _fecha_txt(fo[i], intradia),
                        "pi": float(t.px_in.iat[i]), "po": float(t.px_out.iat[i]), "mov": round(float(mov[i]), 5),
                        "dias": int(round(dias[i])) if not intradia else round(float(dias[i]), 2),
-                       "ret": round(float(t.ret.iat[i]), 6), "oos": bool(fi[i] >= fs),
+                       "ret": round(float(t.ret.iat[i]), 6), "oos": bool(fi[i] >= fs and fi[i] < sello_ts),
+                       "sel": bool(fi[i] >= sello_ts),
                        "lado": "largo" if t.lado.iat[i] == 1 else "corto", "motivo": t.motivo.iat[i]})
     anual = pd.DataFrame({"y": fo.year, "ret": t.ret.to_numpy(float)}).groupby("y").ret.agg(["count", "sum"])   # por año de cierre
     anual_l = [{"y": int(y), "n": int(r["count"]), "ret": round(float(r["sum"]), 5)} for y, r in anual.iterrows()]
-    meseta = {"ejes": f3["ejes"], "pf": [[_rd(x, 2) for x in fila] for fila in f3["pf_is"]],
-              "crit": f3["criterios"], "pct": round(float(f3["pct_celdas_pf>1"]), 4)}
-    if "n_is" in f3:
-        meseta["n"] = f3["n_is"]
-    if "nota" in f3:
-        meseta["nota"] = f3["nota"]
+    m2 = f3.get("meseta_2d") or {"ejes": {}, "pf_is": [], "criterios": {"centro_pf>1": False, "vecinos_dentro_20pct": False,
+                                                                     "anti_cliff_30pct": False, "meseta_3x3_completa": False},
+                                 "pct_celdas_pf>1": 0.0, "pasa": False,
+                                 "nota": "sin dos parámetros numéricos que mover: no hay mapa de calor (la robustez sí se mide)"}
+    meseta = {"ejes": m2["ejes"], "pf": [[_rd(x, 2) for x in fila] for fila in m2["pf_is"]],
+              "crit": m2["criterios"], "pct": round(float(m2["pct_celdas_pf>1"]), 4)}
+    if "n_is" in m2:
+        meseta["n"] = m2["n_is"]
+    if "nota" in m2:
+        meseta["nota"] = m2["nota"]
+    wfp = f2.get("walk_forward_pardo") or {"ventanas": [], "n_ventanas": 0}
     wf = [{"o": v["oos_ini"][:4], "r": _rd(v["oos_ret_anual"], 5), "n": int(v["oos_n"]),
-           "params": v["params"]} for v in f2["ventanas"]]
-    wf_res = {k: f2.get(k) for k in ("n_ventanas", "eficiencia", "pct_positivas", "peor_dd", "is_ret_anual_medio",
-                                     "oos_ret_anual_medio", "criterios", "pasa")}
-    if "nota" in f2:
-        wf_res["nota"] = f2["nota"]
-    mc = {"p5": f4["p5_ret"], "p50": f4["p50_ret"], "p95dd": f4["p95_dd"], "p50dd": f4["p50_dd"], "ruina": f4["prob_ruina"],
-          "hist": f4.get("hist_ret", []), "bins": [round(b, 5) for b in f4.get("hist_ret_bins", [])],
-          "nota": f"histograma de retorno = {UMBRAL['mc_sims'] // 2:,} remuestreos; DD y ruina sobre {UMBRAL['mc_sims']:,}".replace(",", "."),
-          "criterios": f4["criterios"], "n_trades": f4["n_trades"]}
-    stress = {}
-    for k, e in f5["escenarios"].items():
-        stress[k] = {"pf": _rd(e["pf"], 2), "dd": _rd(e["maxdd"], 5), "n": e["n"], "pasa": e["pasa"], "nota": e["nota"]}
-    stress["sin_2_mejores_anios"]["anios"] = f5["escenarios"]["sin_2_mejores_anios"]["anios_quitados"]
-    stress["regimen_malo"]["anios"] = f5["escenarios"]["regimen_malo"]["anios_regimen"]
+           "params": v["params"]} for v in wfp["ventanas"]]
+    wf_res = {k: wfp.get(k) for k in ("n_ventanas", "eficiencia", "pct_positivas", "peor_dd", "is_ret_anual_medio",
+                                      "oos_ret_anual_medio", "criterios", "pasa")}
+    if "nota" in wfp:
+        wf_res["nota"] = wfp["nota"]
+    mc, stress = _pack_mc_stress(f4, f5)
 
     # velas recientes + estado actual con los indicadores de la regla
     ops = _operandos(s)
@@ -2362,7 +2810,12 @@ def validar(df: pd.DataFrame, spec, semilla: int = 7, progreso=None) -> dict:
         "paridad": {"estado": "pendiente: sube tu informe del Strategy Tester", "cuadra": None},
         "avisos": avisos, "activo": s["activo"], "tf": tf, "nombre": s["nombre"],
         "n_velas": int(D.n), "motor": f"motor_tester {VERSION}",
-        "fases_detalle": {"F2": {"ventanas": f2["ventanas"]}, "F4": {"hist_dd": f4.get("hist_dd", []),
+        "persistencia": {k: v for k, v in f2.items() if k != "walk_forward_pardo"},
+        "robustez": {k: v for k, v in f3.items() if k != "meseta_2d"},
+        "sello": {"sellado": bool(f1.get("sellado")), "desde": f1.get("fecha_sello"), "pct": UMBRAL["sello_pct"],
+                  "resultado": f1.get("VALIDACION_SELLADA")},
+        "n_variantes": N["n_variantes"],
+        "fases_detalle": {"F2": {"ventanas": wfp["ventanas"]}, "F4": {"hist_dd": f4.get("hist_dd", []),
                                                                    "hist_dd_bins": f4.get("hist_dd_bins", [])},
                           "F5": f5["escenarios"]},
     }
@@ -3249,6 +3702,51 @@ def backtest_lab_json(texto_csv, spec_json) -> str:
                                     "stop y objetivo mayores que 0). Detalle: " + str(e)[:160], "tipo": "ErrorInterno"}, ensure_ascii=False)
 
 
+def fases_lab(texto_csv, spec, semilla: int = 7) -> dict:
+    """Fases 05-06 del Laboratorio Reto Cueva (y la base de la 07-08): la regla del alumno con el protocolo vigente sobre el
+    tramo NO sellado = diseño + examen (la misma partición que el AED y que `backtest_lab`). El tramo sellado se corta ANTES
+    de correr nada: ni una vela suya llega al cálculo. El IS/OOS es diseño/examen (el examen empieza donde lo marca el AED)."""
+    spec = json.loads(spec) if isinstance(spec, str) else dict(spec)
+    spec.pop("_abierto", None); spec.pop("_sin_velas", None)
+    df = cargar_csv(texto_csv)
+    ses = normalizar_spec(dict(spec)).get("sesion")
+    if ses:
+        df = _a_zona(df, ses, [])
+    cal, df = calidad_datos(df)
+    if cal["veredicto"] == "NO APTA":
+        raise ErrorDatos("Los datos son NO APTA en la calidad (fase 01): con NO APTA no se sigue.")
+    part, _ = _particion_tis(df)
+    i_ex, i_val = _cortes_tis(df.index)
+    s = normalizar_spec(spec)
+    df = df[[c for c in ("open", "high", "low", "close", "volumen", "spread") if c in df.columns]].astype(float).iloc[:i_val]
+    D = _Datos(df)
+    cache_ind: dict = {}
+    if s.get("sesion"):
+        cache_ind["__sesion__"] = _InfoSesion(D, s["sesion"])
+    N = _nucleo_fases(D, s, cache_ind, lambda c: (c.idx[i_ex], len(c.idx)), semilla, lambda e, p: None)
+    f1, f2, f3, f4, f5 = N["f1"], N["f2"], N["f3"], N["f4"], N["f5"]
+    mc, stress = _pack_mc_stress(f4, f5)
+    fases = {"F2": f2["pasa"], "F3": f3["pasa"], "F4": f4["pasa"], "F5": f5["pasa"]}
+    nombres = {"F2": "persistencia de la meseta", "F3": "robustez en todos los parámetros", "F4": "Monte Carlo y remuestreos", "F5": "estrés"}
+    return _limpio({
+        "particion": part, "tf": cal["tf"], "parametros": N["P0"], "n_variantes": N["n_variantes"],
+        "diseno": f1["IS"], "examen": f1["OOS"], "fases": fases, "pasan": int(sum(fases.values())),
+        "nombres": nombres, "persistencia": {k: v for k, v in f2.items() if k != "walk_forward_pardo"},
+        "robustez": {k: v for k, v in f3.items() if k != "meseta_2d"}, "mc": mc, "stress": stress,
+        "hist_dd": f4.get("hist_dd", []), "hist_dd_bins": f4.get("hist_dd_bins", []),
+        "n_ops": int(len(N["c_ns"].trades)), "pseudocodigo": pseudocodigo(s)})
+
+
+def fases_lab_json(texto_csv, spec_json) -> str:
+    try:
+        return json.dumps(fases_lab(texto_csv, spec_json), ensure_ascii=False, allow_nan=False)
+    except (ErrorDatos, ErrorSpec) as e:
+        return json.dumps({"error": str(e), "tipo": type(e).__name__}, ensure_ascii=False)
+    except Exception as e:  # noqa: BLE001 — nunca un traceback en la pantalla del alumno
+        return json.dumps({"error": "El motor no pudo correr las fases 05-06 con tu regla. Detalle: " + str(e)[:160],
+                           "tipo": "ErrorInterno"}, ensure_ascii=False)
+
+
 def perfil_activo_json(texto_csv) -> str:
     """Atajo para la interfaz (Pyodide): CSV en texto → JSON de perfil_activo() o error legible."""
     try:
@@ -3427,8 +3925,8 @@ _COMP_ESPEJO = {">": "<", "<": ">", ">=": "<=", "<=": ">=", "cruza_arriba": "cru
 PERFIL_DARWINEX = {
     "XAUUSD": {"point": 0.01, "precio_lectura": 4280.42, "swap_largo": -61.5, "swap_corto": 34.3},
 }
-_PROGRESO_FASES = {"simulaciones_rejilla": ("Fase 1 · IS/OOS", 45), "F1": ("Fase 2 · walk-forward", 50),
-                   "F2": ("Fase 3 · meseta", 60), "F3": ("Fase 4 · Monte Carlo", 65), "F4": ("Fase 5 · stress", 85),
+_PROGRESO_FASES = {"simulaciones_rejilla": ("Fase 1 · IS/OOS", 45), "F1": ("Fase 2 · ¿sigue la meseta, época tras época?", 50),
+                   "F2": ("Fase 3 · robustez en todos los parámetros", 60), "F3": ("Fase 4 · Monte Carlo y remuestreos", 65), "F4": ("Fase 5 · stress", 85),
                    "F5": ("Preparando resultados", 95), "empaquetado": ("Listo", 100)}
 
 

@@ -59,11 +59,11 @@ const GL={
  sma:['Media de 200 días (SMA 200)','Precio medio de las últimas 200 sesiones. Si el cierre está por encima, la tendencia de fondo es alcista.'],
  expo:['Tiempo invertido','Porcentaje de días con posición abierta. El resto del tiempo el dinero está parado.'],
  cagr:['Rentabilidad anual (CAGR)','Crecimiento medio compuesto por año del capital.'],
- wf:['Walk-forward','Se ajusta con los años anteriores y se prueba en el siguiente, una y otra vez. Simula usarla en tiempo real.'],
+ wf:['Persistencia de la meseta','Se parte el histórico en épocas de 3 años y en cada una se mira dónde cae tu regla entre sus vecinas (la misma regla con los números un poco movidos). Si siempre cae en la zona mala, elegiste mal los números; si pierde la mitad de las épocas, no era una ventaja estable.'],
  ef:['Eficiencia walk-forward','Lo que rinde en los años de prueba dividido por lo que rinde al ajustar. Se pide al menos 0,50.'],
- mc:['Monte Carlo','Se barajan las operaciones miles de veces para ver qué caídas eran posibles con otra suerte.'],
- mes:['Meseta de parámetros','Se prueban valores vecinos. Una regla robusta da resultados parecidos alrededor: meseta, no pico.'],
- st:['Stress','Se empeoran las condiciones a propósito: costes dobles, sin los 2 mejores años, régimen malo.'],
+ mc:['Monte Carlo y remuestreos','Se barajan las operaciones miles de veces para ver qué caídas eran posibles con otra suerte. Además se repite conservando las rachas (por bloques) y con años completos repetidos (regímenes): «¿y si me tocan tres 2013 seguidos?».'],
+ mes:['Robustez de parámetros','Se mueven TODOS los números de la regla (±20 % y ±40 %). Una regla robusta rinde parecido alrededor: meseta, no pico ni silla de montar (aguanta si mueves un número y se hunde si mueves otro).'],
+ st:['Stress','Se empeoran las condiciones a propósito: costes dobles, sin los 2 mejores años y el peor año del activo. En el año malo no se pide ganar: se pide no empeorar la caída del propio activo (comerse como mucho la mitad).'],
  pfsm:['PF sin la mejor operación','El factor de beneficio quitando la operación más rentable. Si sigue por encima de 1, no depende de un golpe de suerte.'],
  mfe:['MFE (excursión a favor)','Lo máximo que llegó a ir a favor la operación antes de cerrarse.'],
  mae:['MAE (excursión en contra)','Lo máximo que llegó a ir en contra la operación antes de cerrarse.'],
@@ -441,6 +441,16 @@ function abrirVelas(i){vdState.op=Math.max(0,Math.min(T.length-1,i));const t=T[v
   const c=chart('cv-velas',drawVelas);c.src=()=>ventana(T[vdState.op]);requestAnimationFrame(()=>c.render())}
 
 /* ---------- VALIDACIÓN ---------- */
+/* ---- helpers de las fases alineadas con el protocolo (F2 persistencia · F3 robustez · F4 remuestreos · F5 régimen contra el activo) ---- */
+function pctE(x,d){return x==null?'—':nf(x*100,d==null?0:d)+' %'}
+function epocaCorta(e){return String(e||'').slice(0,4)+'–'+String(e||'').slice(-10,-6)}
+function barrasEpocas(PE){const H=(PE&&PE.epocas||[]).filter(x=>x.pf_canonico!=null),mx=Math.max(2,...H.map(x=>x.pf_canonico*1.1));
+  return H.length?H.map(x=>sbarH(esc(epocaCorta(x.epoca)),x.pf_canonico,mx,1,x.pf_canonico>1?'var(--f2)':'var(--red)','PF '+nf(x.pf_canonico,2)+' · '+nf((x.percentil||0)*100,0)+' %')).join('')+'<div class="c-dim" style="font-size:.8rem">raya = PF 1 · el % es dónde cae entre las variantes de su entorno</div>':'<p class="c-dim">'+esc(PE&&PE.nota||'Sin épocas suficientes.')+'</p>'}
+function tablaLineas(RB){const Ls=RB&&RB.lineas,cn=(D.spec&&D.spec.parametros)||{};if(!Ls||!Object.keys(Ls).length)return'';
+  return '<table class="heat" aria-label="PF según el valor de cada número">'+Object.keys(Ls).map(k=>`<tr><th>${esc(k)}</th>`+Ls[k].map(q=>`<td class="${q.v===cn[k]?'c':''}" style="${heatBg(q.pf)};padding:.35rem .25rem" title="${esc(k)} = ${q.v}: PF ${nf(q.pf,2)} (${q.n} op.)">${q.v}<br><b>${nf(q.pf,2)}</b></td>`).join('')+'</tr>').join('')+'</table>'}
+function filaCapt(l,S){const R=S&&S.regimen_malo;if(!R)return'';const c=R.captura;return sbarH(l,c==null?0:Math.min(1,c),1,.5,R.pasa?'var(--f5)':'var(--red)',c==null?'el activo no cayó':c===0?'gana':nf(c*100,0)+' %')}
+function textoRegimen(R){if(!R)return'';return R.captura==null?'el activo no cayó':R.captura===0?'gana mientras el activo cae':'se come el '+nf(R.captura*100,0)+' % de la caída del activo'}
+function critRem(ck,etq,Rm,lim){if(!Rm||Rm.pasa==null)return'';const ne=Rm.no_evaluable;return ck(!!Rm.pasa,etq,ne?'no evaluable':'caída '+pct(Rm.p95_dd,1,false)+' · p5 '+pct(Rm.p5_ret,1),lim)}
 function fillVal(){const fs=D.fases,M=D.mc||{},W=D.wf_res||{},S=D.stress||{},Me=D.meseta;
   const fl=['F1','F2','F3','F4','F5'].filter(k=>!fs[k]);
   $('#val-head').innerHTML='<strong>'+nPass+' de 5 pruebas superadas'+(fl.length?' → no aprueba.':' → aprueba.')+'</strong>'+(fl.length?' Falla '+fl.map(k=>NOMF[k].toLowerCase()).join(' y ')+'.':'');
@@ -451,28 +461,30 @@ function fillVal(){const fs=D.fases,M=D.mc||{},W=D.wf_res||{},S=D.stress||{},Me=
   const f1=card('F1','Diseño / prueba','¿Sigue ganando con datos que no se usaron para diseñarla?',
     ck(OOS.pf>=1.3,'Factor de beneficio',nf(OOS.pf,2),'≥ 1,30')+ck(nOk(),'Operaciones',nTot()+' en total','≥ 30 en total')+ck(ddOk(),'Peor caída',pct(-OOS.maxdd,1),ddTxt())+ck(psmOk(),'PF sin la mejor',nf(psmV(),2),'> 1,00 (en total)'),
     `<div class="fbody" style="align-content:end"><div class="sbar"><span>Diseño</span><span class="tr"><i style="width:${Math.min(100,IS.pf/mx*100)}%;background:var(--dim2)"></i><u style="left:${1.3/mx*100}%"></u></span><span>${nf(IS.pf,2)}</span></div><div class="sbar"><span>Prueba honesta</span><span class="tr"><i style="width:${Math.min(100,OOS.pf/mx*100)}%;background:var(--f1)"></i><u style="left:${1.3/mx*100}%"></u></span><span>${nf(OOS.pf,2)}</span></div><div class="c-dim" style="font-size:.8rem">raya = mínimo 1,30</div></div>`,'oos');
-  const f2=card('F2','Walk-forward','¿Aguanta si se reajusta cada año y se prueba en el siguiente?',
-    W.eficiencia!=null?ck(W.eficiencia>=.5,'Eficiencia',nf(W.eficiencia,2),'≥ 0,50')+ck(W.pct_positivas>=.6,'Años en positivo',Math.round(W.pct_positivas*W.n_ventanas)+' de '+W.n_ventanas,'≥ 60 %'):'',
-    `<div class="fbody"><div class="cv" id="cv-wf"><canvas role="img" aria-label="Resultado de cada año de prueba"></canvas><div class="tt"></div></div></div>`,'wf');
-  let ht='',f3crit='';
-  if(Me&&Me.pf){const c=centro(Me),k=Object.keys(Me.ejes),nb=vecinos(Me),pc=Me.pf[c][c],peor=Math.min(...nb);
+  const PE=D.persistencia||{},PEc=PE.criterios||{};
+  const f2=card('F2','Persistencia','¿La meseta sigue ahí, época tras época?',
+    PE.n_epocas!=null?ck(!!PEc.epocas_suficientes,'Épocas (3 años) que se pueden juzgar',PE.n_epocas,'≥ 4')+ck(!!PEc.no_esta_en_la_zona_mala,'Dónde cae entre sus vecinos (media)',pctE(PE.percentil_medio),'≥ 40 %')+ck(!!PEc.gana_en_la_mayoria_de_epocas,'Épocas ganando (PF > 1)',PE.epocas_ganando+' de '+PE.n_epocas,'≥ 60 %'):'',
+    `<div class="fbody" style="align-content:end">${barrasEpocas(PE)}</div>`,'wf');
+  const RB=D.robustez||{},RBc=RB.criterios||{};
+  let ht='';
+  if(Me&&Me.pf){const c=centro(Me),k=Object.keys(Me.ejes);
     ht=`<table class="heat" aria-label="Factor de beneficio por combinación"><tr><th>${esc(k[0])}\\${esc(k[1])}</th>`+Me.ejes[k[1]].map(s=>`<th>${s}</th>`).join('')+'</tr>';
-    Me.pf.forEach((row,i)=>{ht+=`<tr><th>${Me.ejes[k[0]][i]}</th>`+row.map((v,j)=>`<td class="${i===c&&j===c?'c':''}" style="${heatBg(v)}">${nf(v,2)}</td>`).join('')+'</tr>'});ht+='</table>';
-    f3crit=ck(Me.crit['centro_pf>1'],'PF en el centro',nf(pc,2),'> 1')+ck(Me.crit.vecinos_dentro_20pct,'Vecinos parecidos',nf(Math.min(...nb),2)+'–'+nf(Math.max(...nb),2),'± 20 %')+ck(Me.crit.anti_cliff_30pct,'Sin precipicios','peor −'+nf((1-peor/pc)*100,0)+' %','< 30 %')}
-  const f3=card('F3','Meseta','¿Funciona igual si cambio un poco los números?',f3crit,`<div class="fbody">${ht}</div>`,'mes');
-  const f4=card('F4','Monte Carlo','¿Qué podría pasar con otro orden de operaciones?',
-    M.p95dd!=null?ck(M.p5>0,'Peor 5 % de retornos',pct(M.p5,1),'> 0')+ck(M.p95dd<.25,'Caída en el peor 5 %',pct(-M.p95dd,1),'< 25 %')+ck(M.ruina<.05,'Prob. de ruina',pct(M.ruina,1,false),'< 5 %'):'',
+    Me.pf.forEach((row,i)=>{ht+=`<tr><th>${Me.ejes[k[0]][i]}</th>`+row.map((v,j)=>`<td class="${i===c&&j===c?'c':''}" style="${heatBg(v)}">${nf(v,2)}</td>`).join('')+'</tr>'});ht+='</table>'}
+  const f3crit=RB.criterios&&Object.keys(RBc).length?ck(!!RBc.mayoria_del_entorno_gana,'Variantes con PF > 1',pctE(RB.pct_variantes_pf_mayor_1)+' de '+RB.n_variantes,'≥ 70 %')+ck(!!RBc.ningun_eje_hunde,'Peor número al moverlo',(RB.peor_eje?esc(RB.peor_eje)+' ':'')+'−'+pctE(RB.peor_dano),'< 30 %')+ck(!!RBc.no_es_silla_de_montar,'Silla de montar',RBc.no_es_silla_de_montar?'no':'sí','no debe ser')+ck(!!RBc.no_es_pico,'Pico',RBc.no_es_pico?'no':'sí','no debe ser'):ck(false,'Variantes con operaciones suficientes',RB.n_variantes||0,'≥ 20 op. cada una');
+  const f3=card('F3','Robustez de parámetros','¿Aguanta si muevo TODOS los números de la regla?',f3crit,`<div class="fbody">${tablaLineas(RB)||ht||'<p class="c-dim">'+esc(RB.nota||'')+'</p>'}</div>`,'mes');
+  const f4=card('F4','Monte Carlo y remuestreos','¿Qué pasa con otro orden de operaciones, otras rachas y otros años?',
+    M.p95dd!=null?ck(M.p5>0,'Monte Carlo · peor 5 % de retornos',pct(M.p5,1),'> 0')+ck(M.p95dd<.30,'Monte Carlo · caída en el peor 5 %',pct(-M.p95dd,1),'< 30 %')+ck(M.ruina<.05,'Monte Carlo · prob. de ruina',pct(M.ruina,1,false),'< 5 %')+critRem(ck,'Por bloques (conserva las rachas)',M.bloques,'p5 > 0 · caída < 30 %')+critRem(ck,'Por años completos (regímenes)',M.regimenes,'p5 > 0 · caída < 30 %'):'',
     `<div class="fbody"><div class="cv" id="cv-mc"><canvas role="img" aria-label="Histograma de retornos simulados"></canvas><div class="tt"></div></div></div>`,'mc');
-  const sb=(l,o)=>o?`<div class="sbar"><span>${l}</span><span class="tr"><i style="width:${Math.min(100,o.pf/2*100)}%;background:${o.pf>=1.1?'var(--f5)':'var(--red)'}"></i><u style="left:${1.1/2*100}%"></u></span><span>${nf(o.pf,2)}</span></div>`:'';
+  const sb=(l,o)=>o?`<div class="sbar"><span>${l}</span><span class="tr"><i style="width:${Math.min(100,(o.pf||0)/2*100)}%;background:${o.pf>=1.1?'var(--f5)':'var(--red)'}"></i><u style="left:${1.1/2*100}%"></u></span><span>${nf(o.pf,2)}</span></div>`:'';
   const f5=card('F5','Stress','¿Sobrevive si empeoro las condiciones a propósito?',
-    (S.costes_x2?ck(S.costes_x2.pasa,'Costes ×2',nf(S.costes_x2.pf,2),'PF ≥ 1,10'):'')+(S.sin_2_mejores_anios?ck(S.sin_2_mejores_anios.pasa,'Sin 2 mejores años',nf(S.sin_2_mejores_anios.pf,2),'PF ≥ 1,10'):'')+(S.regimen_malo?ck(S.regimen_malo.pasa,'Régimen malo',S.regimen_malo.n+' op.','sin exposición relevante'):''),
-    `<div class="fbody" style="align-content:end">${sb('Costes ×2',S.costes_x2)}${sb('Sin 2 mejores años',S.sin_2_mejores_anios)}${sb('Régimen malo',S.regimen_malo)}<div class="c-dim" style="font-size:.8rem">raya = mínimo 1,10</div></div>`,'st');
+    (S.costes_x2?ck(S.costes_x2.pasa,'Costes ×2',nf(S.costes_x2.pf,2)+' · caída '+pct(S.costes_x2.dd,1,false),'PF ≥ 1,10 · caída < 25 %'):'')+(S.sin_2_mejores_anios?ck(S.sin_2_mejores_anios.pasa,'Sin 2 mejores años',nf(S.sin_2_mejores_anios.pf,2)+' · caída '+pct(S.sin_2_mejores_anios.dd,1,false),'PF ≥ 1,10 · caída < 25 %'):'')+(S.regimen_malo?ck(S.regimen_malo.pasa,'Régimen malo ('+(S.regimen_malo.anios||[]).join(', ')+')',textoRegimen(S.regimen_malo),'≤ 50 % de la caída del activo'):''),
+    `<div class="fbody" style="align-content:end">${sb('Costes ×2',S.costes_x2)}${sb('Sin 2 mejores años',S.sin_2_mejores_anios)}${filaCapt('Régimen malo: lo que se come de la caída',S)}<div class="c-dim" style="font-size:.8rem">raya = PF 1,10 · en el régimen malo, raya = 50 % de la caída del activo</div></div>`,'st');
   const SUM=`<section class="panel summ" aria-label="Veredicto"><div class="ph"><h3>Veredicto</h3></div>${sello(nPass===5,nPass===5?'APROBADA':'NO APROBADA · '+nPass+'/5')}
     <div class="phases">${chipsFases()}</div>
     <p>${ES_DEMO?`Tiene ventaja real en la prueba honesta (PF ${nf(OOS.pf,2)}, ${OOS.n} op.), pero <b class="c-ink">no está lista para dinero real</b>: con otros números cercanos se desploma, y en 1 de cada 20 simulaciones la caída supera el ${pct(M.p95dd,1,false)}.`:(nPass===5?'Supera las cinco pruebas. Falta la paridad con MT5.':'<b class="c-ink">No está lista para dinero real.</b> Revisa las pruebas en rojo.')}</p>
     <button class="link" data-go="protocolo" style="align-self:flex-start">ver el protocolo completo →</button></section>`;
   $('#val-grid').innerHTML=f1+f2+f3+f4+f5+SUM;wireTerms($('#v-validacion'));$$('#val-grid [data-go]').forEach(b=>b.onclick=()=>go(b.dataset.go));
-  delete charts['cv-wf'];delete charts['cv-mc'];chart('cv-wf',drawWF);chart('cv-mc',drawMC)}
+  delete charts['cv-mc'];chart('cv-mc',drawMC)}
 function heatBg(v){const a=Math.min(1,Math.max(0,(v-.9)/1.7));return v<1.1?`background:rgba(${css('--red-rgb')},${.22+.3*Math.min(1,(1.1-v)/.3)})`:`background:rgba(${css('--ok-rgb')},${.12+a*.5})`}
 
 /* =====================================================================
@@ -487,7 +499,7 @@ const DEMO_PARIDAD={
 };
 const P=(D.paridad&&D.paridad.zona)?D.paridad:(ES_DEMO?DEMO_PARIDAD:{zona:{estado:'pend',txt:'Comprueba que tus velas están en hora del servidor del bróker.'},costes:{estado:'pend',txt:'Comprueba que los costes son los de tu bróker.'},reconciliacion:{estado:'pend',txt:'Falta la reconciliación con el Strategy Tester.'}});
 let RECON=null;
-const NOMF={F1:'Diseño / prueba',F2:'Walk-forward',F3:'Meseta de parámetros',F4:'Monte Carlo',F5:'Stress',PAR:'Paridad MT5'};
+const NOMF={F1:'Diseño / prueba',F2:'Persistencia de la meseta',F3:'Robustez de parámetros',F4:'Monte Carlo y remuestreos',F5:'Stress',PAR:'Paridad MT5'};
 function estParidad(){if(RECON)return RECON.ok?'pasa':'falla';const r=P.reconciliacion&&P.reconciliacion.estado;return r==='pasa'||r==='falla'?r:'pend'}
 function estFase(id){if(id==='PAR')return estParidad();if(/^F\d$/.test(id))return D.fases[id]?'pasa':'falla';return null}
 function centro(Me){return Math.floor(Me.pf.length/2)}
@@ -500,26 +512,26 @@ const FASES=[
   umb:[['PF en la prueba honesta','≥ 1,30'],['Operaciones en la prueba','≥ 30'],['Caída máxima en la prueba','< 20 %'],['PF sin la mejor operación','> 1,00']],
   falla:'La curva del diseño sube preciosa y en la parte guardada se aplana: estaba aprendida de memoria.',
   av:'Corte 70/30 por defecto [calibrable]. Los 4 criterios duros se cumplen a la vez sobre el OOS; no se bajan sin orden explícita.'},
- {id:'F2',cod:'F2',nombre:'Walk-forward',corto:'Walk-forward',preg:'¿Aguanta si la reajusto cada año y la pruebo en el siguiente?',
-  que:'Muchos cortes seguidos: ajustar con 3 años, probar en el siguiente, avanzar un año y repetir.',
-  umb:[['Eficiencia (prueba / ajuste)','≥ 0,50'],['Años de prueba en positivo','≥ 60 %']],
-  falla:'Con un corte funciona, pero al rodar la ventana la mitad de los años pierde: era suerte del corte.',
-  av:'IS 3 años / OOS 1 año / paso 1 año [calibrable]. Eficiencia = rendimiento medio OOS / IS.'},
- {id:'F3',cod:'F3',nombre:'Meseta de parámetros',corto:'Meseta',preg:'¿Funciona igual si muevo un poco los números?',
-  que:'Se prueban los valores vecinos de cada número elegido. Una buena regla está rodeada de buenas reglas.',
-  umb:[['Rejilla alrededor del elegido','3 × 3'],['Los vecinos rinden parecido','± 20 %'],['Ningún vecino se desploma','caída < 30 %']],
-  falla:'Con 25 gana y con 30 apenas: es un pico. El mercado no sabe que elegiste 25.',
-  av:'Vecinos ±1 paso en los 2 parámetros clave; tolerancia 20 %; anti-cliff 30 % [calibrable].'},
- {id:'F4',cod:'F4',nombre:'Monte Carlo',corto:'Monte Carlo',preg:'¿Qué podría haber pasado con otra suerte en el orden?',
-  que:'Se barajan las mismas operaciones miles de veces y se miran los caminos malos.',
-  umb:[['El peor 5 % de caminos aún gana','> 0'],['Caída en el peor 5 %','< 25 %'],['Prob. de perder la mitad','< 5 %']],
-  falla:'La caída real fue moderada, pero 1 de cada 20 caminos supera el 25 %.',
-  av:'5.000 simulaciones; reordenación + bootstrap [calibrable].'},
+ {id:'F2',cod:'F2',nombre:'Persistencia de la meseta',corto:'Persistencia',preg:'¿La zona buena sigue ahí, época tras época?',
+  que:'Se corta el histórico en épocas de 3 años. En cada una se mira dónde cae tu regla entre sus vecinas, las mismas reglas con los números un poco movidos. No se reajusta nada: los números son los tuyos.',
+  umb:[['Épocas de 3 años que se pueden juzgar','≥ 4'],['Dónde cae entre sus vecinas (media)','≥ 40 %'],['Épocas ganando (PF > 1)','≥ 60 %']],
+  falla:'Con todo el histórico junto gana, pero en la mitad de las épocas pierde, o cae siempre en la zona mala de sus vecinas: no era una ventaja estable.',
+  av:'Épocas de 3 años sobre el tramo no sellado; se compara con la MEDIANA del entorno, nunca con el mejor. El walk-forward de Pardo ya no juzga: se guarda como dato.'},
+ {id:'F3',cod:'F3',nombre:'Robustez de parámetros',corto:'Robustez',preg:'¿Aguanta si muevo TODOS los números?',
+  que:'Se mueven todos los números de la regla (±20 % y ±40 %) y se mira el conjunto: qué parte de las variantes sigue ganando y qué número, al moverlo, la hunde.',
+  umb:[['Variantes con PF > 1','≥ 70 %'],['Ningún número quita más del','30 % del PF'],['No es silla de montar ni pico','—']],
+  falla:'Aguanta si mueves el RSI, pero se desploma si mueves la salida: estaba escondida en el número que no mirabas (silla de montar).',
+  av:'Se mueven todos salvo categorías (día, hora, sesión…). Pocos números es una virtud, no un aprobado flojo. Se compara con la mediana del entorno.'},
+ {id:'F4',cod:'F4',nombre:'Monte Carlo y remuestreos',corto:'Monte Carlo',preg:'¿Qué pasa con otro orden, otras rachas y otros años?',
+  que:'Se barajan las operaciones miles de veces (Monte Carlo) y además se repite conservando las rachas (por bloques) y con años completos repetidos (regímenes). Se exigen los tres.',
+  umb:[['El peor 5 % de caminos aún gana','> 0'],['Caída en el peor 5 %','< 30 %'],['Prob. de perder la mitad','< 5 %']],
+  falla:'Barajando operaciones sueltas aguanta, pero repitiendo años completos el peor 5 % pierde: el edge dependía del orden en que vinieron los años.',
+  av:'5.000 simulaciones por método, sobre el tramo no sellado. El Monte Carlo suelto es más optimista porque destruye las rachas.'},
  {id:'F5',cod:'F5',nombre:'Stress',corto:'Stress',preg:'¿Sobrevive si empeoro las condiciones a propósito?',
-  que:'Costes dobles, sin los 2 mejores años y en el peor tramo de mercado. Si la ventaja es real, sale viva.',
-  umb:[['Costes ×2: PF','≥ 1,10'],['Sin los 2 mejores años: PF','≥ 1,10'],['Régimen malo: caída','< 25 %']],
+  que:'Costes dobles, sin los 2 mejores años y en el peor año del activo. En el año malo no se pide ganar: se pide no empeorar la caída del propio activo.',
+  umb:[['Costes ×2: PF y caída','≥ 1,10 · < 25 %'],['Sin los 2 mejores años: PF y caída','≥ 1,10 · < 25 %'],['Régimen malo: se come como mucho','50 % de la caída del activo']],
   falla:'Con costes dobles el PF baja de 1: la ventaja era más pequeña que el coste de operar.',
-  av:'Costes y deslizamiento ×2 sobre el perfil de destino; sin los 2 mejores años; régimen malo aislado.'},
+  av:'Costes y deslizamiento ×2; sin los 2 mejores años; el peor año del activo se elige por su caída (drawdown), no por cómo cerró. Sin excepción por pocas operaciones.'},
  {id:'PAR',cod:'MT5',nombre:'Paridad MT5',corto:'Paridad MT5',preg:'¿El backtest y el MetaTrader real son el mismo sistema?',
   que:'Mismas velas en hora del servidor, costes reales del bróker y el Strategy Tester debe dar las mismas operaciones.',
   umb:[['Velas en hora del servidor','GMT+3 · DST EE. UU.'],['Costes leídos del terminal','spread · comisión · swap'],['Strategy Tester vs backtest','± 2 % · mismas op.']],
@@ -530,10 +542,10 @@ let galSel=0;
 function demoFase(id){const St=D.stress||{},Mc=D.mc||{},W=D.wf_res||{},Me=D.meseta;
   switch(id){
    case 'F1':return `PF en la prueba <b>${nf(OOS.pf,2)}</b> con <b>${OOS.n}</b> operaciones y caída máxima <b>${pct(OOS.maxdd,1,false)}</b>.`;
-   case 'F2':return W.eficiencia!=null?`Eficiencia <b>${nf(W.eficiencia,2)}</b> y <b>${Math.round(W.pct_positivas*W.n_ventanas)} de ${W.n_ventanas}</b> años en positivo.`:'Sin datos.';
-   case 'F3':if(!Me||!Me.pf)return 'Sin datos.';{const c=centro(Me),nb=vecinos(Me);return `PF <b>${nf(Me.pf[c][c],2)}</b> en el centro; vecinos de <b>${nf(Math.min(...nb),2)}</b> a <b>${nf(Math.max(...nb),2)}</b>. ${D.fases.F3?'Es una meseta.':'Es un pico.'}`}
-   case 'F4':return Mc.p95dd!=null?`En el peor 5 % de caminos la caída llega al <b>${pct(Mc.p95dd,1,false)}</b> (límite 25 %).`:'Sin datos.';
-   case 'F5':return St.costes_x2?`Con costes ×2 el PF queda en <b>${nf(St.costes_x2.pf,2)}</b>; sin los 2 mejores años, <b>${nf(St.sin_2_mejores_anios&&St.sin_2_mejores_anios.pf,2)}</b>.`:'Sin datos.';
+   case 'F2':{const PE=D.persistencia||{};return PE.n_epocas?`Gana en <b>${PE.epocas_ganando} de ${PE.n_epocas}</b> épocas y cae, de media, en el <b>${nf((PE.percentil_medio||0)*100,0)} %</b> de sus vecinas.`:esc(PE.nota||'Sin datos.')}
+   case 'F3':{const RB=D.robustez||{};return RB.n_variantes?`El <b>${nf((RB.pct_variantes_pf_mayor_1||0)*100,0)} %</b> de las <b>${RB.n_variantes}</b> variantes sigue ganando; el número más frágil${RB.peor_eje?' ('+esc(RB.peor_eje)+')':''} le quita un <b>${nf((RB.peor_dano||0)*100,0)} %</b>. ${D.fases.F3?'Es una meseta.':'No es una meseta.'}`:esc(RB.nota||'Sin datos.')}
+   case 'F4':return Mc.p95dd!=null?`En el peor 5 % de caminos la caída llega al <b>${pct(Mc.p95dd,1,false)}</b> (límite 30 %).`:'Sin datos.';
+   case 'F5':return St.costes_x2?`Con costes ×2 el PF queda en <b>${nf(St.costes_x2.pf,2)}</b>; sin los 2 mejores años, <b>${nf(St.sin_2_mejores_anios&&St.sin_2_mejores_anios.pf,2)}</b>; en el año malo ${esc(textoRegimen(St.regimen_malo))}.`:'Sin datos.';
    case 'PAR':return estParidad()==='pend'?'Hora y costes como en MT5. <b>Falta la reconciliación</b> con el Strategy Tester.':(RECON?RECON.txt:esc(P.reconciliacion.txt||''));
   }return ''}
 const FLOW=[['01','Idea','Una regla que un ordenador pueda seguir sin interpretar.',null],['02','AED','Análisis exploratorio del activo: cómo se mueve antes de inventar reglas.',null],
@@ -1110,9 +1122,9 @@ function crit(e,t,u,v){return `<li><span class="${e==='pasa'?'y':e==='falla'?'n'
 function sbarH(l,v,max,lim,col,txt){return `<div class="sbar"><span>${l}</span><span class="tr"><i style="width:${Math.min(100,v/max*100)}%;background:${col}"></i><u style="left:${lim/max*100}%"></u></span><span>${txt}</span></div>`}
 function cifraClave(id){const Mc=D.mc||{},W=D.wf_res||{},St=D.stress||{},Me=D.meseta;
   if(id==='F1')return[nf(OOS.pf,2),'PF en la prueba','≥ 1,30','PF mínimo'];
-  if(id==='F2')return[nf(W.eficiencia,2),'eficiencia','≥ 0,50','conserva la mitad'];
-  if(id==='F3'){if(!Me||!Me.pf)return['—','',''];const c=centro(Me),peor=Math.min(...vecinos(Me));return['−'+nf((1-peor/Me.pf[c][c])*100,0)+' %','peor vecino','< 30 %','anti-precipicio']}
-  if(id==='F4')return[pct(Mc.p95dd,1,false),'caída · peor 5 %','< 25 %','de 5.000 caminos'];
+  if(id==='F2'){const PE=D.persistencia||{};return[pctE(PE.percentil_medio),'sitio entre sus vecinas','≥ 40 %','no estar en la zona mala']}
+  if(id==='F3'){const RB=D.robustez||{};return[pctE(RB.pct_variantes_pf_mayor_1),'variantes con PF > 1','≥ 70 %','de todo el entorno']}
+  if(id==='F4')return[pct(Mc.p95dd,1,false),'caída · peor 5 %','< 30 %','de 5.000 caminos'];
   if(id==='F5')return[nf(St.costes_x2&&St.costes_x2.pf,2),'PF con costes ×2','≥ 1,10','y sin 2 mejores años'];
   const ep=estParidad();return[ep==='pend'?'—':ep==='pasa'?'CUADRA':'NO CUADRA','Strategy Tester','± 2 %','mismas operaciones']}
 function detalleFase(id){const Mc=D.mc||{},W=D.wf_res||{},St=D.stress||{},Me=D.meseta,f=FASES.find(x=>x.id===id),e=estFase(id);
@@ -1122,27 +1134,27 @@ function detalleFase(id){const Mc=D.mc||{},W=D.wf_res||{},St=D.stress||{},Me=D.m
     titG='Capital con el corte <em>diseño / prueba</em>';graf=`<div class="cv" id="cv-pdet"><canvas role="img" aria-label="Curva de capital con el corte"></canvas><div class="tt"></div></div>`;
     sig=e==='pasa'?`En los años guardados (${yr(SPLIT)}–${yr(D.hasta)}) gana <b>${nf(OOS.pf,2)}</b> por cada 1 que pierde (diseño: ${nf(IS.pf,2)}). No estaba aprendida de memoria.`:'En la parte guardada no cumple los mínimos: la ventaja del diseño no se repite.';
     tec=`Corte ${fd(SPLIT)} · IS ${IS.n} op., PF ${nf(IS.pf,2)} · OOS ${OOS.n} op., PF ${nf(OOS.pf,2)}, MaxDD ${pct(OOS.maxdd,1,false)}, CAGR ${pct(OOS.cagr,1)}. Frontera (PF 1,25–1,35): ${F1.frontera?'sí':'no'}.`}
-  if(id==='F2'){const c=W.criterios||{};
-    cr=W.eficiencia==null?'':crit(ee(c.eficiencia??W.eficiencia>=.5),'<span class="term" data-t="ef">Eficiencia</span>','≥ 0,50',nf(W.eficiencia,2))+crit(ee(c.pct_positivas??W.pct_positivas>=.6),'Años en positivo','≥ 60 %',Math.round(W.pct_positivas*W.n_ventanas)+' de '+W.n_ventanas)+(W.peor_dd!=null?crit(ee(c.dd_ventanas??W.peor_dd<.2),'Peor caída en un año','< 20 %',pct(-W.peor_dd,1)):'');
-    titG='Resultado de cada <em>año de prueba</em>';graf=`<div class="cv" id="cv-pdet"><canvas role="img" aria-label="Resultado de cada ventana walk-forward"></canvas><div class="tt"></div></div>`;
-    sig=W.eficiencia==null?'':`Reajustándola cada año conserva el <b>${nf(W.eficiencia*100,0)} %</b> de lo que rinde al ajustar y gana en <b>${Math.round(W.pct_positivas*W.n_ventanas)} de ${W.n_ventanas}</b> años.`;
-    tec=W.eficiencia==null?'':`${W.n_ventanas} ventanas (IS 3a / OOS 1a) · rend. anual medio IS ${pct(W.is_ret_anual_medio,1)} vs OOS ${pct(W.oos_ret_anual_medio,1)}.`}
-  if(id==='F3'&&Me&&Me.pf){const c=Me.crit||{},ce=centro(Me),nb=vecinos(Me),k=Object.keys(Me.ejes),pc=Me.pf[ce][ce],peor=Math.min(...nb),caida=1-peor/pc;auto=true;
-    cr=crit(ee(c['centro_pf>1']),'PF de los números elegidos','> 1',nf(pc,2))+crit(ee(c.vecinos_dentro_20pct),'Vecinos parecidos','± 20 %',nf(Math.min(...nb),2)+'–'+nf(Math.max(...nb),2))+crit(ee(c.anti_cliff_30pct),'Sin precipicios','< 30 %','peor −'+nf(caida*100,0)+' %');
-    let ht=`<table class="heat" aria-label="PF por combinación"><tr><th>${esc(k[0])}\\${esc(k[1])}</th>`+Me.ejes[k[1]].map(s=>`<th>${s}</th>`).join('')+'</tr>';
-    Me.pf.forEach((row,i)=>{ht+=`<tr><th>${Me.ejes[k[0]][i]}</th>`+row.map((v,j)=>`<td class="${i===ce&&j===ce?'c':''}" style="${heatBg(v)};padding:.5rem .2rem" title="${esc(k[0])} ${Me.ejes[k[0]][i]} · ${esc(k[1])} ${Me.ejes[k[1]][j]}: PF ${nf(v,2)}">${nf(v,2)}</td>`).join('')+'</tr>'});ht+='</table>';
-    titG='PF de cada <em>combinación</em>';graf=ht;
-    sig=`El recuadro son los números elegidos (${esc(k[0])} ${Me.ejes[k[0]][ce]}, ${esc(k[1])} ${Me.ejes[k[1]][ce]}). ${e==='pasa'?'Sus vecinos rinden parecido: meseta.':`Un paso al lado el PF cae a <b>${nf(peor,2)}</b> (−${nf(caida*100,0)} %): depende de esos números exactos.`}`;
-    tec=`PF IS en rejilla ${Me.pf.length}×${Me.pf[0].length}; ${nf((Me.pct||0)*100,0)} % de celdas con PF > 1. Tolerancia 20 %, anti-cliff 30 %.`}
-  if(id==='F4'&&Mc.p95dd!=null){cr=crit(ee(Mc.p5>0),'Peor 5 % de retornos','> 0',pct(Mc.p5,1))+crit(ee(Mc.p95dd<.25),'Caída en el peor 5 %','< 25 %',pct(-Mc.p95dd,1))+crit(ee(Mc.ruina<.05),'Prob. de perder la mitad','< 5 %',pct(Mc.ruina,1,false));
+  if(id==='F2'){const PE=D.persistencia||{},c=PE.criterios||{};
+    cr=PE.n_epocas==null?'':crit(ee(c.epocas_suficientes),'Épocas de 3 años que se pueden juzgar','≥ 4',PE.n_epocas)+crit(ee(c.no_esta_en_la_zona_mala),'Dónde cae entre sus vecinas (media)','≥ 40 %',pctE(PE.percentil_medio))+crit(ee(c.gana_en_la_mayoria_de_epocas),'Épocas ganando (PF > 1)','≥ 60 %',PE.epocas_ganando+' de '+PE.n_epocas);
+    titG='Tu regla en cada <em>época de 3 años</em>';graf=`<div>${barrasEpocas(PE)}</div>`;auto=true;
+    sig=PE.n_epocas?(e==='pasa'?`Gana en <b>${PE.epocas_ganando} de ${PE.n_epocas}</b> épocas y su sitio entre las vecinas es normal (${pctE(PE.percentil_medio)}): la zona buena sigue ahí.`:PE.no_evaluable?esc(PE.nota):`Gana en ${PE.epocas_ganando} de ${PE.n_epocas} épocas y cae de media en el ${pctE(PE.percentil_medio)} de sus vecinas: la ventaja no es estable.`):esc(PE.nota||'');
+    tec=`${esc(PE.nota||'')} ${PE.n_variantes||0} variantes comparadas por época (±20 % / ±40 % en cada número). Se compara con la mediana de las vecinas, nunca con la mejor.`+(D.wf_res&&D.wf_res.eficiencia!=null?` Dato aparte: el walk-forward clásico (reajustar cada año) da eficiencia ${nf(D.wf_res.eficiencia,2)}; ya no puntúa.`:'')}
+  if(id==='F3'){const RB=D.robustez||{},c=RB.criterios||{};auto=true;
+    cr=Object.keys(c).length?crit(ee(c.mayoria_del_entorno_gana),'Variantes con PF > 1','≥ 70 %',pctE(RB.pct_variantes_pf_mayor_1)+' de '+RB.n_variantes)+crit(ee(c.ningun_eje_hunde),'Peor número al moverlo','< 30 %',(RB.peor_eje?RB.peor_eje+' ':'')+'−'+pctE(RB.peor_dano))+crit(ee(c.no_es_silla_de_montar),'No es silla de montar','—',c.no_es_silla_de_montar?'no lo es':'lo es')+crit(ee(c.no_es_pico),'No es un pico','—',c.no_es_pico?'no lo es':'lo es'):crit('falla','Variantes con operaciones suficientes','≥ 20 op. cada una',RB.n_variantes||0);
+    titG='PF según el <em>valor de cada número</em> (los demás quietos)';graf=tablaLineas(RB)||(Me&&Me.pf?'':'<p class="c-dim">'+esc(RB.nota||'Sin datos.')+'</p>');
+    if(!graf||graf==='<p class="c-dim"></p>')graf='<p class="c-dim">Sin datos para esta prueba.</p>';
+    sig=esc(RB.nota||'');
+    tec=`${RB.n_variantes||0} variantes con ≥ 20 operaciones en el diseño; PF del canónico ${nf(RB.pf_canonico,2)} frente a la mediana de su entorno ${nf(RB.pf_mediana_entorno,2)}. Ejes de paso grueso (no puntúan): ${(RB.ejes_paso_grueso||[]).join(', ')||'ninguno'}.`}
+  if(id==='F4'&&Mc.p95dd!=null){cr=crit(ee(Mc.p5>0),'Monte Carlo · peor 5 % de retornos','> 0',pct(Mc.p5,1))+crit(ee(Mc.p95dd<.30),'Monte Carlo · caída en el peor 5 %','< 30 %',pct(-Mc.p95dd,1))+crit(ee(Mc.ruina<.05),'Monte Carlo · prob. de perder la mitad','< 5 %',pct(Mc.ruina,1,false))
+      +[['Por bloques (conserva las rachas)',Mc.bloques],['Por años completos (regímenes)',Mc.regimenes]].filter(x=>x[1]&&x[1].pasa!=null).map(([l,R])=>crit(ee(R.pasa),l,'p5 > 0 · caída < 30 %',R.no_evaluable?'no evaluable':'p5 '+pct(R.p5_ret,1)+' · caída '+pct(R.p95_dd,1,false))).join('');
     titG='Retorno en <em>miles de caminos</em>';graf=`<div class="cv" id="cv-pdet"><canvas role="img" aria-label="Histograma de retornos simulados"></canvas><div class="tt"></div></div>`;
-    sig=`Casi siempre gana (mediana ${pct(Mc.p50,0)}). ${Mc.p95dd<.25?'La caída queda bajo el límite.':`Pero en 1 de cada 20 caminos la caída llega al <b>${pct(Mc.p95dd,1,false)}</b>: más del 25 % que acepta TIS.`}`;
-    tec=`${esc(Mc.nota||'5.000 simulaciones')}. p5 ${pct(Mc.p5,1)} · p50 ${pct(Mc.p50,1)} · p95 MaxDD ${pct(Mc.p95dd,1,false)} · ruina ${pct(Mc.ruina,1,false)}.`}
-  if(id==='F5'){const sc=[['costes_x2','Costes ×2'],['sin_2_mejores_anios','Sin 2 mejores años'],['regimen_malo','Régimen malo']].filter(x=>St[x[0]]);auto=true;
-    cr=sc.map(([k,l])=>crit(ee(St[k].pasa),l,'PF ≥ 1,10','PF '+nf(St[k].pf,2))).join('');const mx=Math.max(2,OOS.pf*1.1);
-    titG='PF en cada <em>escenario adverso</em>';graf=`<div>${sbarH('Sin tocar',OOS.pf,mx,1.1,'var(--dim2)',nf(OOS.pf,2))}${sc.map(([k,l])=>sbarH(l,St[k].pf,mx,1.1,St[k].pf>=1.1?'var(--f5)':'var(--red)',nf(St[k].pf,2))).join('')}</div>`;
-    sig=St.costes_x2?`Con costes dobles PF ${nf(St.costes_x2.pf,2)}; sin sus 2 mejores años ${nf(St.sin_2_mejores_anios&&St.sin_2_mejores_anios.pf,2)}. ${e==='pasa'?'Sale tocada pero viva.':'Algún escenario la tumba.'}`:'';
-    tec=sc.map(([k,l])=>`${l}: PF ${nf(St[k].pf,2)}${St[k].n!=null?', '+St[k].n+' op.':''}`).join(' · ')}
+    sig=`Casi siempre gana (mediana ${pct(Mc.p50,0)}). ${Mc.p95dd<.30?'La caída queda bajo el límite.':`Pero en 1 de cada 20 caminos la caída llega al <b>${pct(Mc.p95dd,1,false)}</b>: más del 30 % que acepta TIS.`}${Mc.regimenes&&Mc.regimenes.nota?' '+esc(Mc.regimenes.nota)+'.':''}`;
+    tec=`${esc(Mc.nota||'5.000 simulaciones')}. p5 ${pct(Mc.p5,1)} · p50 ${pct(Mc.p50,1)} · p95 MaxDD ${pct(Mc.p95dd,1,false)} · ruina ${pct(Mc.ruina,1,false)}. ${Mc.bloques&&Mc.bloques.nota?esc(Mc.bloques.nota)+'. ':''}`}
+  if(id==='F5'){const sc=[['costes_x2','Costes ×2'],['sin_2_mejores_anios','Sin 2 mejores años']].filter(x=>St[x[0]]),R=St.regimen_malo;auto=true;
+    cr=sc.map(([k,l])=>crit(ee(St[k].pasa),l,'PF ≥ 1,10 · caída < 25 %','PF '+nf(St[k].pf,2)+' · '+pct(St[k].dd,1,false))).join('')+(R?crit(ee(R.pasa),'Régimen malo ('+(R.anios||[]).join(', ')+')','≤ 50 % de la caída del activo',textoRegimen(R)):'');const mx=Math.max(2,OOS.pf*1.1);
+    titG='PF en cada <em>escenario adverso</em>';graf=`<div>${sbarH('Sin tocar',OOS.pf,mx,1.1,'var(--dim2)',nf(OOS.pf,2))}${sc.map(([k,l])=>sbarH(l,St[k].pf||0,mx,1.1,St[k].pf>=1.1?'var(--f5)':'var(--red)',nf(St[k].pf,2))).join('')}${filaCapt('Régimen malo: se come de la caída',St)}</div>`;
+    sig=St.costes_x2?`Con costes dobles PF ${nf(St.costes_x2.pf,2)}; sin sus 2 mejores años ${nf(St.sin_2_mejores_anios&&St.sin_2_mejores_anios.pf,2)}; en el año malo ${esc(textoRegimen(R))}. ${e==='pasa'?'Sale tocada pero viva.':'Algún escenario la tumba.'}`:'';
+    tec=sc.map(([k,l])=>`${l}: PF ${nf(St[k].pf,2)}, ${St[k].n} op., caída ${pct(St[k].dd,1,false)}`).join(' · ')+(R?` · Régimen malo: ${esc(R.nota||'')} (el activo cayó ${pct(R.dd_activo,1,false)} en ${(R.anios||[]).join(', ')}).`:'')}
   if(id==='PAR'){const ep=estParidad();auto=true;
     const paso=(n,e2,t,d)=>`<div class="paso"><span class="i">${n}</span><div><h4>${t}</h4><p>${d}</p></div>${chipE(e2)}</div>`;
     cr=crit(P.zona.estado,'Velas en hora del servidor','GMT+3',EST[P.zona.estado][2])+crit(P.costes.estado,'Costes del bróker','spread · comisión · swap',EST[P.costes.estado][2])+crit(ep,'Strategy Tester','± 2 %',RECON?RECON.res:EST[ep][2]);

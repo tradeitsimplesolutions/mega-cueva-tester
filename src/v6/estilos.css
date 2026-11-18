@@ -420,7 +420,11 @@ table.ops tbody tr[aria-selected="true"]{background:rgba(var(--gold-rgb),.15);bo
 .vinfo b{color:var(--ink)}
 
 /* ---------- 7 VALIDACIÓN ---------- */
-#v-validacion{grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:auto auto minmax(19rem,1fr) minmax(19rem,1fr);gap:.75rem}
+#v-validacion{grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:auto auto minmax(min-content,max-content) minmax(min-content,max-content);gap:.75rem;align-content:start}
+/* las fases F2-F5 enseñan más cifras (épocas, variantes, remuestreos): la tarjeta crece con su contenido en vez de pisarlo */
+#v-validacion .fase{display:flex;flex-direction:column;min-height:19rem}
+#v-validacion .fase .fbody{flex:1 0 auto;min-height:0}
+#v-validacion .fase .cv{min-height:9.5rem}
 #v-validacion .vh{grid-column:1/-1}
 .conceptos{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.75rem}
 .concepto{display:flex;gap:.7rem;align-items:flex-start;padding:.6rem .8rem}
@@ -442,7 +446,7 @@ table.ops tbody tr[aria-selected="true"]{background:rgba(var(--gold-rgb),.15);bo
 .heat td,.heat th{text-align:center;padding:.15rem;border:1px solid var(--bg)}
 .heat th{color:var(--dim);font-weight:500;font-size:max(12px,.78rem)}
 .heat td.c{outline:3px solid var(--gold);outline-offset:-3px;color:var(--ink);font-weight:700}
-.sbar{display:grid;grid-template-columns:9.5rem 1fr 3rem;gap:.5rem;align-items:center;font-size:max(14px,.93rem);margin:.25rem 0}
+.sbar{display:grid;grid-template-columns:9.5rem 1fr minmax(3rem,max-content);gap:.5rem;align-items:center;font-size:max(14px,.93rem);margin:.25rem 0}
 .sbar .tr{position:relative;height:.9rem;background:rgba(var(--cy-rgb),.07);border-radius:2px}
 .sbar .tr i{position:absolute;left:0;top:0;bottom:0;border-radius:2px}
 .sbar .tr u{position:absolute;top:-.25rem;bottom:-.25rem;width:2px;background:var(--ink);opacity:.8}
