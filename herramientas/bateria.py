@@ -339,6 +339,20 @@ def laboratorio(nav, url, errores):
     ok("B", "Fase 08: los límites de apagado llevan números", bool(re.search(r"Apagar.*?\d+ %", doc.replace("\n", " "))))
     pg.screenshot(path=str(CAP / "B5e_fase08.png"), full_page=True)
 
+    # el alumno toca la regla DESPUÉS de abrir el examen: se bloquea, y se puede volver exactamente a la regla firmada
+    pg.evaluate("(()=>{const m=JSON.parse(localStorage.getItem('lab_m3'));const c=m.entrada&&m.entrada[0];if(c&&c.b)c.b.v=5;localStorage.setItem('lab_m3',JSON.stringify(m))})()")
+    pg.reload()
+    pg.wait_for_selector("#lab-fases .lab-fase", timeout=60000)
+    pg.wait_for_timeout(900)
+    ir(pg, "opt")
+    ok("B", "Regla cambiada tras el examen: la fase 05 se bloquea y ofrece restaurar la firmada",
+       pg.is_visible("[data-f58-restaurar]") and not pg.is_visible("#lab-v-opt .f58-card"))
+    pg.click("[data-f58-restaurar]")
+    pg.wait_for_timeout(600)
+    ok("B", "Restaurar la regla firmada desbloquea la fase 05 con sus resultados", pg.evaluate("document.querySelectorAll('#lab-v-opt .f58-card').length") == 2)
+    ir(pg, "bt")
+    ok("B", "Fase 04: tras restaurar, el aviso de «regla cambiada» desaparece", "cambiado la regla después" not in texto(pg, "#lab-v-bt"))
+
     # TU UNIDAD
     ir(pg, "unidad")
     ok("B", "TU UNIDAD: 4 pasos, frase y firma", pg.evaluate("document.querySelectorAll('[data-un-paso]').length>=4 && !!document.querySelector('#un-cv') && !!document.querySelector('#un-frase')"))
@@ -394,6 +408,8 @@ ENTREGAS = [  # (nombre, fase, botón, clase que pone el botón, debe salir, no 
      ["TU REGLA", "ENTRA RSI de 2 menor que 10", "CURVA DE CAPITAL", "POR TRAMOS"], ["AÑADIR CONDICIÓN", "EL PSEUDOCÓDIGO", "ANTES DE VER"]),
     ("TU UNIDAD", "unidad", "[data-un-imprimir]", "un-imprime",
      ["TU BORRADOR", "COMPROMISO", "Yo, Alumna Prueba"], ["CORRER EL BACKTEST", "Borrar firma"]),
+    ("plan de incubación", "inc", "[data-f58-imprimir]", "f8-imprime",
+     ["PLAN DE INCUBACIÓN", "Antes de poner un euro", "Cuándo se apaga", "Alumna Prueba", "Estado de la regla"], ["CORRER LAS PRUEBAS", "CAMBIAR EL TAMAÑO"]),
 ]
 
 
@@ -415,7 +431,7 @@ def impresiones(pg):
         pg.emulate_media(media="print")
         try:
             t = pg.evaluate("document.body.innerText")
-            faltan = [x for x in debe if x not in t]
+            faltan = [x for x in debe if x.lower() not in t.lower()]
             sobran = [x for x in no_debe if x in t]
             ok("I", f"{nombre}: sale lo que tiene que salir", not faltan, "falta " + ", ".join(faltan) if faltan else "")
             ok("I", f"{nombre}: no se cuela nada de otras fases", not sobran, "sobra " + ", ".join(sobran) if sobran else "")
@@ -430,6 +446,10 @@ def impresiones(pg):
             pdf = pg.pdf(path=str(CAP / f"I_{fase}.pdf"), format="A4", print_background=True)
             pags = len(re.findall(rb"/Type\s*/Page[^s]", pdf))
             ok("I", f"{nombre}: el PDF se genera", pags >= 1, f"{pags} pág.")
+            if fase == "inc":
+                # el fallo que vio un alumno de prueba: el PDF salía con páginas pero SIN texto (todo en visibility:hidden)
+                ok("I", f"{nombre}: el PDF lleva texto visible", len(t.strip()) > 400 and pg.evaluate(
+                    "(()=>{const e=document.querySelector('#f58-doc h2');return !!e&&getComputedStyle(e).visibility==='visible'})()"))
         finally:
             pg.emulate_media(media="screen")
             if clase:

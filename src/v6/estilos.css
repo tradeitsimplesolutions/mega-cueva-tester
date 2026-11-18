@@ -1308,3 +1308,6 @@ table.m1t-t{width:100%;border-collapse:collapse;font-size:.92rem}
 .m1f-colsley{margin:.7rem 0;border:1px solid var(--line);border-radius:8px;padding:.45rem .85rem;background:rgba(var(--gold-rgb),.04)}
 .m1f-colsley summary{cursor:pointer;color:var(--gold);font-family:var(--f-mono);font-size:.8rem;letter-spacing:.04em}
 .m1f-colsley[open] summary{margin-bottom:.5rem}
+
+/* resultado de la idea anterior: atenuado hasta que se vuelva a correr */
+.bx-obs{opacity:.4;filter:grayscale(.6)}

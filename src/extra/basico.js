@@ -93,7 +93,7 @@
   function ruta(aqui){if(!esLab())return [['Misión 1',hayAed(),aqui==='m1'],['Laboratorio · con clave',false,false]];
     var M3=m3(),U=unidad();
     return [['01 · Tu activo',hayAed(),aqui==='aed'],['02 · Tu idea',!!EST.m2entregada,aqui==='hip'],['03 · Bloques',!!(M3.entrada&&M3.entrada.length),aqui==='reg'],
-      ['04 · Backtest',!!EST.m3entregada,aqui==='bt'],['★ · Tu unidad',!!EST.unimpresa||(U.n>=15&&U.firma),aqui==='unidad']]}
+      ['04 · Backtest',!!EST.m3entregada,aqui==='bt'],['★ · Tu unidad',!!EST.unimpresa||(U.n>=15&&U.firma),aqui==='unidad'],['05-08 · Pruebas y plan',false,/^(opt|rob|rie|inc)$/.test(aqui)]]}
 
   /* ===== los pasos: QUÉ hacer ahora (h, siempre a la vista) y POR QUÉ (p, se despliega), en llano ===== */
   var PASO=null;
@@ -187,8 +187,29 @@
     if(!EST.unimpresa)return {k:'un-imp',e:et+'3 de 3',t:'Imprímela y guárdala',pose:'senala',obj:'#lab-v-unidad [data-un-imprimir]',
       h:'<p>Pulsa <b>IMPRIMIR MI UNIDAD</b> y guárdala como PDF.</p>',p:'<p>Tenla a mano cuando operes: es tu plan.</p>',
       extra:[{t:'Ya la he guardado',f:function(){marca('unimpresa');fiesta('unidad')}}]};
-    return {k:'un-fin',e:'Recorrido completado',t:'¡Lo has conseguido!',pose:'bien',sinBtn:true,
-      h:'<p>De conocer tu activo a tener tu plan firmado. Enhorabuena.</p>',p:'<p>Las fases 05 a 08 se abren durante el reto. Te espero allí.</p>'}}
+    return {k:'un-fin',e:'Tu unidad hecha',t:'¡Muy bien! Ahora, a poner la regla a prueba',pose:'bien',hacer:function(){pulsa('#lab-fases [data-fase="opt"]')},
+      h:'<p>Tienes tu plan firmado. Te quedan las fases 05 a 08: ver si tu regla aguanta, cuánto meter y tu plan de incubación. Pulsa «Siguiente paso».</p>',p:'<p>Una regla que gana en el backtest todavía no está lista para dinero real: falta ponerla a prueba de verdad.</p>'}}
+  /* fases 05-08: qué hacer ahora en cada una (el módulo fases58.js expone estado() y cargar()) */
+  function pasoF58(P){
+    var nom={opt:'Fase 05 · Optimizar',rob:'Fase 06 · Robustez',rie:'Fase 07 · Riesgo',inc:'Fase 08 · Incubar'}[P],nx={opt:'rob',rob:'rie',rie:'inc'}[P],
+      F=window.MCT_FASES58,E=F&&F.estado?F.estado():null,R=F&&F.cargar?F.cargar():null,sigue=function(){pulsa('#lab-v-'+P+' [data-ir-fase="'+nx+'"]')};
+    if(E)return {k:'f58-e-'+P,e:nom,t:E.tit,pose:'duda',hacer:function(){pulsa('#lab-v-'+P+' [data-ir-fase]')},
+      h:'<p>'+esc(E.txt)+'</p><p>Pulsa «Siguiente paso» y te llevo.</p>',p:'<p>Estas pruebas necesitan tu regla y tu examen: son el último filtro antes de poner dinero.</p>'};
+    if(!R)return {k:'f58-run-'+P,e:nom,t:'Pon a prueba tu regla',pose:'senala',obj:'#lab-v-'+P+' [data-f58-correr]',hacer:function(){pulsa('#lab-v-'+P+' [data-f58-correr]')},
+      h:'<p>Pulsa <b>CORRER LAS PRUEBAS</b>. Tarda unos segundos: el motor mueve todos tus números, baraja tus operaciones y dobla los costes.</p>',
+      p:'<p>Una sola corrida alimenta las fases 05, 06, 07 y 08. Todo se hace sobre el diseño y el examen: la validación sigue cerrada.</p>'};
+    if(P==='opt')return {k:'f58-opt',e:nom,t:'¿Aguanta si mueves los números?',pose:'senala',hacer:sigue,
+      h:'<p>Hay dos pruebas. <b>✓ superada</b> = aguanta; <b>✗</b> = no. Si una falla, no toques los números hasta que pase: eso sería hacer trampa.</p><p>Cuando lo hayas leído, pulsa «Siguiente paso».</p>',
+      p:'<p>Una buena regla rinde parecido si cambias un poco sus números. Si solo funciona con los tuyos exactos, es suerte.</p>'};
+    if(P==='rob')return {k:'f58-rob',e:nom,t:'¿Aguanta lo malo?',pose:'senala',hacer:sigue,
+      h:'<p>Aquí se barajan tus operaciones, se doblan los costes y se mira el peor año. Mira cuáles pasan y cuáles no. Abajo puedes medir cuánto te cuesta tu bróker de verdad.</p>',
+      p:'<p>Si la ventaja sobrevive a costes dobles y a un mal año, es más probable que sea real.</p>'};
+    if(P==='rie')return {k:'f58-rie',e:nom,t:'¿Cuánto meter?',pose:'senala',hacer:sigue,
+      h:'<p>Elige la caída máxima que aguantarías sin apagar la regla y pulsa la fila del tamaño que quieres.</p>',
+      p:'<p>El tamaño lo decide lo que aguantas perder, no lo que quieres ganar.</p>'};
+    return {k:'f58-inc',e:nom,t:'Tu plan de incubación',pose:'senala',obj:'#lab-v-inc [data-f58-imprimir]',hacer:function(){pulsa('#lab-v-inc [data-f58-imprimir]')},
+      h:'<p>Escribe tu nombre y pulsa <b>IMPRIMIR / GUARDAR COMO PDF</b>. Ponlo donde lo veas el día que la regla vaya mal.</p>',
+      p:'<p>Dinero real, pero poco, y vigilado contra el backtest. El plan lleva tus límites de apagado escritos de antemano.</p>'}}
   function paso(){var P=pantalla();
     if(P==='landing')return {k:'landing',e:'Empezamos',t:'¡Hola! Soy Cuevi y voy contigo',pose:'guia',obj:'#land-misiones',hacer:function(){pulsa('#land-misiones')},
       h:'<p>Te llevo paso a paso. Pulsa «Siguiente paso» (o la tarjeta <b>MISIONES</b>).</p>',
@@ -200,6 +221,7 @@
       h:'<p>Si es tu primera vez, empieza por la <b>Misión 1</b>. Pulsa «Siguiente paso» y te llevo.</p>',p:'<p>Aquí se prueban ideas que ya tienes escritas. Primero hay que conocer el activo.</p>'};
     if(P==='m1'||P==='aed')return pasoM1(P==='aed');
     if(P==='hip')return pasoHip();if(P==='reg')return pasoReg();if(P==='bt')return pasoBt();if(P==='unidad')return pasoUnidad();
+    if(/^(opt|rob|rie|inc)$/.test(P))return pasoF58(P);
     return {k:'bloq',e:'Fase cerrada',t:'Esta fase aún está cerrada',pose:'duda',hacer:function(){pulsa('#lab-v-bloq [data-ir-fase]')},
       h:'<p>Pulsa «Siguiente paso» y seguimos por donde ibas.</p>',p:'<p>Se abre durante el reto, cuando llegue su día.</p>'}}
 
@@ -350,7 +372,7 @@
     /* en pantallas estrechas la guía abre plegada (Cuevi como botón, con su punto si tiene algo que decir): el bocadillo no tapa la página */
     /* primera vez en este ordenador (no ha tocado el interruptor ni hay trabajo guardado): entra en modo básico, que es lo que pidieron
        los alumnos («demasiada información a la vez»). Quien ya trabajó o lo apagó a mano no lo ve cambiar. */
-    try{if(LS.get('mb_on')===null&&!localStorage.getItem('lab_m3')&&!localStorage.getItem('mct_ficha')&&!sessionStorage.getItem('mct_res'))LS.set('mb_on','1')}catch(e){}
+    try{if(LS.get('mb_on')===null&&!localStorage.getItem('lab_m3')&&!localStorage.getItem('mct_ficha')&&!sessionStorage.getItem('mct_res')){LS.set('mb_on','1');LS.set('mb_plegado','1')}}catch(e){}
     if(LS.get('mb_on')==='1'){if(window.innerWidth<=700)LS.set('mb_plegado','1');activar(true,false)}
     if(window.MutationObserver)new MutationObserver(function(){if(on())programa()}).observe(D.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class','hidden']});
     window.addEventListener('hashchange',programa);

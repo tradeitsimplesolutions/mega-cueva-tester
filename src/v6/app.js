@@ -393,7 +393,7 @@ function qAcierto(w){const p=ST&&ST.payoff?ST.payoff:null;if(!p)return 'q-neu';c
 let codSel='pine';
 function fillBacktest(){
   $('#b-head').innerHTML='100.000 USD → <strong>'+usd(eqV[eqV.length-1])+'</strong> ('+pct(FULL.ret_total,1)+'). Prueba honesta: <strong>'+pct(OOS.ret_total,1)+'</strong>, peor caída <strong>'+pct(-OOS.maxdd,1)+'</strong>.';
-  const rows=[['Periodo',yr(D.desde)+'–'+yr(SPLIT),yr(SPLIT)+'–'+yr(D.hasta),'Total'],['Operaciones',IS.n,OOS.n,FULL.n],['<span class="term" data-t="pf">Factor de beneficio</span>',nf(IS.pf,2),nf(OOS.pf,2),nf(FULL.pf,2)],
+  const rows=[['Periodo',yr(D.desde)+'–'+yr(SPLIT),yr(SPLIT)+'–'+yr(selloDesde()),'Todo el histórico'],['Operaciones',IS.n,OOS.n,FULL.n],['<span class="term" data-t="pf">Factor de beneficio</span>',nf(IS.pf,2),nf(OOS.pf,2),nf(FULL.pf,2)],
     ['<span class="term" data-t="pfsm">PF sin la mejor</span>',nf(IS.pf_sin_mejor,2),nf(OOS.pf_sin_mejor,2),nf(FULL.pf_sin_mejor,2)],['Acierto',pct(IS.win_rate,0,false),pct(OOS.win_rate,0,false),pct(FULL.win_rate,0,false)],
     ['Retorno total',pct(IS.ret_total,0),pct(OOS.ret_total,0),pct(FULL.ret_total,0)],['<span class="term" data-t="cagr">Rentab. anual</span>',pct(IS.cagr,1),pct(OOS.cagr,1),pct(FULL.cagr,1)],
     ['<span class="term" data-t="dd">Peor caída</span>',pct(-IS.maxdd,1),pct(-OOS.maxdd,1),pct(-FULL.maxdd,1)],['<span class="term" data-t="expo">T. invertido</span>',pct(IS.exposicion,0,false),pct(OOS.exposicion,0,false),pct(FULL.exposicion,0,false)]];
@@ -451,6 +451,9 @@ function tablaLineas(RB){const Ls=RB&&RB.lineas,cn=(D.spec&&D.spec.parametros)||
 function filaCapt(l,S){const R=S&&S.regimen_malo;if(!R)return'';const c=R.captura;return sbarH(l,c==null?0:Math.min(1,c),1,.5,R.pasa?'var(--f5)':'var(--red)',c==null?'el activo no cayó':c===0?'gana':nf(c*100,0)+' %')}
 function textoRegimen(R){if(!R)return'';return R.captura==null?'el activo no cayó':R.captura===0?'gana mientras el activo cae':'se come el '+nf(R.captura*100,0)+' % de la caída del activo'}
 function critRem(ck,etq,Rm,lim){if(!Rm||Rm.pasa==null)return'';const ne=Rm.no_evaluable;return ck(!!Rm.pasa,etq,ne?'no evaluable':'caída '+pct(Rm.p95_dd,1,false)+' · p5 '+pct(Rm.p5_ret,1),lim)}
+/* el último 20 % (sello) no puntúa: «Prueba» termina donde empieza el sello */
+function selloDesde(){return (D.sello&&D.sello.sellado&&D.sello.desde)||D.hasta}
+function textoRegimenC(R){if(!R)return'';return R.captura==null?'sin caída':R.captura===0?'gana':'se come el '+nf(R.captura*100,0)+' %'}
 function fillVal(){const fs=D.fases,M=D.mc||{},W=D.wf_res||{},S=D.stress||{},Me=D.meseta;
   const fl=['F1','F2','F3','F4','F5'].filter(k=>!fs[k]);
   $('#val-head').innerHTML='<strong>'+nPass+' de 5 pruebas superadas'+(fl.length?' → no aprueba.':' → aprueba.')+'</strong>'+(fl.length?' Falla '+fl.map(k=>NOMF[k].toLowerCase()).join(' y ')+'.':'');
@@ -459,7 +462,7 @@ function fillVal(){const fs=D.fases,M=D.mc||{},W=D.wf_res||{},S=D.stress||{},Me=
     <p class="fq">${q}</p><div><ul class="crit">${crit}</ul></div>${body}</section>`;
   const mx=Math.max(2.2,IS.pf*1.1,OOS.pf*1.1);
   const f1=card('F1','Diseño / prueba','¿Sigue ganando con datos que no se usaron para diseñarla?',
-    ck(OOS.pf>=1.3,'Factor de beneficio',nf(OOS.pf,2),'≥ 1,30')+ck(nOk(),'Operaciones',nTot()+' en total','≥ 30 en total')+ck(ddOk(),'Peor caída',pct(-OOS.maxdd,1),ddTxt())+ck(psmOk(),'PF sin la mejor',nf(psmV(),2),'> 1,00 (en total)'),
+    ck(OOS.pf>=1.3,'Factor de beneficio',nf(OOS.pf,2),'≥ 1,30')+ck(nOk(),'Operaciones (sin el sello)',nTot()+' en total','≥ 30 en total')+ck(ddOk(),'Peor caída',pct(-OOS.maxdd,1),ddTxt())+ck(psmOk(),'PF sin la mejor',nf(psmV(),2),'> 1,00 (en total)'),
     `<div class="fbody" style="align-content:end"><div class="sbar"><span>Diseño</span><span class="tr"><i style="width:${Math.min(100,IS.pf/mx*100)}%;background:var(--dim2)"></i><u style="left:${1.3/mx*100}%"></u></span><span>${nf(IS.pf,2)}</span></div><div class="sbar"><span>Prueba honesta</span><span class="tr"><i style="width:${Math.min(100,OOS.pf/mx*100)}%;background:var(--f1)"></i><u style="left:${1.3/mx*100}%"></u></span><span>${nf(OOS.pf,2)}</span></div><div class="c-dim" style="font-size:.8rem">raya = mínimo 1,30</div></div>`,'oos');
   const PE=D.persistencia||{},PEc=PE.criterios||{};
   const f2=card('F2','Persistencia','¿La meseta sigue ahí, época tras época?',
@@ -477,7 +480,7 @@ function fillVal(){const fs=D.fases,M=D.mc||{},W=D.wf_res||{},S=D.stress||{},Me=
     `<div class="fbody"><div class="cv" id="cv-mc"><canvas role="img" aria-label="Histograma de retornos simulados"></canvas><div class="tt"></div></div></div>`,'mc');
   const sb=(l,o)=>o?`<div class="sbar"><span>${l}</span><span class="tr"><i style="width:${Math.min(100,(o.pf||0)/2*100)}%;background:${o.pf>=1.1?'var(--f5)':'var(--red)'}"></i><u style="left:${1.1/2*100}%"></u></span><span>${nf(o.pf,2)}</span></div>`:'';
   const f5=card('F5','Stress','¿Sobrevive si empeoro las condiciones a propósito?',
-    (S.costes_x2?ck(S.costes_x2.pasa,'Costes ×2',nf(S.costes_x2.pf,2)+' · caída '+pct(S.costes_x2.dd,1,false),'PF ≥ 1,10 · caída < 25 %'):'')+(S.sin_2_mejores_anios?ck(S.sin_2_mejores_anios.pasa,'Sin 2 mejores años',nf(S.sin_2_mejores_anios.pf,2)+' · caída '+pct(S.sin_2_mejores_anios.dd,1,false),'PF ≥ 1,10 · caída < 25 %'):'')+(S.regimen_malo?ck(S.regimen_malo.pasa,'Régimen malo ('+(S.regimen_malo.anios||[]).join(', ')+')',textoRegimen(S.regimen_malo),'≤ 50 % de la caída del activo'):''),
+    (S.costes_x2?ck(S.costes_x2.pasa,'Costes ×2',nf(S.costes_x2.pf,2)+' · caída '+pct(S.costes_x2.dd,1,false),'PF ≥ 1,10 · caída < 25 %'):'')+(S.sin_2_mejores_anios?ck(S.sin_2_mejores_anios.pasa,'Sin 2 mejores años',nf(S.sin_2_mejores_anios.pf,2)+' · caída '+pct(S.sin_2_mejores_anios.dd,1,false),'PF ≥ 1,10 · caída < 25 %'):'')+(S.regimen_malo?ck(S.regimen_malo.pasa,'Régimen malo ('+(S.regimen_malo.anios||[]).join(', ')+')',textoRegimenC(S.regimen_malo),'≤ 50 % de su caída'):''),
     `<div class="fbody" style="align-content:end">${sb('Costes ×2',S.costes_x2)}${sb('Sin 2 mejores años',S.sin_2_mejores_anios)}${filaCapt('Régimen malo: lo que se come de la caída',S)}<div class="c-dim" style="font-size:.8rem">raya = PF 1,10 · en el régimen malo, raya = 50 % de la caída del activo</div></div>`,'st');
   const SUM=`<section class="panel summ" aria-label="Veredicto"><div class="ph"><h3>Veredicto</h3></div>${sello(nPass===5,nPass===5?'APROBADA':'NO APROBADA · '+nPass+'/5')}
     <div class="phases">${chipsFases()}</div>
@@ -509,7 +512,7 @@ function vecinos(Me){const c=centro(Me),v=[];for(let i=c-1;i<=c+1;i++)for(let j=
 const FASES=[
  {id:'F1',cod:'F1',nombre:'Diseño / prueba',corto:'IS / OOS',preg:'¿Sigue ganando con datos que no usé para diseñarla?',
   que:'Se parte el histórico en dos: con una parte diseñas; la otra se guarda bajo llave y se abre al final.',
-  umb:[['PF en la prueba honesta','≥ 1,30'],['Operaciones en la prueba','≥ 30'],['Caída máxima en la prueba','< 20 %'],['PF sin la mejor operación','> 1,00']],
+  umb:[['PF en la prueba honesta','≥ 1,30'],['Operaciones en la prueba','≥ 30'],['Caída máxima en la prueba','menos que comprar y mantener'],['PF sin la mejor operación','> 1,00']],
   falla:'La curva del diseño sube preciosa y en la parte guardada se aplana: estaba aprendida de memoria.',
   av:'Corte 70/30 por defecto [calibrable]. Los 4 criterios duros se cumplen a la vez sobre el OOS; no se bajan sin orden explícita.'},
  {id:'F2',cod:'F2',nombre:'Persistencia de la meseta',corto:'Persistencia',preg:'¿La zona buena sigue ahí, época tras época?',
@@ -550,8 +553,8 @@ function demoFase(id){const St=D.stress||{},Mc=D.mc||{},W=D.wf_res||{},Me=D.mese
   }return ''}
 const FLOW=[['01','Idea','Una regla que un ordenador pueda seguir sin interpretar.',null],['02','AED','Análisis exploratorio del activo: cómo se mueve antes de inventar reglas.',null],
  ['03','Reglas / hipótesis','Por qué debería funcionar y con qué números exactos.',null],['04','Prueba inicial','Primer backtest honesto, con costes y corte diseño/prueba.','prueba'],
- ['F1','IS / OOS','Diseño vs prueba honesta.','F1'],['F2','Walk-forward','Reajustar cada año y probar en el siguiente.','F2'],['F3','Meseta','Números vecinos, resultados parecidos.','F3'],
- ['F4','Monte Carlo','Miles de caminos posibles.','F4'],['F5','Stress','Condiciones peores a propósito.','F5'],['MT5','Paridad MT5','El Strategy Tester da las mismas operaciones.','PAR'],
+ ['F1','IS / OOS','Diseño vs prueba honesta.','F1'],['F2','Persistencia','La zona buena, ¿sigue ahí época tras época?','F2'],['F3','Robustez','Todos los números movidos, resultados parecidos.','F3'],
+ ['F4','Monte Carlo','Miles de caminos y años repetidos.','F4'],['F5','Stress','Condiciones peores a propósito.','F5'],['MT5','Paridad MT5','El Strategy Tester da las mismas operaciones.','PAR'],
  ['07','Forward','Cuenta demo o capital pequeño, vigilando que se comporta como se esperaba.',null],['08','Live','Dinero real con semáforo de salud.',null]];
 function renderFases(){const Me=D.meseta;
   if(Me&&Me.pf&&ES_DEMO){const c=centro(Me),ej=Me.ejes,k=Object.keys(ej)[0];const v2=Me.pf[c+1]?Me.pf[c+1][c]:null;
@@ -972,7 +975,7 @@ function numeros4(){const N4=[['Factor de beneficio',nf(OOS.pf,2),'≥ 1,3',OOS.
     `VEREDICTO: ${x4}/4 · ${ap?'APRUEBA':'NO APRUEBA'}`,`Protocolo completo TIS (5 fases): ${nPass}/5`,...(ritmo()?['',ritmo().txt,ritmo().consejo,'Un 4/4 abre la fase 05: no es «listo para cuenta real».']:[])].join('\n');
   return `<section class="panel"><div class="ph"><h3>Los 4 números · <em>fuera de muestra, con costes</em></h3><button type="button" class="btn gold" id="pi-copiar4"><svg class="ic"><use href="#i-copiar"/></svg> COPIAR RESULTADO PARA MI AGENTE 04</button></div>
     <div class="n4">${N4.map((n,i)=>`<div class="nn ${n[3]?'si':'no'}"><span>${i+1} · ${n[0]}</span><b>${n[1]}</b><small>${n[3]?'✓':'✕'} pide ${n[2]}</small></div>`).join('')}
-    <div class="ver">${sello(ap,'VEREDICTO '+x4+'/4 · '+(ap?'APRUEBA':'NO APRUEBA'))}<span class="nota">Fase 04 de tu mesa. El protocolo completo TIS añade 4 pruebas más: aquí ${nPass}/5.</span></div>${ritmo()?`<p class="ritmo"><b>${esc(ritmo().txt)}.</b> ${esc(ritmo().consejo)}</p>`:''}</div></section>`}
+    <div class="ver">${sello(ap,'FASE 1 · '+x4+'/4')}<span class="nota">Es solo la primera de 5 fases (el backtest honesto). Faltan 4 pruebas más: con todo el protocolo, esta idea pasa ahora ${nPass}/5.</span></div>${ritmo()?`<p class="ritmo"><b>${esc(ritmo().txt)}.</b> ${esc(ritmo().consejo)}</p>`:''}</div></section>`}
 
 /* ---------- motor (window.MCT_MOTOR) ---------- */
 function motorFn(){const M=window.MCT_MOTOR;if(M&&typeof M.correr==='function')return (s,c)=>M.correr(s,c);if(typeof M==='function')return M;return null}
@@ -1131,9 +1134,9 @@ function cifraClave(id){const Mc=D.mc||{},W=D.wf_res||{},St=D.stress||{},Me=D.me
 function detalleFase(id){const Mc=D.mc||{},W=D.wf_res||{},St=D.stress||{},Me=D.meseta,f=FASES.find(x=>x.id===id),e=estFase(id);
   let cr='',graf='',sig='',tec='',titG='',auto=false;
   if(id==='F1'){const c=F1.criterios||{};
-    cr=crit(ee(c.pf_oos??OOS.pf>=1.3),'Factor de beneficio','≥ 1,30',nf(OOS.pf,2))+crit(ee(c.n_oos??nOk()),'Operaciones','≥ 30 en total',nTot())+crit(ee(c.dd_oos??ddOk()),'Peor caída',ddTxt(),pct(-OOS.maxdd,1))+crit(ee(c.pf_sin_mejor??psmOk()),'PF sin la mejor','> 1,00 (en total)',nf(psmV(),2));
+    cr=crit(ee(c.pf_oos??OOS.pf>=1.3),'Factor de beneficio','≥ 1,30',nf(OOS.pf,2))+crit(ee(c.n_oos??nOk()),'Operaciones (diseño + prueba, sin el sello)','≥ 30 en total',nTot())+crit(ee(c.dd_oos??ddOk()),'Peor caída',ddTxt(),pct(-OOS.maxdd,1))+crit(ee(c.pf_sin_mejor??psmOk()),'PF sin la mejor','> 1,00 (en total)',nf(psmV(),2));
     titG='Capital con el corte <em>diseño / prueba</em>';graf=`<div class="cv" id="cv-pdet"><canvas role="img" aria-label="Curva de capital con el corte"></canvas><div class="tt"></div></div>`;
-    sig=e==='pasa'?`En los años guardados (${yr(SPLIT)}–${yr(D.hasta)}) gana <b>${nf(OOS.pf,2)}</b> por cada 1 que pierde (diseño: ${nf(IS.pf,2)}). No estaba aprendida de memoria.`:'En la parte guardada no cumple los mínimos: la ventaja del diseño no se repite.';
+    sig=e==='pasa'?`En los años guardados (${yr(SPLIT)}–${yr(selloDesde())}) gana <b>${nf(OOS.pf,2)}</b> por cada 1 que pierde (diseño: ${nf(IS.pf,2)}). No estaba aprendida de memoria.`:'En la parte guardada no cumple los mínimos: la ventaja del diseño no se repite.';
     tec=`Corte ${fd(SPLIT)} · IS ${IS.n} op., PF ${nf(IS.pf,2)} · OOS ${OOS.n} op., PF ${nf(OOS.pf,2)}, MaxDD ${pct(OOS.maxdd,1,false)}, CAGR ${pct(OOS.cagr,1)}. Frontera (PF 1,25–1,35): ${F1.frontera?'sí':'no'}.`}
   if(id==='F2'){const PE=D.persistencia||{},c=PE.criterios||{};
     cr=PE.n_epocas==null?'':crit(ee(c.epocas_suficientes),'Épocas de 3 años que se pueden juzgar','≥ 4',PE.n_epocas)+crit(ee(c.no_esta_en_la_zona_mala),'Dónde cae entre sus vecinas (media)','≥ 40 %',pctE(PE.percentil_medio))+crit(ee(c.gana_en_la_mayoria_de_epocas),'Épocas ganando (PF > 1)','≥ 60 %',PE.epocas_ganando+' de '+PE.n_epocas);
@@ -1152,7 +1155,7 @@ function detalleFase(id){const Mc=D.mc||{},W=D.wf_res||{},St=D.stress||{},Me=D.m
     sig=`Casi siempre gana (mediana ${pct(Mc.p50,0)}). ${Mc.p95dd<.30?'La caída queda bajo el límite.':`Pero en 1 de cada 20 caminos la caída llega al <b>${pct(Mc.p95dd,1,false)}</b>: más del 30 % que acepta TIS.`}${Mc.regimenes&&Mc.regimenes.nota?' '+esc(Mc.regimenes.nota)+'.':''}`;
     tec=`${esc(Mc.nota||'5.000 simulaciones')}. p5 ${pct(Mc.p5,1)} · p50 ${pct(Mc.p50,1)} · p95 MaxDD ${pct(Mc.p95dd,1,false)} · ruina ${pct(Mc.ruina,1,false)}. ${Mc.bloques&&Mc.bloques.nota?esc(Mc.bloques.nota)+'. ':''}`}
   if(id==='F5'){const sc=[['costes_x2','Costes ×2'],['sin_2_mejores_anios','Sin 2 mejores años']].filter(x=>St[x[0]]),R=St.regimen_malo;auto=true;
-    cr=sc.map(([k,l])=>crit(ee(St[k].pasa),l,'PF ≥ 1,10 · caída < 25 %','PF '+nf(St[k].pf,2)+' · '+pct(St[k].dd,1,false))).join('')+(R?crit(ee(R.pasa),'Régimen malo ('+(R.anios||[]).join(', ')+')','≤ 50 % de la caída del activo',textoRegimen(R)):'');const mx=Math.max(2,OOS.pf*1.1);
+    cr=sc.map(([k,l])=>crit(ee(St[k].pasa),l,'PF ≥ 1,10 · caída < 25 %','PF '+nf(St[k].pf,2)+' · '+pct(St[k].dd,1,false))).join('')+(R?crit(ee(R.pasa),'Régimen malo ('+(R.anios||[]).join(', ')+')','≤ 50 % de la caída del activo',textoRegimenC(R)):'');const mx=Math.max(2,OOS.pf*1.1);
     titG='PF en cada <em>escenario adverso</em>';graf=`<div>${sbarH('Sin tocar',OOS.pf,mx,1.1,'var(--dim2)',nf(OOS.pf,2))}${sc.map(([k,l])=>sbarH(l,St[k].pf||0,mx,1.1,St[k].pf>=1.1?'var(--f5)':'var(--red)',nf(St[k].pf,2))).join('')}${filaCapt('Régimen malo: se come de la caída',St)}</div>`;
     sig=St.costes_x2?`Con costes dobles PF ${nf(St.costes_x2.pf,2)}; sin sus 2 mejores años ${nf(St.sin_2_mejores_anios&&St.sin_2_mejores_anios.pf,2)}; en el año malo ${esc(textoRegimen(R))}. ${e==='pasa'?'Sale tocada pero viva.':'Algún escenario la tumba.'}`:'';
     tec=sc.map(([k,l])=>`${l}: PF ${nf(St[k].pf,2)}, ${St[k].n} op., caída ${pct(St[k].dd,1,false)}`).join(' · ')+(R?` · Régimen malo: ${esc(R.nota||'')} (el activo cayó ${pct(R.dd_activo,1,false)} en ${(R.anios||[]).join(', ')}).`:'')}
@@ -1267,7 +1270,7 @@ const bxGet=()=>{try{return JSON.parse(store.get('bx_idea')||'null')||{}}catch(e
 const bxHecha=()=>!!bxGet().ok||!ES_DEMO;
 /* texto de la idea tal y como se tradujo al formulario: si el alumno lo cambia y no vuelve a traducir, el tester correria la regla vieja */
 const ideaSucia=()=>{const t=$('#pi-idea-t'),g=store.get('idea_trad');return !!t&&g!=null&&t.value.trim()!==g};
-const bxStale=()=>!ES_DEMO&&!!SPEC_RES&&JSON.stringify(specLimpio())!==JSON.stringify(SPEC_RES);
+const bxStale=()=>!ES_DEMO&&!!SPEC_RES&&(JSON.stringify(specLimpio())!==JSON.stringify(SPEC_RES)||ideaSucia());
 /* pseudocódigo sin costes, corte, meseta ni tamaño (en BASIC no se tocan) */
 const bxPlano=()=>pseudo().filter(l=>!/^<span class="kw">(COSTES|CORTE|MESETA)</.test(l)&&!/tamaño:/.test(l)).map(l=>l.replace(/\s*<span class="(cm|ojo)"># [^<]*(GMT|UTC|hora|bróker|Nueva York|Madrid)[^<]*<\/span>/g,''));
 function bxTradHTML(av,no,ok){return (ok?`<p class="bx-h">Así la entiende el tester</p><pre class="codigo bx-pseudo" tabindex="0">${bxPlano().join('\n')}</pre>`:
@@ -1779,7 +1782,7 @@ function bxResHTML(){const N=[['¿Gana más de lo que pierde?',nf(OOS.pf,2),OOS.
     ['¿Gana sin su mejor operación?',nf(psmV(),2),psmOk(),`Quitando la mejor de todas sus operaciones, gana ${nf(psmV(),2)} por cada 1 que pierde. Pide más de 1.`]];
   const x4=N.filter(n=>n[2]).length,ap=x4===4,exp=CU.expectancy_usd!=null?CU.expectancy_usd:T.reduce((a,t)=>a+t.ret,0)/T.length*CAP;
   const quien=SIMB?(SIMB+(SPEC_RES&&SPEC_RES.temporalidad?' · '+(TFN[SPEC_RES.temporalidad]||'').replace(/^vela /,''):'')+' · '):'';
-  return `<div class="bx-ver">${sello(ap,x4+'/4 · '+(ap?'APRUEBA':'NO APRUEBA'),true)}<p>${esc(quien)}${yr(D.desde)}–${yr(D.hasta)}<br><span class="c-dim">${ap?'Pasa los 4 números de la mesa.':'Le falla'+(4-x4>1?'n '+(4-x4)+' números':' 1 número')+' de la mesa.'}</span></p></div>
+  return `<div class="bx-ver${bxStale()?' bx-obs':''}">${sello(ap,'FASE 1 · '+x4+'/4 '+(ap?'✓':'✗'),true)}<p>${esc(quien)}${yr(D.desde)}–${yr(D.hasta)}<br><span class="c-dim">${ap?'Pasa las 4 comprobaciones de la fase 1 (de 5). Aún no está validada.':'Le falla'+(4-x4>1?'n '+(4-x4)+' comprobaciones':' 1 comprobación')+' de la fase 1 (de 5).'}</span></p></div>
     ${bxStale()?'<p class="bx-viejo">Este resultado es de tu idea anterior. Vuelve a correrla.</p>':''}
     <p class="bx-cap">Medido en la <b>prueba honesta</b>: los años que la regla no vio al diseñarse, con costes.</p>
     <ul class="bx-n4" id="bx-n4">${N.map(n=>`<li class="${n[2]?'si':'no'}"><span class="bx-ic" aria-label="${n[2]?'cumple':'no cumple'}">${n[2]?'✓':'✕'}</span><div><b>${n[0]}</b><small>${esc(n[3])}</small></div><strong>${n[1]}</strong></li>`).join('')}</ul>
@@ -1787,7 +1790,7 @@ function bxResHTML(){const N=[['¿Gana más de lo que pierde?',nf(OOS.pf,2),OOS.
     <p class="bx-cap">En todo el histórico (${yr(D.desde)}–${yr(D.hasta)}), con una cuenta de <b>100.000 USD</b>:</p>
     <dl class="bx-3"><div><dt>Gana por operación</dt><dd class="${exp>0?'pos':'neg'}">${usd(exp,0,true)}</dd><small>de media</small></div>
       <div><dt>Peor caída</dt><dd class="neg">${pct(-FULL.maxdd,1)}</dd><small>${usd(-FULL.maxdd*CAP)}</small></div>
-      <div><dt>Operaciones</dt><dd>${nf(FULL.n!=null?FULL.n:T.length,0)}</dd><small>diseño + prueba</small></div></dl>
+      <div><dt>Operaciones</dt><dd>${nf(FULL.n!=null?FULL.n:T.length,0)}</dd><small>en todo el histórico</small></div></dl>
     ${ritmo()?`<p class="ritmo"><b>${esc(ritmo().txt)}.</b> ${esc(ritmo().consejo)}</p>`:''}
     <div class="bx-acc"><button type="button" class="btn gold" id="bx-copiar"><svg class="ic"><use href="#i-copiar"/></svg> COPIAR RESULTADO PARA MI AGENTE 04</button><button type="button" class="link" id="bx-completo">Ver el análisis completo →</button></div>`}
 function bxVacioHTML(){return `<p class="bx-h">Aquí verás si aprueba</p><ul class="bx-n4 vacio">${['¿Gana más de lo que pierde?','¿Hay operaciones suficientes?','¿Se aguanta la peor racha?','¿Gana sin su mejor operación?'].map(q=>`<li><span class="bx-ic" aria-hidden="true">·</span><div><b>${q}</b></div><strong>—</strong></li>`).join('')}</ul>
