@@ -678,6 +678,18 @@ def vistas(nav, url, errores):
     ok("V", "Cuevi ilumina lo que señala (foco)", pg.evaluate("(()=>{const f=document.querySelector('.mb-foco-ov');return !!f&&!f.hidden&&f.getBoundingClientRect().width>20})()"))
     r = pg.evaluate("(()=>{const b=document.querySelector('#vistas-btn');if(!b)return null;const q=b.getBoundingClientRect();return {der:innerWidth-q.right,top:q.top}})()")
     ok("V", "el botón Vistas está arriba a la derecha", r is not None and r["der"] < 40 and r["top"] < 30, str(r))
+    # Cuevi es el robot de TISS (SVG): sigue el cursor y cambia de gesto
+    ok("V", "Cuevi es el robot de TISS (no el muñeco pixel)", pg.evaluate("!!document.querySelector('#mb-guia .mct-bot svg')&&!document.querySelector('#mb-guia img.mb-cuevi')"))
+    pg.mouse.move(1350, 140)
+    pg.wait_for_timeout(1000)
+    ry_der = float(pg.evaluate("parseFloat(getComputedStyle(document.querySelector('#mb-guia .mct-bot')).getPropertyValue('--ry'))"))
+    pg.mouse.move(30, 760)
+    pg.wait_for_timeout(1000)
+    ry_izq = float(pg.evaluate("parseFloat(getComputedStyle(document.querySelector('#mb-guia .mct-bot')).getPropertyValue('--ry'))"))
+    ok("V", "el robot sigue el cursor (gira hacia donde mueves el ratón)", ry_der - ry_izq > 8, f"derecha {ry_der:.1f}° · izquierda {ry_izq:.1f}°")
+    ok("V", "el robot cambia de gesto con el estado (pensando / celebra)", pg.evaluate(
+        "(()=>{const b=document.querySelector('#mb-guia .mct-bot');MCT_BOT.estado(b,'celebra');const a=getComputedStyle(b.querySelector('.b-boca-s')).display;"
+        "MCT_BOT.estado(b,'pensando');const c=getComputedStyle(b.querySelector('.b-boca-s')).display;MCT_BOT.estado(b,'normal');return a==='inline'||a==='block'?c==='none':false})()"))
     pg.click("#vistas-btn")
     grupos = pg.evaluate("[...document.querySelectorAll('#vistas-pan [data-slot]')].map(s=>s.dataset.slot+':'+s.querySelectorAll('button').length)")
     ok("V", "el panel trae Modo, Diseño (premium/original) y Tema (3)", grupos == ["modo:1", "diseno:1", "tema:3"], str(grupos))

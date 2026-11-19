@@ -1,0 +1,43 @@
+/* ---------- EL ROBOT DE TISS (bot.js): tamaños, luz de detrás, flote, parpadeo, guiño y estados ---------- */
+.mct-bot{position:relative;display:block;width:100%;height:100%;perspective:340px;isolation:isolate}
+.mct-bot::before{content:"";position:absolute;inset:-20%;z-index:-1;border-radius:50%;background:radial-gradient(circle at 50% 55%,rgba(22,178,95,.36),transparent 66%);animation:mb-luz 3.2s ease-in-out infinite;pointer-events:none}
+@keyframes mb-luz{0%,100%{opacity:.7}50%{opacity:1}}
+.mct-bot .b-flota{display:block;width:100%;height:100%;animation:b-flota 3.6s ease-in-out infinite}
+@keyframes b-flota{0%,100%{transform:translateY(0)}50%{transform:translateY(-3.5%)}}
+.mct-bot svg{display:block;width:100%;height:100%;overflow:visible;transform-style:preserve-3d;
+  transform:rotateY(var(--ry,0deg)) rotateX(var(--rx,0deg)) rotateZ(var(--rz,0deg));filter:drop-shadow(0 6px 8px rgba(0,0,0,.45))}
+.mct-bot .b-cara{transform:translate(var(--px,0),var(--py,0))}
+.mct-bot .b-ojos{transform-box:fill-box;transform-origin:50% 50%;animation:b-parp 4.5s ease-in-out infinite}
+.mct-bot .b-ojo-d{transform-box:fill-box;transform-origin:50% 50%;animation:b-guino 9s ease-in-out infinite}
+@keyframes b-parp{0%,92%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}
+@keyframes b-guino{0%,60%,66%,100%{transform:scaleY(1)}63%{transform:scaleY(.08)}}
+.mct-bot .b-boca-s,.mct-bot .b-chispas{display:none}
+.mct-bot .b-boca{transform-box:fill-box;transform-origin:50% 0}
+.mct-bot .b-bola{animation:none}
+@keyframes b-bola{0%,100%{opacity:.75}50%{opacity:1;transform:scale(1.25)}}
+.mct-bot .b-bola{transform-box:fill-box;transform-origin:50% 50%}
+/* pensando: entrecierra los ojos, la bolita late */
+.mct-bot[data-estado="pensando"] .b-ojos{animation:none;transform:scaleY(.6) translateX(-2px)}
+.mct-bot[data-estado="pensando"] .b-bola,.mct-bot[data-estado="escribiendo"] .b-bola{animation:b-bola 1.1s ease-in-out infinite}
+/* escribiendo: la boca «habla» */
+.mct-bot[data-estado="escribiendo"] .b-boca-n{animation:b-habla .45s ease-in-out infinite alternate}
+@keyframes b-habla{from{transform:scaleY(1)}to{transform:scaleY(1.35)}}
+/* celebra: sonrisa grande, salta y salen chispas */
+.mct-bot[data-estado="celebra"] .b-boca-n{display:none}
+.mct-bot[data-estado="celebra"] .b-boca-s{display:block}
+.mct-bot[data-estado="celebra"] .b-flota{animation:b-salta .8s ease-in-out infinite}
+.mct-bot[data-estado="celebra"] .b-bola{animation:b-bola .6s ease-in-out infinite}
+.mct-bot[data-estado="celebra"] .b-chispas{display:block;animation:b-chispa 1.1s ease-in-out infinite}
+@keyframes b-salta{0%,100%{transform:translateY(0)}40%{transform:translateY(-9%)}}
+@keyframes b-chispa{0%,100%{opacity:.25}50%{opacity:1}}
+@media (prefers-reduced-motion:reduce){.mct-bot *,.mct-bot::before{animation:none!important}.mct-bot svg{transform:none!important}}
+
+/* en la guía de Cuevi, en el botón plegado y en la fiesta */
+.mb-guia{grid-template-columns:88px minmax(0,1fr)}
+.mb-guia .mb-cuevi{width:88px;height:88px;image-rendering:auto;filter:none;display:block}
+.mb-mini .mct-bot{width:100%;height:100%}
+.mb-mini .mct-bot::before{inset:-10%}
+.mb-fiesta-in .mct-bot{width:150px;height:150px;margin:0 auto .4rem}
+body.lab .mb-guia.mb-lado .mb-cuevi{width:56px;height:56px}
+@media (max-width:700px){.mb-guia{grid-template-columns:56px minmax(0,1fr)}.mb-guia .mb-cuevi{width:56px;height:56px}}
+@media print{.mct-bot{display:none!important}}

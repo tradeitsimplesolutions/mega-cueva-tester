@@ -21,14 +21,14 @@
 
   /* ===== conmutador, guía, mini y celebración ===== */
   var T,G,M,F,ultimaClave='',ultimoHtml='',focoT=null;
-  function img(k,alt){var O=window.MCT_CUEVI_IMG,o=O&&(O[k]||O.guia||O.todas);if(o)return '<img src="'+o+'" alt="'+esc(alt||'')+'">';var i=IMG[k];return i?'<img src="'+i[2]+'" width="'+i[0]*4+'" height="'+i[1]*4+'" alt="'+esc(alt||'')+'">':''}
+  function img(k,alt){var B=window.MCT_BOT;if(B&&!window.MCT_CUEVI_IMG)return B.html(B.deSprite(k),alt);var O=window.MCT_CUEVI_IMG,o=O&&(O[k]||O.guia||O.todas);if(o)return '<img src="'+o+'" alt="'+esc(alt||'')+'">';var i=IMG[k];return i?'<img src="'+i[2]+'" width="'+i[0]*4+'" height="'+i[1]*4+'" alt="'+esc(alt||'')+'">':''}
   function montar(){
     T=D.createElement('button');T.type='button';T.className='mb-toggle';T.id='mb-toggle';
     T.innerHTML='<span aria-hidden="true">🧩</span> Más básico <span class="mb-sw" aria-hidden="true"></span>';
     T.setAttribute('aria-pressed','false');T.title='Modo más básico: Cuevi te guía paso a paso y se pliegan los bloques técnicos';
     T.addEventListener('click',function(){activar(!on(),true)});
     G=D.createElement('aside');G.className='mb-guia';G.id='mb-guia';G.hidden=true;G.setAttribute('role','complementary');G.setAttribute('aria-labelledby','mb-tit');
-    G.innerHTML='<img class="mb-cuevi" alt="" width="76" height="76">'+
+    G.innerHTML=(window.MCT_BOT&&!window.MCT_CUEVI_IMG?'<span class="mb-cuevi" aria-hidden="true">'+window.MCT_BOT.html('normal')+'</span>':'<img class="mb-cuevi" alt="" width="76" height="76">')+
       '<div class="mb-boc"><div class="mb-cab"><button type="button" class="mb-mover" data-mb="mover" aria-label="Mover a Cuevi: arrastra, o usa las flechas con el foco aquí" title="Arrastra a Cuevi para moverlo (doble clic: volver a su sitio)">⠿</button><p class="mb-etapa mono" id="mb-etapa"></p><button type="button" class="mb-x" data-mb="plegar" aria-expanded="true" aria-controls="mb-guia" aria-label="Plegar la guía" title="Plegar la guía (Esc)">▾</button></div>'+
       '<h2 class="mb-tit" id="mb-tit"></h2><ul class="mb-ruta" aria-label="Tu recorrido"></ul><div class="mb-txt-w"><div class="mb-txt" aria-live="polite" aria-atomic="true"></div>'+
       '<button type="button" class="mb-mas" data-mb="mas" tabindex="-1" aria-hidden="true" hidden>↓ sigue</button></div>'+
@@ -269,7 +269,9 @@
     /* «¿Por qué?» va con los botones, no dentro del texto: así no se queda escondido si el texto no cabe */
     var ac=q('.mb-acc',G),sig=q('.mb-sig',ac);qa('.mb-otro,.mb-pq',ac).forEach(function(n){n.remove()});sig.hidden=!!p.sinBtn;
     sig.insertAdjacentHTML('afterend',(p.p?'<button type="button" class="mb-pq" data-mb="pq" aria-expanded="'+pq+'" aria-controls="mb-pq">'+(pq?'▾':'▸')+' ¿Por qué?</button>':'')+extra);
-    var im=q('.mb-cuevi',G),I=IMG[p.pose==='trofeo'?'guia':p.pose]||IMG.guia;var O=window.MCT_CUEVI_IMG,o3=O&&(O[p.pose]||O.guia||O.todas);if(o3){if(im.getAttribute('src')!==o3)im.src=o3;D.body.classList.add('mb-3d')}else if(I&&im.getAttribute('src')!==I[2])im.src=I[2];
+    var bot=window.MCT_BOT&&!window.MCT_CUEVI_IMG?q('.mct-bot',G):null;
+    if(bot){window.MCT_BOT.estado(bot,window.MCT_BOT.deSprite(p.pose));window.MCT_BOT.mira(bot,p.pose==='senala'&&p.obj?q(p.obj):null)}
+    var im=q('.mb-cuevi',G),I=IMG[p.pose==='trofeo'?'guia':p.pose]||IMG.guia;var O=window.MCT_CUEVI_IMG,o3=O&&(O[p.pose]||O.guia||O.todas);if(bot){}else if(o3){if(im.getAttribute('src')!==o3)im.src=o3;D.body.classList.add('mb-3d')}else if(I&&im.getAttribute('src')!==I[2])im.src=I[2];
     var mi=q('img',M);if(I&&mi&&mi.getAttribute('src')!==I[2])mi.src=I[2];
     var pu=q('.mb-punto',M);if(pu&&nueva&&!M.hidden)pu.hidden=false;if(pu&&!M.hidden)M.setAttribute('aria-label','Abrir la guía de Cuevi: '+(p.t||''));
     if(nueva&&p.auto&&p.obj)setTimeout(function(){resaltar(p.obj)},250);
