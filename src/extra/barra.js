@@ -28,7 +28,7 @@
       b.addEventListener('click',function(){if(typeof window.MCT_TEMA==='function')window.MCT_TEMA(t[0]);sync()});T.appendChild(b)});
     var N=q('[data-slot="nav"]',PAN);
     [['lateral','Lateral'],['inferior','Abajo']].forEach(function(t){var b=D.createElement('button');b.type='button';b.className='vp-tema';b.dataset.nav=t[0];b.textContent=t[1];
-      b.addEventListener('click',function(){var actual=lee('lab_nav')==='inferior'?'inferior':'lateral';if(actual===t[0])return;try{localStorage.setItem('lab_nav',t[0])}catch(e){}location.reload()});N.appendChild(b)});
+      b.addEventListener('click',function(){var actual=lee('lab_navegacion')==='inferior'?'inferior':'lateral';if(actual===t[0])return;try{localStorage.setItem('lab_navegacion',t[0])}catch(e){}location.reload()});N.appendChild(b)});
     D.body.appendChild(BTN);D.body.appendChild(PAN);D.body.classList.add('vistas-on');
     BTN.addEventListener('click',function(e){e.stopPropagation();abierto?cerrar(true):abrir()});
     PAN.addEventListener('keydown',function(e){e.stopPropagation();if(e.key==='Escape'){e.preventDefault();cerrar(true)}});
@@ -38,7 +38,7 @@
     sync();
   }
   function sync(){if(!PAN)return;var th=D.documentElement.dataset.theme||'cueva';var nv=q('.vp-nav',PAN);if(nv)nv.hidden=!D.body.classList.contains('lab');
-    var nav=lee('lab_nav')==='inferior'?'inferior':'lateral';Array.prototype.forEach.call(PAN.querySelectorAll('[data-nav]'),function(b){b.setAttribute('aria-pressed',String(b.dataset.nav===nav))});
+    var nav=lee('lab_navegacion')==='inferior'?'inferior':'lateral';Array.prototype.forEach.call(PAN.querySelectorAll('[data-nav]'),function(b){b.setAttribute('aria-pressed',String(b.dataset.nav===nav))});
     Array.prototype.forEach.call(PAN.querySelectorAll('[data-th]'),function(b){b.setAttribute('aria-pressed',String(b.dataset.th===th))})}
   function abrir(){crear();sync();abierto=true;PAN.hidden=false;BTN.setAttribute('aria-expanded','true');BTN.classList.add('on');
     var b=q('button',PAN);if(b)try{b.focus({preventScroll:true})}catch(e){}}

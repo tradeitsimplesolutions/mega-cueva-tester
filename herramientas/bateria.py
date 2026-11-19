@@ -207,6 +207,44 @@ def num(s):
     return float(s.replace("−", "-").replace(".", "").replace(",", ".")) if s is not None else None
 
 
+# ---------------------------------------------------------------- G · la guía no se queda muda
+def guia_sin_atascos(nav, url, errores):
+    """Una alumna que SOLO pulsa «Siguiente paso» (modo básico, laboratorio): cada paso avanza con una pulsación
+    (o dos si hay que elegir camino) y los pasos que solo puede hacer ella se lo dicen. Llega hasta «Tu unidad»."""
+    print("\nG · GUÍA: «Siguiente paso» nunca se queda mudo (la alumna que solo pulsa ese botón)")
+    ctx, pg = pagina(nav, 1366, 768, errores, "guía", estado={"mb_on": "1", "mb_plegado": "0"})
+    entrar_lab(pg, url)
+    pg.wait_for_timeout(1200)
+    vistos, atasco, previo, rep_n = [], "", None, 0
+    for _ in range(45):
+        cerrar_fiestas(pg)
+        ti, et = texto(pg, "#mb-tit"), texto(pg, "#mb-etapa")
+        if ti.startswith("Responde las 15"):
+            break
+        rep_n = rep_n + 1 if (et, ti) == previo else 0
+        previo = (et, ti)
+        if rep_n >= 2:
+            atasco = f"{et} · {ti}"
+            break
+        vistos.append(ti)
+        pg.click(".mb-sig")
+        pg.wait_for_timeout(900)
+        if pg.evaluate("!!document.querySelector('#mision1.analizando')"):
+            pg.wait_for_function("!document.querySelector('#mision1').classList.contains('analizando')", timeout=420000)
+            pg.wait_for_timeout(800)
+    llego = texto(pg, "#mb-tit").startswith("Responde las 15")
+    ok("G", "pulsando solo «Siguiente paso» se llega de la Fase 01 a «Tu unidad» sin atascarse", llego and not atasco,
+       atasco or f"{len(vistos)} pasos · último: {vistos[-1] if vistos else '-'}")
+    ok("G", "pasa de la Fase 02 a la 03: la Misión 2 se entrega con el botón principal", any("Entrega tu Misión 2" in v for v in vistos) and any("plantilla" in v for v in vistos))
+    # lo que solo puede hacer ella: el botón lo dice y la guía explica qué tocar
+    ok("G", "en «Responde las 15 preguntas» el botón se llama «Enséñame dónde» (no promete avanzar)", "Enséñame dónde" in texto(pg, ".mb-sig"))
+    if llego:
+        pg.click(".mb-sig")
+        pg.wait_for_timeout(500)
+        ok("G", "y al pulsarlo la guía explica qué tiene que hacer ella", "Las preguntas las respondes tú" in texto(pg, "#mb-guia .mb-aviso"))
+    ctx.close()
+
+
 # ---------------------------------------------------------------- B · laboratorio con el motor
 def laboratorio(nav, url, errores):
     print("\nB · LABORATORIO CON EL MOTOR (Oro diario · RSI(2) de Connors)")
@@ -223,6 +261,20 @@ def laboratorio(nav, url, errores):
     ok("B", "en la barra lateral, «Vistas» no tapa nada de la cabecera", pg.evaluate(JS_SOLAPE) == "", pg.evaluate(JS_SOLAPE))
     ok("B", "«¿Tienes feedback?» es un botón grande en la barra de la izquierda", pg.evaluate(
         "(()=>{const b=document.querySelector('.lab-side .lab-fb');if(!b)return false;const r=b.getBoundingClientRect();return r.height>=44&&r.width>=200})()"))
+    ok("B", "barra lateral: «Tu curva» va en la cabecera, avisa «Aún sin curva» y no la tapa «Vistas»", pg.evaluate(
+        "(()=>{const c=document.querySelector('.lab-top .dk-curva-top');if(!c||!c.offsetParent)return false;const r=c.getBoundingClientRect(),v=document.querySelector('#vistas-btn').getBoundingClientRect();"
+        "return r.width>150&&r.height>=30&&r.right<v.left-8&&/Aún sin curva/.test(c.innerText)})()"))
+    # la cápsula pinta cuando el motor da puntos (se le pasa un capital inventado: se prueba el pintado, no el motor)
+    pg.evaluate("(()=>{const A=window.MCT_LAB_API;window.__m3=A.m3;A.m3=()=>({res:{eq:{v:[1,1.02,1.01,1.08,1.05,1.14,1.2],"
+                "f:['2012-01-02','2012-06-01','2013-01-02','2013-06-03','2014-01-02','2014-06-02','2015-01-02']}}})})()")
+    pg.wait_for_timeout(2300)
+    ok("B", "barra lateral: la cápsula «Tu curva» de la cabecera dibuja la curva", pg.evaluate("document.querySelectorAll('.lab-top .dk-curva-top .dk-spark path').length") > 0)
+    pg.evaluate("(()=>{const A=window.MCT_LAB_API;if(window.__m3)A.m3=window.__m3})()")
+    c5, p5 = pagina(nav, 1440, 900, errores, "lab_nav viejo", estado={"mb_on": "0", "lab_nav": "inferior"})
+    entrar_lab(p5, url)
+    ok("B", "un «Abajo» guardado por una versión anterior (lab_nav) ya no manda: la barra va a la izquierda", p5.evaluate(
+        "!document.querySelector('#lab-dock')&&!!document.querySelector('.lab-side #lab-fases')"))
+    c5.close()
     pg.click("#vistas-btn")
     pg.click("#vistas-pan [data-nav=inferior]")
     pg.wait_for_selector("#lab-dock", timeout=60000)
@@ -248,6 +300,9 @@ def laboratorio(nav, url, errores):
 
     # Misión 1 · AED
     ir(pg, "aed")
+    ok("B", "Fase 01: las 6 tarjetas de activo llenan la fila, sin hueco a la derecha", pg.evaluate(
+        "(()=>{const p=document.querySelector('#m1-ejs');if(!p)return false;const k=[...p.children].filter(e=>e.offsetParent);if(k.length!==6)return false;"
+        "return p.getBoundingClientRect().right-Math.max(...k.map(e=>e.getBoundingClientRect().right))<16})()"))
     t = time.time()
     pg.click("#m1-analizar")
     pg.wait_for_function("!document.querySelector('#mision1').classList.contains('analizando') && "
@@ -261,6 +316,9 @@ def laboratorio(nav, url, errores):
                     "return {pruebas:h.n_pruebas,clara:c['CLARA']||0,insinua:c['SE INSINÚA']||0,nada:c['NADA']||0,"
                     "diseno:f.perfil.particion.diseno.velas,examen:f.perfil.particion.examen.velas,validacion:f.perfil.particion.validacion.velas}})()")
     ok("B", "Misión 1: la ficha se guarda con sus hallazgos", h is not None)
+    ok("B", "Misión 1: los chips de calidad de datos se reparten parejos por filas (4+4, no 5+3)", pg.evaluate(
+        "(()=>{const l=[...document.querySelectorAll('.m1q-l li')].filter(e=>e.offsetParent);if(l.length<4)return false;const f={};"
+        "l.forEach(e=>{const y=Math.round(e.getBoundingClientRect().top/6);f[y]=(f[y]||0)+1});const c=Object.values(f);return Math.max(...c)===Math.min(...c)})()"))
     if h:
         medidos.update({f"aed_{k}": v for k, v in h.items()})
     pg.screenshot(path=str(CAP / "B1_aed.png"), full_page=True)
@@ -840,7 +898,7 @@ def vistas(nav, url, errores):
     pisa = []
     for w, h in ((1024, 700), (1280, 720), (1366, 768), (1600, 900)):
         for etq, est, lab in (("pública", {"mb_on": "0"}, False), ("pública BASIC", {"mb_on": "1", "mb_plegado": "1"}, False),
-                              ("lab lateral", {"mb_on": "0"}, True), ("lab dock", {"mb_on": "0", "lab_nav": "inferior"}, True)):
+                              ("lab lateral", {"mb_on": "0"}, True), ("lab dock", {"mb_on": "0", "lab_navegacion": "inferior"}, True)):
             c2, p2 = pagina(nav, w, h, errores, "vistas solape", estado=est)
             if lab:
                 entrar_lab(p2, url)
@@ -944,6 +1002,10 @@ def main():
                 intradia(nav, srv.url, errores)
             except Exception as e:  # noqa: BLE001
                 ok("E", "el recorrido intradía llega al final", False, f"{type(e).__name__}: {str(e)[:160]}")
+            try:
+                guia_sin_atascos(nav, srv.url, errores)
+            except Exception as e:  # noqa: BLE001
+                ok("G", "el recorrido de la guía llega al final", False, f"{type(e).__name__}: {str(e)[:200]}")
         try:
             capas(nav, srv.url, errores, estado)
         except Exception as e:  # noqa: BLE001

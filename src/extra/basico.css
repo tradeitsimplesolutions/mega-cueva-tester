@@ -205,3 +205,6 @@ body.mb-3d .mb-mini img{image-rendering:auto;object-fit:contain}
 .mb-q{flex:none;border:1px solid var(--line2,#3F4C53);background:transparent;color:var(--dim,#B9B5AB);border-radius:50%;font:700 .9rem/1 var(--f-mono,monospace);cursor:pointer;width:30px;height:30px;padding:0}
 .mb-q:hover,.mb-q:focus-visible{color:var(--txt,#ECE8DF);border-color:var(--gold,#FFD23F)}
 .mb-cab .mb-etapa{flex:1 1 auto;min-width:0}
+
+/* el aviso dorado de la guía: lo que Cuevi no puede hacer por ti en este paso */
+.mb-txt .mb-aviso{margin:0 0 .55rem;padding:.45rem .65rem;border-left:3px solid var(--gold,#FFD23F);background:rgba(var(--gold-rgb,255,210,63),.12);border-radius:0 8px 8px 0;font-weight:600;font-size:.92rem;line-height:1.4}

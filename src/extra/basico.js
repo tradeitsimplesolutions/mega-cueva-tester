@@ -38,7 +38,7 @@
       if(a==='quien'){presentacion(true);return}
       if(a==='pq'){var ab=LS.get('mb_porque')!=='1';LS.set('mb_porque',ab?'1':'0');b.setAttribute('aria-expanded',String(ab));b.textContent=(ab?'▾':'▸')+' ¿Por qué?';var t=q('#mb-pq',G),tx=q('.mb-txt',G);if(t)t.hidden=!ab;if(ab&&t&&tx)tx.scrollTop=Math.max(0,t.offsetTop-6);ultimoHtml='';reserva();colocar();return}
       if(a==='mas'){var tm=q('.mb-txt',G);tm.scrollBy({top:Math.max(40,tm.clientHeight*.8),behavior:RM?'auto':'smooth'});return}
-      if(a==='sig'){var p=PASO;if(!p)return;if(p.hacer)p.hacer();else if(p.obj)resaltar(p.obj);setTimeout(aplicar,60);return}
+      if(a==='sig'){var p=PASO;if(!p)return;var r=p.hacer?p.hacer():false;if(r===false){if(p.obj)resaltar(p.obj);avisoGuia(p.pide||'Este paso lo haces tú: toca lo que te he iluminado y sigo contigo.')}setTimeout(aplicar,60);return}
       if(a==='extra'){var x=PASO&&PASO.extra&&PASO.extra[+b.dataset.i];if(x&&x.f){x.f();setTimeout(aplicar,60)}}});
     G.addEventListener('keydown',function(e){if(e.key==='Escape'){e.preventDefault();plegar(true)}});
     M=D.createElement('button');M.type='button';M.className='mb-mini';M.id='mb-mini';M.hidden=true;M.setAttribute('aria-label','Abrir la guía de Cuevi');M.setAttribute('aria-controls','mb-guia');M.setAttribute('aria-expanded','false');
@@ -135,9 +135,9 @@
     if(anal)return {k:'m1-anal',e:et+'2 de 3',t:'Estoy mirando tus velas…',pose:'duda',sinBtn:true,
       h:'<p>Tarda unos segundos. No cierres la página.</p>',p:'<p>Son miles de días de datos: miro cuánto sube, cuánto cae y qué pasa después de cada día.</p>'};
     if(!hecho&&!EST.m1elegido)return {k:'m1-elige',e:et+'1 de 3',t:'Elige qué vas a estudiar',pose:'senala',obj:'#m1-ejs',
-      h:'<p>Toca un activo en «1 · Elige el activo». Si dudas, <b>Nasdaq · diario</b>.</p>',
+      h:'<p>Toca un activo en «1 · Elige el activo». Si dudas, <b>Nasdaq · diario</b>. O pulsa «Elige uno por mí» y lo hago yo.</p>',
       p:'<p>Un <b>activo</b> es lo que compras o vendes: el oro, el Nasdaq (las 100 grandes tecnológicas de EE. UU.) o el S&amp;P 500 (las 500 grandes empresas de EE. UU.).</p><p>«Diario» quiere decir que cada vela es un día. Es lo más fácil de seguir.</p>',
-      extra:[{t:'Elegir Nasdaq diario por mí',f:function(){pulsa('#m1-ejs [data-ej="ndx_d1"]');marca('m1elegido');setTimeout(function(){resaltar('#m1-analizar')},300)}}]};
+      hacer:function(){pulsa('#m1-ejs [data-ej="ndx_d1"]');marca('m1elegido');setTimeout(function(){resaltar('#m1-analizar')},300)},sigT:'Elige uno por mí →'};
     if(!hecho)return {k:'m1-anal0',e:et+'2 de 3',t:'Ahora, pulsa ANALIZAR',pose:'senala',obj:movil?'#m1-movil-si':'#m1-analizar',
       hacer:function(){if(movil)resaltar('#m1-movil');else if(!pulsa('#m1-analizar'))resaltar('#m1-analizar')},
       h:movil?'<p>En el móvil va lento: mejor en el ordenador. Si quieres, pulsa «probar igualmente».</p>':'<p>Pulsa «Siguiente paso» y lo pongo en marcha.</p>',
@@ -163,12 +163,12 @@
     if(EST.m2entregada)return {k:'hip-fin',e:'Fase 02 · Misión 2 · hecha',t:'¡Misión 2 entregada!',pose:'bien',hacer:function(){abrirFase('reg')},
       h:'<p>Siguiente: la <b>Fase 03 · Reglas</b>. Pulsa «Siguiente paso».</p>',p:'<p>Tu idea ya está escrita sin dudas. En la Fase 03 se convierte en bloques que la máquina entiende.</p>'};
     if(sub==='piezas'&&(!B||!M2.doc))return {k:'hip-doc'+(B?'B':'A'),e:et+'1 de 3',t:'Parte de una estrategia conocida',pose:'senala',obj:B?'[data-m2-doc]':'[data-m2-camino="B"]',
-      hacer:B?null:function(){pulsa('[data-m2-camino="B"]');setTimeout(function(){resaltar('[data-m2-doc]')},200)},
-      h:B?'<p>Abre la lista «Estrategia documentada» y elige una. Las de tu familia van primero.</p>':'<p>Pulsa «Siguiente paso» y elijo el camino <b>B · desde una documentada</b>.</p>',
+      hacer:B?function(){elegirOpcion('[data-m2-doc]',function(o){return o.className==='fam'})}:function(){pulsa('[data-m2-camino="B"]');setTimeout(function(){resaltar('[data-m2-doc]')},200)},
+      h:B?'<p>Abre la lista «Estrategia documentada» y elige una. Las de tu familia van primero. O pulsa «Elige una por mí» y elijo la primera.</p>':'<p>Pulsa «Siguiente paso» y elijo el camino <b>B · desde una documentada</b>.</p>',
       p:'<p>Una <b>hipótesis</b> es tu idea de por qué el precio hará algo. Se escribe en 5 piezas: cuándo miras, cuándo sí operas, qué te hace entrar, cuándo cortas pérdidas (el <b>stop</b>) y cuándo recoges.</p>'+
         '<p>Lo más fácil para empezar: copiar una estrategia <b>documentada</b>, publicada por un autor y probada por otros.</p>',
-      extra:B?[{t:'Elegir la primera de mi familia',f:function(){elegirOpcion('[data-m2-doc]',function(o){return o.className==='fam'})}}]:null};
-    if(sub==='piezas')return {k:'hip-pz',e:et+'2 de 3',t:'Marca las 3 casillas y sigue',pose:'senala',obj:'#lab-v-hip .m2-sesgos',hacer:function(){pulsa('#lab-v-hip .m2-pzs [data-m2-sub="arbol"]')},
+      sigT:B?'Elige una por mí →':null};
+    if(sub==='piezas')return {k:'hip-pz',e:et+'2 de 3',t:'Marca las 3 casillas y sigue',pose:'senala',obj:'#lab-v-hip .m2-sesgos',hacer:function(){return pulsa('#lab-v-hip .m2-pzs [data-m2-sub="arbol"]')},pide:'Aún no puedo seguir: te he iluminado las casillas «sin sesgos». Revísalas y vuelve a pulsar.',
       h:'<p>Las piezas ya están rellenas. Lee las 3 casillas «sin sesgos», márcalas si son verdad y pulsa «Siguiente paso».</p>'+
         (etq?'<p>¿Ves <b>'+etq+'</b> junto a una pieza? Te lo explico en «¿Por qué?».</p>':''),
       p:(etq?'<p><b>ENCAJA</b>: esa pieza va a favor de lo que viste en tu activo en la Fase 01. <b>CHOCA</b>: tu activo hizo justo lo contrario. <b>SIN DATO</b>: tu ficha no dice ni sí ni no.</p>'+
@@ -178,11 +178,11 @@
     if(sub==='arbol')return {k:'hip-arbol',e:et+'3 de 3',t:'Tu idea en preguntas de sí o no',pose:'guia',obj:'#lab-v-hip .m2-arbol-w',hacer:function(){pulsa('#lab-v-hip [data-m2-sub="pseudo"]')},
       h:'<p>Lee tu árbol de arriba abajo y pulsa «Siguiente paso».</p>',
       p:'<p>Tu <b>árbol</b> es tu idea en preguntas que solo se responden con <b>sí</b> o <b>no</b>. Si una pregunta necesita opinión, no vale.</p><p>Después comprobamos si está escrita sin dudas.</p>'};
-    if(X!==6)return {k:'hip-x'+X,e:et+'3 de 3',t:'Casi: te faltan '+(X==null?'algunas':(6-X))+' de 6',pose:'duda',obj:'#lab-v-hip .m2-obj',
+    if(X!==6)return {k:'hip-x'+X,e:et+'3 de 3',t:'Casi: te faltan '+(X==null?'algunas':(6-X))+' de 6',pose:'duda',obj:'#lab-v-hip .m2-obj',pide:'Esto se arregla en las piezas: te he iluminado la lista «¿Es objetiva?». Cada NO dice qué falta.',
       h:'<p>Mira la lista «¿Es objetiva?»: cada <b>NO</b> dice qué falta. Arréglalo en las piezas.</p>',
       p:'<p>El <b>pseudocódigo</b> es tu regla escrita en pasos, tan clara que un ordenador no tenga que adivinar nada. Hacen falta 6 de 6 para entregarla.</p>',
       extra:[{t:'Volver a las piezas',f:function(){pulsa('#lab-v-hip [data-m2-sub="piezas"]')}}]};
-    return {k:'hip-6',e:et+'3 de 3',t:'¡6 de 6! Entrega tu Misión 2',pose:'bien',obj:'#lab-v-hip [data-m2-imprimir]',
+    return {k:'hip-6',e:et+'3 de 3',t:'¡6 de 6! Entrega tu Misión 2',pose:'bien',obj:'#lab-v-hip [data-m2-imprimir]',hacer:function(){return pulsa('#lab-v-hip [data-m2-imprimir]')},sigT:'Entregar y guardar PDF →',
       h:'<p>Pulsa <b>ENTREGA MISIÓN 2</b>. En la impresión, elige «Guardar como PDF» y súbelo en la lección del curso.</p>',
       p:'<p>Tu <b>pseudocódigo</b> (la regla escrita en pasos, sin nada que adivinar) pasa las 6 comprobaciones.</p><p>No hace falta que gane dinero. Hace falta que sea clara, y lo es.</p>',
       extra:[{t:'Ya la he entregado',f:function(){marca('m2entregada');fiesta('m2')}}]}}
@@ -190,9 +190,9 @@
     if(q('#lab-v-reg .lab-bloq')||!q('#lab-v-reg [data-m3-plant]'))return {k:'reg-sin',e:'Fase 03 · Misión 3',t:'Primero, la Fase 01',pose:'duda',hacer:function(){abrirFase('aed')},
       h:'<p>Pulsa «Siguiente paso» y vamos a la Fase 01.</p>',p:'<p>La regla se prueba con el activo que analizaste.</p>'};
     if(!(M3.entrada&&M3.entrada.length))return {k:'reg-pl',e:et+'1 de 2',t:'Elige la plantilla «IBS bajo»',pose:'senala',obj:'#lab-v-reg [data-m3-plant]',
-      h:'<p>En «Empezar desde», elige <b>IBS bajo</b>. O pulsa «Ponerla por mí».</p>',
+      h:'<p>En «Empezar desde», elige <b>IBS bajo</b>. O pulsa «Ponla por mí» y la pongo yo.</p>',
       p:'<p>Ahora tu idea pasa a <b>bloques</b>: piezas que la máquina sabe leer.</p><p><b>IBS</b> dice dónde cerró el día dentro de su recorrido: 0 = en lo más bajo, 1 = en lo más alto. La idea: comprar cuando cierra muy abajo y salir cuando cierra arriba.</p>',
-      extra:[{t:'Ponerla por mí',f:function(){elegirOpcion('#lab-v-reg [data-m3-plant]',function(o){return /^IBS bajo/.test(o.textContent)})}}]};
+      hacer:function(){elegirOpcion('#lab-v-reg [data-m3-plant]',function(o){return /^IBS bajo/.test(o.textContent)})},sigT:'Ponla por mí →'};
     return {k:'reg-lee',e:et+'2 de 2',t:'Así se lee tu regla',pose:'guia',obj:'#lab-v-reg .m3-ed',hacer:function(){abrirFase('bt')},
       h:'<p><b>1</b> = cuándo sí se opera · <b>2</b> = qué te hace entrar · <b>3</b> = cuándo sales. Pulsa «Siguiente paso» para probarla.</p>',
       p:'<p>Las <b>perillas</b> son los números que eliges tú (aquí, 0,2 y 0,8). Cuantas menos, mejor: cada número es una forma de ajustarte al pasado sin querer.</p><p>A la izquierda ya ves una curva de prueba. En la Fase 04 la miramos con calma.</p>'}}
@@ -208,17 +208,17 @@
       h:'<p>Te he puesto tu resultado en sencillo: si hubieras empezado con 100, cuánto tendrías. Léelo y pulsa «Siguiente paso».</p>',
       p:'<p>La herramienta hace 4 preguntas a tu regla. El <b>PF</b> (factor de beneficio) es lo que ganas dividido entre lo que pierdes: 1,30 quiere decir que por cada 1 € perdido ganas 1,30 €.</p>'+
         '<p><b>No abras aún el examen.</b> Los años de diseño son el <b>IS</b> («dentro de la muestra»); los guardados, el <b>OOS</b> («fuera de la muestra»). Esa <b>partición</b> es lo que hace honrada la prueba: el examen se abre una sola vez, al final.</p>'};
-    return {k:'bt-ent',e:et+'3 de 3',t:'Entrega tu curva',pose:'senala',obj:'#lab-v-bt [data-m3-imprimir]',
+    return {k:'bt-ent',e:et+'3 de 3',t:'Entrega tu curva',pose:'senala',obj:'#lab-v-bt [data-m3-imprimir]',hacer:function(){return pulsa('#lab-v-bt [data-m3-imprimir]')},sigT:'Entregar y guardar PDF →',
       h:'<p>Pulsa <b>ENTREGA MISIÓN 3</b>. En la impresión, elige «Guardar como PDF» y súbelo en la lección «Entrega tu Misión 3».</p>',
       p:'<p>Vale aunque ponga <b>NO PASA</b>. Lo importante es hacerlo bien, no ganar a la primera.</p>',
       extra:[{t:'Ya la he entregado',f:function(){marca('m3entregada');fiesta('m3')}}]}}
   function pasoUnidad(){var U=unidad(),et='Tu unidad · paso ';
-    if(U.n<15)return {k:'un-q'+U.n,e:et+'1 de 3',t:'Responde las 15 preguntas',pose:U.n?'guia':'senala',obj:'#lab-v-unidad .un-test',
+    if(U.n<15)return {k:'un-q'+U.n,e:et+'1 de 3',t:'Responde las 15 preguntas',pose:U.n?'guia':'senala',obj:'#lab-v-unidad .un-test',pide:'Las preguntas las respondes tú, en las 4 pestañas (te las he iluminado). Cuando lleves 15, sigo contigo.',
       h:'<p>Van en 4 pestañas: tu vida, tu mercado, tu estilo y tu riesgo. Llevas <b>'+U.n+' de 15</b>.</p>',
       p:'<p>Aquí decides cómo quieres operar <b>tú</b>. No hay respuestas buenas ni malas.</p><p>Cada opción te dice su «precio»: léelo antes de elegir. Debajo se va construyendo tu plan solo.</p>'};
-    if(!U.firma||!U.nombre)return {k:'un-firma',e:et+'2 de 3',t:'Firma tu unidad',pose:'senala',obj:'#un-firma',
+    if(!U.firma||!U.nombre)return {k:'un-firma',e:et+'2 de 3',t:'Firma tu unidad',pose:'senala',obj:'#un-firma',pide:'La firma es tuya: escribe tu nombre, marca la casilla y firma en el recuadro iluminado.',
       h:'<p>Escribe tu nombre, marca la casilla y firma con el ratón o con el dedo.</p>',p:'<p>Es un compromiso contigo: así vas a operar.</p>'};
-    if(!EST.unimpresa)return {k:'un-imp',e:et+'3 de 3',t:'Imprímela y guárdala',pose:'senala',obj:'#lab-v-unidad [data-un-imprimir]',
+    if(!EST.unimpresa)return {k:'un-imp',e:et+'3 de 3',t:'Imprímela y guárdala',pose:'senala',obj:'#lab-v-unidad [data-un-imprimir]',hacer:function(){return pulsa('#lab-v-unidad [data-un-imprimir]')},sigT:'Imprimir y guardar PDF →',
       h:'<p>Pulsa <b>IMPRIMIR MI UNIDAD</b> y guárdala como PDF.</p>',p:'<p>Tenla a mano cuando operes: es tu plan.</p>',
       extra:[{t:'Ya la he guardado',f:function(){marca('unimpresa');fiesta('unidad')}}]};
     return {k:'un-fin',e:'Tu unidad hecha',t:'¡Muy bien! Ahora, a poner la regla a prueba',pose:'bien',hacer:function(){pulsa('#lab-fases [data-fase="opt"]')},
@@ -259,6 +259,8 @@
     return {k:'bloq',e:'Fase cerrada',t:'Esta fase aún está cerrada',pose:'duda',hacer:function(){pulsa('#lab-v-bloq [data-ir-fase]')},
       h:'<p>Pulsa «Siguiente paso» y seguimos por donde ibas.</p>',p:'<p>Se abre durante el reto, cuando llegue su día.</p>'}}
 
+  /* una línea dorada arriba del texto de la guía: lo que Cuevi no puede hacer por ti en este paso (se borra al cambiar de paso) */
+  function avisoGuia(t){var tx=q('.mb-txt',G);if(!tx)return;var o=q('.mb-aviso',tx);if(o)o.remove();tx.insertAdjacentHTML('afterbegin','<p class="mb-aviso" role="status">'+esc(t)+'</p>');tx.scrollTop=0}
   function pintarGuia(){var p=PASO=paso(),r=ruta(pantalla());
     var htmlR=r.map(function(x){var corto=x[2]||r.length<3?x[0]:x[0].split(' · ')[0];return '<li class="'+(x[2]?'aqui':x[1]?'hecho':'')+'"'+(x[2]?' aria-current="step"':'')+' title="'+esc(x[0]+(x[1]?' · hecho':''))+'">'+(x[1]?'✓ ':'')+(corto===x[0]?esc(x[0]):'<span aria-hidden="true">'+esc(corto)+'</span><span class="sr">'+esc(x[0])+'</span>')+'</li>'}).join('');
     var extra=(p.extra||[]).map(function(x,i){return '<button type="button" class="mb-otro" data-mb="extra" data-i="'+i+'">'+esc(x.t)+'</button>'}).join('');
@@ -268,7 +270,7 @@
     q('#mb-etapa',G).textContent=p.e||'';q('#mb-tit',G).textContent=p.t||'';q('.mb-ruta',G).innerHTML=htmlR;
     var tx=q('.mb-txt',G);tx.innerHTML=(p.h||'')+(p.p?'<div class="mb-pqt" id="mb-pq"'+(pq?'':' hidden')+'>'+p.p+'</div>':'');if(nueva)tx.scrollTop=0;
     /* «¿Por qué?» va con los botones, no dentro del texto: así no se queda escondido si el texto no cabe */
-    var ac=q('.mb-acc',G),sig=q('.mb-sig',ac);qa('.mb-otro,.mb-pq',ac).forEach(function(n){n.remove()});sig.hidden=!!p.sinBtn;
+    var ac=q('.mb-acc',G),sig=q('.mb-sig',ac);qa('.mb-otro,.mb-pq',ac).forEach(function(n){n.remove()});sig.hidden=!!p.sinBtn;sig.textContent=p.sigT||(p.hacer?'Siguiente paso →':'Enséñame dónde →');
     sig.insertAdjacentHTML('afterend',(p.p?'<button type="button" class="mb-pq" data-mb="pq" aria-expanded="'+pq+'" aria-controls="mb-pq">'+(pq?'▾':'▸')+' ¿Por qué?</button>':'')+extra);
     var bot=window.MCT_BOT&&!window.MCT_CUEVI_IMG?q('.mct-bot',G):null;
     if(bot){window.MCT_BOT.estado(bot,window.MCT_BOT.deSprite(p.pose));window.MCT_BOT.mira(bot,p.pose==='senala'&&p.obj?q(p.obj):null)}
