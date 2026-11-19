@@ -22,9 +22,9 @@
 .vistas-pan .mb-toggle,.vistas-pan .mb-toggle.mb-en-cab{position:static!important;left:auto;bottom:auto;margin:0;width:100%;justify-content:space-between;box-shadow:none}
 .vistas-pan .tp-toggle,.vistas-pan .tp-toggle[data-tp-lugar]{position:static!important;margin:0;align-self:flex-start}
 /* hueco para el botón: la cabecera de cada pantalla no queda debajo */
-body.vistas-on.vistas-on .top{padding-right:7.2rem}
-body.vistas-on.vistas-on .lab-top{padding-right:7.2rem}
-body.vistas-on.vistas-on .bx-top{padding-right:7.2rem}
+body.vistas-on.vistas-on .top{padding-right:9rem}
+body.vistas-on.vistas-on .lab-top{padding-right:9rem}
+body.vistas-on.vistas-on .bx-top{padding-right:9rem}
 @media (max-width:700px){.vistas-btn{top:8px;right:8px;padding:.3rem .6rem}.vistas-btn .vb-t{display:none}.vistas-pan{top:48px;right:8px}
   body.vistas-on.vistas-on .top,body.vistas-on.vistas-on .lab-top,body.vistas-on.vistas-on .bx-top{padding-right:3.4rem}}
 @media print{.vistas-btn,.vistas-pan{display:none!important}}

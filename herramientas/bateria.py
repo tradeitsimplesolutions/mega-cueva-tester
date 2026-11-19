@@ -181,9 +181,15 @@ def ir(pg, fase):
 JS_DESBORDA = """() => {const o=[];const de=document.documentElement;if(de.scrollWidth>innerWidth+1)o.push('página '+(de.scrollWidth-innerWidth)+'px');
   const m=document.querySelector('.lab-main');if(m&&m.scrollWidth>m.clientWidth+2)o.push('panel '+(m.scrollWidth-m.clientWidth)+'px');return o}"""
 JS_SOLAPE = """() => {const v=document.querySelector('#vistas-btn');if(!v)return 'falta #vistas-btn';const r=v.getBoundingClientRect();if(!r.width)return 'sin tamaño';
+  const cruza=q=>q.width>2&&q.height>2&&r.left<q.right-1&&q.left<r.right-1&&r.top<q.bottom-1&&q.top<r.bottom-1;
   const otros=[...document.querySelectorAll('.tools button,.hchips *,.lab-top-r *,.lab-top .lab-miga,.bx-top button,.bx-top .seg')].filter(e=>e!==v&&!v.contains(e)&&e.offsetParent);
-  const t=otros.find(e=>{const q=e.getBoundingClientRect();return q.width&&r.left<q.right-1&&q.left<r.right-1&&r.top<q.bottom-1&&q.top<r.bottom-1});
-  return t?'«Vistas» tapa '+(t.id||String(t.className).slice(0,30)||t.tagName):''}"""
+  const t=otros.find(e=>cruza(e.getBoundingClientRect()));
+  if(t)return '«Vistas» tapa '+(t.id||String(t.className).slice(0,30)||t.tagName);
+  const w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);let n;
+  while(n=w.nextNode()){const tx=n.textContent.trim();const e=n.parentElement;if(!tx||!e||v.contains(e)||e.closest('#vistas-pan,script,style,noscript')||!e.closest('.top,.lab-top,.bx-top,.tools,.hchips'))continue;
+    const cs=getComputedStyle(e);if(cs.visibility==='hidden'||cs.display==='none')continue;
+    const rg=document.createRange();rg.selectNodeContents(n);if([...rg.getClientRects()].some(cruza))return '«Vistas» tapa el texto «'+tx.slice(0,24)+'»'}
+  return ''}"""
 # la caja de Cuevi: dentro de la pantalla, «Siguiente paso» y «¿Por qué?» a la vista, y si el texto no cabe, el aviso «↓ sigue»
 JS_CUEVI = """() => {const g=document.querySelector('#mb-guia');if(!g||g.hidden)return 'guía oculta';const o=[],b=g.querySelector('.mb-boc').getBoundingClientRect();
   if(b.top<0||b.bottom>innerHeight+1)o.push('bocadillo fuera de la pantalla');
@@ -212,12 +218,19 @@ def laboratorio(nav, url, errores):
     ok("B", "puerta: una clave mala no abre", pg.query_selector("#lab-fases") is None and pg.is_visible("#k"))
     entrar_lab(pg, url)
     ok("B", "puerta: la clave buena abre el laboratorio", pg.evaluate("document.body.classList.contains('lab')"))
+    ok("B", "las 8 fases van por defecto en la barra de la IZQUIERDA (no hay dock)", pg.evaluate(
+        "(()=>{const n=document.querySelector('.lab-side #lab-fases');if(!n||document.querySelector('#lab-dock'))return false;const r=n.getBoundingClientRect();return r.left<40&&r.width<330&&r.height>300})()"))
+    ok("B", "en la barra lateral, «Vistas» no tapa nada de la cabecera", pg.evaluate(JS_SOLAPE) == "", pg.evaluate(JS_SOLAPE))
+    pg.click("#vistas-btn")
+    pg.click("#vistas-pan [data-nav=inferior]")
+    pg.wait_for_selector("#lab-dock", timeout=60000)
+    pg.wait_for_timeout(900)
     ok("B", "dock: las 8 fases van en una barra horizontal abajo, en una sola fila", pg.evaluate(
         "(()=>{const d=document.querySelector('#lab-dock');if(!d)return false;const r=d.getBoundingClientRect();"
         "const t=[...document.querySelectorAll('#lab-fases [data-fase]')].map(b=>b.getBoundingClientRect().top);"
         "return t.length===8&&r.bottom>innerHeight-30&&Math.max(...t)-Math.min(...t)<30})()"))
     ok("B", "dock: sin curva todavía, avisa «Aún sin curva»", "Aún sin curva" in texto(pg, "#lab-dock"))
-    # Vistas › Navegación: se puede volver a la barra lateral de siempre y de nuevo al dock
+    # Vistas › Navegación: se puede volver a la barra lateral y de nuevo al dock
     pg.click("#vistas-btn")
     pg.click("#vistas-pan [data-nav=lateral]")
     pg.wait_for_selector("#lab-fases .lab-fase", timeout=60000)
@@ -665,6 +678,8 @@ def capas(nav, url, errores, estado):
                 # en pantalla estrecha Cuevi empieza plegado (no tapa la página) y al abrirlo se lee entero
                 if f == FASES[0]:
                     ok("C", f"{nombre}: Cuevi abre plegado", pg.is_hidden("#mb-guia") and pg.is_visible("#mb-mini"))
+                    ok("C", f"{nombre}: el robot plegado va suelto (sin caja ni borde)", pg.evaluate(
+                        "(()=>{const c=getComputedStyle(document.querySelector('#mb-mini'));return c.borderTopWidth==='0px'&&c.backgroundColor==='rgba(0, 0, 0, 0)'&&c.backgroundImage==='none'&&c.boxShadow==='none'})()"))
                     pg.click("#mb-mini")
                     pg.wait_for_timeout(300)
                 r = pg.evaluate(JS_CUEVI)
@@ -765,6 +780,22 @@ def vistas(nav, url, errores):
        "ya no está cargado" in texto(pg, "#pi-csv-n"), texto(pg, "#pi-csv-n")[:80])
     ok("V", "sin errores en la consola", len(errores) == n0, errores[n0] if len(errores) > n0 else "")
     ctx.close()
+    # «Vistas» no pisa ningún texto ni botón en tamaños de portátil: la pública, el laboratorio con la barra de la izquierda y con el dock
+    pisa = []
+    for w, h in ((1024, 700), (1280, 720), (1366, 768), (1600, 900)):
+        for etq, est, lab in (("pública", {"mb_on": "0"}, False), ("pública BASIC", {"mb_on": "1", "mb_plegado": "1"}, False),
+                              ("lab lateral", {"mb_on": "0"}, True), ("lab dock", {"mb_on": "0", "lab_nav": "inferior"}, True)):
+            c2, p2 = pagina(nav, w, h, errores, "vistas solape", estado=est)
+            if lab:
+                entrar_lab(p2, url)
+            else:
+                p2.goto(url + "/app/index.html" + ("#basic" if "BASIC" in etq else ""))
+                p2.wait_for_timeout(1000)
+            x = p2.evaluate(JS_SOLAPE)
+            if x:
+                pisa.append(f"{etq} {w}×{h}: {x}")
+            c2.close()
+    ok("V", "«Vistas» no pisa nada en 4 tamaños de portátil (pública, BASIC, lab lateral y lab dock)", not pisa, "; ".join(pisa[:3]))
 
 
 # ---------------------------------------------------------------- D · Cueva Tester pública

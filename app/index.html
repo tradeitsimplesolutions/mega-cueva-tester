@@ -1347,9 +1347,9 @@ table.m1t-t{width:100%;border-collapse:collapse;font-size:.92rem}
 .vistas-pan .mb-toggle,.vistas-pan .mb-toggle.mb-en-cab{position:static!important;left:auto;bottom:auto;margin:0;width:100%;justify-content:space-between;box-shadow:none}
 .vistas-pan .tp-toggle,.vistas-pan .tp-toggle[data-tp-lugar]{position:static!important;margin:0;align-self:flex-start}
 /* hueco para el botón: la cabecera de cada pantalla no queda debajo */
-body.vistas-on.vistas-on .top{padding-right:7.2rem}
-body.vistas-on.vistas-on .lab-top{padding-right:7.2rem}
-body.vistas-on.vistas-on .bx-top{padding-right:7.2rem}
+body.vistas-on.vistas-on .top{padding-right:9rem}
+body.vistas-on.vistas-on .lab-top{padding-right:9rem}
+body.vistas-on.vistas-on .bx-top{padding-right:9rem}
 @media (max-width:700px){.vistas-btn{top:8px;right:8px;padding:.3rem .6rem}.vistas-btn .vb-t{display:none}.vistas-pan{top:48px;right:8px}
   body.vistas-on.vistas-on .top,body.vistas-on.vistas-on .lab-top,body.vistas-on.vistas-on .bx-top{padding-right:3.4rem}}
 @media print{.vistas-btn,.vistas-pan{display:none!important}}
@@ -1428,13 +1428,15 @@ body.lab .mb-guia.mb-lado .mb-boc{padding:.6rem .7rem .6rem}body.lab .mb-guia.mb
 body.modo-basico.mb-lado-on #lab-fases .lab-fase.cerrada,body.modo-basico.mb-lado-on #lab-fases .lab-grupo:nth-of-type(2){display:none}
 @media (min-width:901px){body.lab .mb-mini{bottom:14px}}
 /* plegada: solo Cuevi, como botón */
-.mb-mini{position:fixed;left:14px;bottom:calc(64px + env(safe-area-inset-bottom,0px));z-index:57;width:64px;height:64px;padding:4px;border-radius:12px;
-  border:2px solid var(--gold,#FFD23F);background:var(--pan2,#1C2327);cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.4)}
+.mb-mini{position:fixed;left:14px;bottom:calc(64px + env(safe-area-inset-bottom,0px));z-index:57;width:88px;height:88px;padding:0;border:0;border-radius:50%;
+  background:none;box-shadow:none;cursor:pointer;transition:transform .18s ease}
 body.lab .mb-mini{left:calc(17.5rem + 14px)}
 .mb-guia.mb-der,.mb-mini.mb-der,body.lab .mb-guia.mb-der,body.lab .mb-mini.mb-der{left:auto;right:14px;bottom:calc(104px + env(safe-area-inset-bottom,0px))}
 .mb-mini img{width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges;display:block}
 .mb-mini[hidden]{display:none}
-.mb-mini .mb-punto{position:absolute;top:-6px;right:-6px;width:14px;height:14px;border-radius:50%;background:var(--red,#FF6B5E);border:2px solid var(--pan2,#1C2327)}
+.mb-mini:hover{transform:scale(1.07)}
+.mb-mini:focus-visible{outline:2px solid var(--gold,#FFD23F);outline-offset:2px}
+.mb-mini .mb-punto{position:absolute;top:4px;right:4px;width:14px;height:14px;border-radius:50%;background:var(--red,#FF6B5E);border:2px solid var(--pan2,#1C2327)}
 
 /* espacio al final para poder sacar el contenido de debajo de la guía */
 body.modo-basico .lab-main::after,body.modo-basico.mision1 #mision1::after{content:"";display:block;flex:0 0 auto;height:var(--mb-reserva,0px)}
@@ -1512,7 +1514,7 @@ body.modo-basico:not(.mb-ver-unmapa) #lab-v-unidad .un-mapa-w{display:none!impor
   .mb-tit{font-size:1.05rem}.mb-txt{font-size:.9rem}
   .mb-ruta{margin-bottom:.35rem}.mb-ruta li:not(.aqui){display:none}
   .mb-acc{margin-top:.3rem}.mb-sig{min-height:40px}
-  .mb-mini{left:8px;bottom:calc(58px + env(safe-area-inset-bottom,0px));width:54px;height:54px}
+  .mb-mini{left:8px;bottom:calc(58px + env(safe-area-inset-bottom,0px));width:68px;height:68px}
   .mb-card{padding:.8rem}.mb-card-h h2{font-size:1.25rem}.mb-t .mb-big{font-size:1.8rem}.mb-frase{font-size:1.08rem}
   .mb-tiles{grid-template-columns:1fr}
 }
@@ -5910,13 +5912,13 @@ init();
       '<div class="vp-g"><span class="vp-l">Modo</span><div class="vp-s" data-slot="modo"></div><small>«Más básico»: Cuevi te guía paso a paso y se pliega lo técnico.</small></div>'+
       '<div class="vp-g"><span class="vp-l">Diseño</span><div class="vp-s" data-slot="diseno"></div></div>'+
       '<div class="vp-g"><span class="vp-l">Tema</span><div class="vp-s vp-temas" data-slot="tema" role="group" aria-label="Tema"></div></div>'+
-      '<div class="vp-g vp-nav" hidden><span class="vp-l">Navegación (laboratorio)</span><div class="vp-s vp-temas vp-dos" data-slot="nav" role="group" aria-label="Dónde van las fases"></div><small>Dónde van las 8 fases: en la barra de la izquierda de siempre, o en una barra horizontal abajo con tu curva.</small></div>';
+      '<div class="vp-g vp-nav" hidden><span class="vp-l">Navegación (laboratorio)</span><div class="vp-s vp-temas vp-dos" data-slot="nav" role="group" aria-label="Dónde van las fases"></div><small>Dónde van las 8 fases: en la barra de la izquierda (la de siempre) o en una barra horizontal abajo con tu curva.</small></div>';
     var T=q('[data-slot="tema"]',PAN);
     TEMAS.forEach(function(t){var b=D.createElement('button');b.type='button';b.className='vp-tema';b.dataset.th=t[0];b.textContent=t[1];
       b.addEventListener('click',function(){if(typeof window.MCT_TEMA==='function')window.MCT_TEMA(t[0]);sync()});T.appendChild(b)});
     var N=q('[data-slot="nav"]',PAN);
     [['lateral','Lateral'],['inferior','Abajo']].forEach(function(t){var b=D.createElement('button');b.type='button';b.className='vp-tema';b.dataset.nav=t[0];b.textContent=t[1];
-      b.addEventListener('click',function(){var actual=lee('lab_nav')==='lateral'?'lateral':'inferior';if(actual===t[0])return;try{localStorage.setItem('lab_nav',t[0])}catch(e){}location.reload()});N.appendChild(b)});
+      b.addEventListener('click',function(){var actual=lee('lab_nav')==='inferior'?'inferior':'lateral';if(actual===t[0])return;try{localStorage.setItem('lab_nav',t[0])}catch(e){}location.reload()});N.appendChild(b)});
     D.body.appendChild(BTN);D.body.appendChild(PAN);D.body.classList.add('vistas-on');
     BTN.addEventListener('click',function(e){e.stopPropagation();abierto?cerrar(true):abrir()});
     PAN.addEventListener('keydown',function(e){e.stopPropagation();if(e.key==='Escape'){e.preventDefault();cerrar(true)}});
@@ -5926,7 +5928,7 @@ init();
     sync();
   }
   function sync(){if(!PAN)return;var th=D.documentElement.dataset.theme||'cueva';var nv=q('.vp-nav',PAN);if(nv)nv.hidden=!D.body.classList.contains('lab');
-    var nav=lee('lab_nav')==='lateral'?'lateral':'inferior';Array.prototype.forEach.call(PAN.querySelectorAll('[data-nav]'),function(b){b.setAttribute('aria-pressed',String(b.dataset.nav===nav))});
+    var nav=lee('lab_nav')==='inferior'?'inferior':'lateral';Array.prototype.forEach.call(PAN.querySelectorAll('[data-nav]'),function(b){b.setAttribute('aria-pressed',String(b.dataset.nav===nav))});
     Array.prototype.forEach.call(PAN.querySelectorAll('[data-th]'),function(b){b.setAttribute('aria-pressed',String(b.dataset.th===th))})}
   function abrir(){crear();sync();abierto=true;PAN.hidden=false;BTN.setAttribute('aria-expanded','true');BTN.classList.add('on');
     var b=q('button',PAN);if(b)try{b.focus({preventScroll:true})}catch(e){}}
