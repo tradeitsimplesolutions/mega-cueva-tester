@@ -29,12 +29,13 @@
     T.addEventListener('click',function(){activar(!on(),true)});
     G=D.createElement('aside');G.className='mb-guia';G.id='mb-guia';G.hidden=true;G.setAttribute('role','complementary');G.setAttribute('aria-labelledby','mb-tit');
     G.innerHTML=(window.MCT_BOT&&!window.MCT_CUEVI_IMG?'<span class="mb-cuevi" aria-hidden="true">'+window.MCT_BOT.html('normal')+'</span>':'<img class="mb-cuevi" alt="" width="76" height="76">')+
-      '<div class="mb-boc"><div class="mb-cab"><button type="button" class="mb-mover" data-mb="mover" aria-label="Mover a Cuevi: arrastra, o usa las flechas con el foco aquí" title="Arrastra a Cuevi para moverlo (doble clic: volver a su sitio)">⠿</button><p class="mb-etapa mono" id="mb-etapa"></p><button type="button" class="mb-x" data-mb="plegar" aria-expanded="true" aria-controls="mb-guia" aria-label="Plegar la guía" title="Plegar la guía (Esc)">▾</button></div>'+
+      '<div class="mb-boc"><div class="mb-cab"><button type="button" class="mb-mover" data-mb="mover" aria-label="Mover a Cuevi: arrastra, o usa las flechas con el foco aquí" title="Arrastra a Cuevi para moverlo (doble clic: volver a su sitio)">⠿</button><p class="mb-etapa mono" id="mb-etapa"></p><button type="button" class="mb-q" data-mb="quien" aria-label="¿Quién soy? Presentación de Cuevi" title="¿Quién es Cuevi?">?</button><button type="button" class="mb-x" data-mb="plegar" aria-expanded="true" aria-controls="mb-guia" aria-label="Plegar la guía" title="Plegar la guía (Esc)">▾</button></div>'+
       '<h2 class="mb-tit" id="mb-tit"></h2><ul class="mb-ruta" aria-label="Tu recorrido"></ul><div class="mb-txt-w"><div class="mb-txt" aria-live="polite" aria-atomic="true"></div>'+
       '<button type="button" class="mb-mas" data-mb="mas" tabindex="-1" aria-hidden="true" hidden>↓ sigue</button></div>'+
       '<div class="mb-acc"><button type="button" class="mb-sig" data-mb="sig">Siguiente paso →</button></div></div>';
     G.addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;var a=b.dataset.mb;
       if(a==='plegar'){plegar(true);return}
+      if(a==='quien'){presentacion(true);return}
       if(a==='pq'){var ab=LS.get('mb_porque')!=='1';LS.set('mb_porque',ab?'1':'0');b.setAttribute('aria-expanded',String(ab));b.textContent=(ab?'▾':'▸')+' ¿Por qué?';var t=q('#mb-pq',G),tx=q('.mb-txt',G);if(t)t.hidden=!ab;if(ab&&t&&tx)tx.scrollTop=Math.max(0,t.offsetTop-6);ultimoHtml='';reserva();colocar();return}
       if(a==='mas'){var tm=q('.mb-txt',G);tm.scrollBy({top:Math.max(40,tm.clientHeight*.8),behavior:RM?'auto':'smooth'});return}
       if(a==='sig'){var p=PASO;if(!p)return;if(p.hacer)p.hacer();else if(p.obj)resaltar(p.obj);setTimeout(aplicar,60);return}
@@ -44,8 +45,8 @@
     M.innerHTML=img('guia','')+'<span class="mb-punto" aria-hidden="true" hidden></span>';
     M.addEventListener('click',function(){plegar(false)});
     F=D.createElement('div');F.className='mb-fiesta';F.id='mb-fiesta';F.hidden=true;F.setAttribute('role','dialog');F.setAttribute('aria-modal','true');F.setAttribute('aria-labelledby','mb-fiesta-t');F.setAttribute('aria-describedby','mb-fiesta-d');
-    F.addEventListener('click',function(e){if(e.target===F||e.target.closest('[data-mb="fiesta-ok"]'))cerrarFiesta()});
-    F.addEventListener('keydown',function(e){if(e.key==='Escape'){e.preventDefault();cerrarFiesta()}if(e.key==='Tab'){e.preventDefault();var b=q('[data-mb="fiesta-ok"]',F);if(b)b.focus()}});
+    F.addEventListener('click',function(e){if(e.target.closest('[data-mb="quien-no"]'))marca('quienOculta',1);if(e.target===F||e.target.closest('[data-mb="fiesta-ok"],[data-mb="quien-no"]'))cerrarFiesta()});
+    F.addEventListener('keydown',function(e){if(e.key==='Escape'){e.preventDefault();cerrarFiesta()}if(e.key==='Tab'){e.preventDefault();var bs=qa('button',F),i=bs.indexOf(D.activeElement),n=bs.length;if(n)bs[(i+(e.shiftKey?-1:1)+n)%n].focus()}});
     D.body.appendChild(G);D.body.appendChild(M);D.body.appendChild(F);D.body.appendChild(T);
     /* acciones del alumno que el estado no guarda: se apuntan al vuelo (fase de captura: antes que la app) */
     D.addEventListener('click',function(e){var t=e.target;if(!t||!t.closest)return;
@@ -96,7 +97,7 @@
   function reserva(){if(!D.body||!on())return;var h=POS&&movible()?0:on()&&G&&!G.hidden&&!G.classList.contains('mb-lado')?G.getBoundingClientRect().height+80:on()?90:0;D.body.style.setProperty('--mb-reserva',Math.round(h)+'px')}
   function activar(si,usuario){LS.set('mb_on',si?'1':'0');D.body.classList.toggle('modo-basico',si);T.setAttribute('aria-pressed',String(si));
     if(!si){limpiar();G.hidden=true;M.hidden=true;D.body.style.removeProperty('--mb-reserva');if(D.body.getAttribute('style')==='')D.body.removeAttribute('style');ultimaClave='';ultimoHtml='';return}
-    if(usuario)LS.set('mb_plegado','0');antes.m1=m1Hecho();pintarCaja();aplicar();if(usuario){var b=q('.mb-sig',G);if(b&&!b.disabled)b.focus()}}
+    if(usuario)LS.set('mb_plegado','0');antes.m1=m1Hecho();pintarCaja();aplicar();if(usuario){var b=q('.mb-sig',G);if(b&&!b.disabled)b.focus();presentacion(false)}}
   /* quita todo lo que pone el modo (al apagarlo, la página queda como sin él) */
   function limpiar(){qa('.mb-detalle,.mb-card').forEach(function(n){n.remove()});
     Array.prototype.slice.call(D.body.classList).forEach(function(c){if(c.indexOf('mb-')===0)D.body.classList.remove(c)});
@@ -393,6 +394,20 @@
     var c='';if(!RM)for(var i=0;i<14;i++)c+='<i class="mb-conf" aria-hidden="true" style="left:'+(4+i*7)+'%;animation-delay:'+(i%5*.22).toFixed(2)+'s"></i>';
     F.innerHTML='<div class="mb-fiesta-in">'+c+img('trofeo','Cuevi levanta un trofeo')+'<h2 id="mb-fiesta-t">'+esc(FIESTA[k][0])+'</h2><p id="mb-fiesta-d">'+esc(FIESTA[k][1])+'</p>'+
       '<button type="button" class="mb-sig" data-mb="fiesta-ok">¡Seguimos! →</button></div>';
+    fiestaVuelta=D.activeElement;F.hidden=false;var b=q('[data-mb="fiesta-ok"]',F);if(b)setTimeout(function(){b.focus()},30)}
+  /* ===== «¿Quién soy?» · la presentación de Cuevi (al activar «Más básico», o desde el «?» de la guía) ===== */
+  function presentacion(forzar){if(!on()||!F)return;if(!forzar&&EST.quienOculta)return;try{if(window.MCT_VISTAS)window.MCT_VISTAS.cerrar(false)}catch(e){}
+    var lis=['<b>Te guío paso a paso:</b> en cada pantalla te digo qué toca hacer y por qué.',
+      '<b>Ilumino lo que tienes que tocar</b>, para que lo veas a la primera.',
+      '<b>Te explico en sencillo</b> lo que sale (PF, drawdown, el sello…) y escondo lo técnico: lo abres con «Ver detalle».',
+      '<b>Si una palabra no te suena</b>, abre el Glosario (tecla <kbd>G</kbd>).'];
+    F.innerHTML='<div class="mb-fiesta-in mb-quien">'+img('guia','Cuevi, el robot de TISS')+'<h2 id="mb-fiesta-t">¿Quién soy?</h2>'+
+      '<p id="mb-fiesta-d" class="mb-q-hola">¡Hola! Soy <b>Cuevi</b>, tu asistente de IA en la Mega Cueva. Estoy aquí para que no te pierdas.</p>'+
+      '<ul class="mb-q-lis">'+lis.map(function(x){return '<li>'+x+'</li>'}).join('')+'</ul>'+
+      '<p class="mb-q-no"><b>Lo que no hago:</b> decidir por ti ni darte consejos de inversión. La idea es tuya; yo te acompaño a comprobar si aguanta.</p>'+
+      '<p class="mb-q-pie">Puedes plegarme o apagarme cuando quieras desde «Vistas»; en el ordenador, también arrastrarme. El «?» de mi cabecera vuelve a enseñarte esto.</p>'+
+      '<div class="mb-q-acc"><button type="button" class="mb-sig" data-mb="fiesta-ok">¡Vamos! →</button>'+
+      (forzar?'':'<button type="button" class="mb-pq mb-q-no-mas" data-mb="quien-no">No volver a mostrar esto</button>')+'</div></div>';
     fiestaVuelta=D.activeElement;F.hidden=false;var b=q('[data-mb="fiesta-ok"]',F);if(b)setTimeout(function(){b.focus()},30)}
   function cerrarFiesta(sinFoco){if(!F||F.hidden)return;F.hidden=true;F.innerHTML='';
     if(!sinFoco){var b=G&&!G.hidden?q('.mb-sig',G):null;var t=b&&!b.hidden?b:fiestaVuelta;try{if(t&&t.focus)t.focus()}catch(e){}}}

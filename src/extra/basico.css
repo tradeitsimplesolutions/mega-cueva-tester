@@ -187,3 +187,21 @@ body.modo-basico:not(.mb-ver-unmapa) #lab-v-unidad .un-mapa-w{display:none!impor
 body.mb-3d .mb-guia .mb-cuevi{image-rendering:auto;width:auto;height:92px;max-width:92px;object-fit:contain;filter:drop-shadow(0 6px 10px rgba(0,0,0,.5))}
 body.mb-3d .mb-mini img{image-rendering:auto;object-fit:contain}
 @media print{.mb-foco-ov{display:none!important}}
+
+/* «¿Quién soy?»: la presentación de Cuevi */
+.mb-fiesta-in.mb-quien{width:min(500px,100%);text-align:left;padding:1.3rem 1.4rem 1.2rem;max-height:calc(100vh - 32px);overflow:auto}
+.mb-quien .mct-bot{width:130px;height:130px;margin:0 auto .2rem}
+.mb-quien h2{text-align:center;margin:.3rem 0 .4rem}
+.mb-quien p{margin:0 0 .7rem;font-size:.98rem;line-height:1.45}
+.mb-quien .mb-q-hola{font-size:1.08rem;text-align:center}
+.mb-q-lis{margin:0 0 .8rem;padding:0 0 0 1.15rem;display:grid;gap:.45rem;font-size:.96rem;line-height:1.4}
+.mb-q-lis li::marker{color:var(--gold,#FFD23F)}
+.mb-q-lis kbd{font:700 .8em var(--f-mono,monospace);padding:.05rem .4rem;border:1px solid var(--line2,#3F4C53);border-radius:5px}
+.mb-quien .mb-q-no{padding:.55rem .7rem;border-left:3px solid var(--gold,#FFD23F);background:rgba(var(--gold-rgb,255,210,63),.08);border-radius:0 8px 8px 0}
+.mb-quien .mb-q-pie{font-size:.86rem;color:var(--dim,#B9B5AB)}
+.mb-q-acc{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;margin-top:.9rem}
+.mb-q-acc .mb-sig{flex:1 1 auto}
+.mb-q-no-mas{flex:none}
+.mb-q{flex:none;border:1px solid var(--line2,#3F4C53);background:transparent;color:var(--dim,#B9B5AB);border-radius:50%;font:700 .9rem/1 var(--f-mono,monospace);cursor:pointer;width:30px;height:30px;padding:0}
+.mb-q:hover,.mb-q:focus-visible{color:var(--txt,#ECE8DF);border-color:var(--gold,#FFD23F)}
+.mb-cab .mb-etapa{flex:1 1 auto;min-width:0}
