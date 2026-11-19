@@ -51,10 +51,20 @@
   var ptr={x:innerWidth/2,y:innerHeight/2};
   addEventListener('pointermove',function(e){ptr.x=e.clientX;ptr.y=e.clientY},{passive:true});
   function cl(v){return Math.max(-1,Math.min(1,v))}
+  /* el robot de verdad (Three.js, src/extra/bot3d.js) en cada .mct-bot visible; si no hay WebGL, queda el SVG */
+  var INST=[],n3d=0;
+  function leerDe(b){return function(){return{estado:b.dataset.estado||'normal',mira:b.__mira||null}}}
+  function activa3D(b){if(b.__3d!==undefined||!window.MCT_BOT3D||!b.isConnected)return;var r=b.getBoundingClientRect();if(r.width<20)return;
+    var inst=null;try{inst=window.MCT_BOT3D.crear(b,leerDe(b))}catch(e){inst=null}
+    b.__3d=inst||false;if(inst){b.classList.add('b3d');INST.push({el:b,inst:inst})}}
   function frame(){
     if(!D.hidden){var bots=D.querySelectorAll('.mct-bot');
+      for(var k=INST.length-1;k>=0;k--){var it=INST[k];if(!it.el.isConnected){try{it.inst.cierra()}catch(e){}INST.splice(k,1)}}
+      n3d++;
+      for(var j=0;j<bots.length;j++){var bb=bots[j];if(bb.__3d===undefined&&bb.offsetParent!==null)activa3D(bb);
+        if(bb.__3d&&bb.offsetParent!==null&&(!RM||n3d%20===0)){try{bb.__3d.dibuja()}catch(e){}}}
       for(var i=0;i<bots.length;i++){var b=bots[i];if(!b.offsetParent&&getComputedStyle(b).position!=='fixed')continue;
-        var r=b.getBoundingClientRect();if(!r.width)continue;var cx=r.left+r.width/2,cy=r.top+r.height/2,tx,ty,e=b.dataset.estado,m=b.__mira;
+        if(b.__3d)continue;var r=b.getBoundingClientRect();if(!r.width)continue;var cx=r.left+r.width/2,cy=r.top+r.height/2,tx,ty,e=b.dataset.estado,m=b.__mira;
         if(m&&D.body.contains(m)&&m.offsetParent!==null){var q=m.getBoundingClientRect();tx=cl((q.left+q.width/2-cx)/(innerWidth/2));ty=cl((q.top+q.height/2-cy)/(innerHeight/2))}
         else{tx=cl((ptr.x-cx)/(innerWidth/2));ty=cl((ptr.y-cy)/(innerHeight/2))}
         if(e==='pensando'){tx=-.35;ty=-.25}
@@ -63,5 +73,5 @@
         var s=b.style;s.setProperty('--ry',(b.__x*26).toFixed(2)+'deg');s.setProperty('--rx',(-b.__y*14).toFixed(2)+'deg');s.setProperty('--rz',b.__z.toFixed(2)+'deg');
         s.setProperty('--px',(b.__x*3.2).toFixed(2)+'px');s.setProperty('--py',(b.__y*2.2).toFixed(2)+'px')}}
     requestAnimationFrame(frame)}
-  if(!RM)requestAnimationFrame(frame);
+  requestAnimationFrame(frame);
 })();

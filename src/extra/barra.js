@@ -10,6 +10,7 @@
   var D=document,BTN=null,PAN=null,abierto=false;
   var TEMAS=[['cueva','Cueva'],['tiss-dark','TISS dark'],['tiss-clear','TISS clear']];
   function q(s,r){return (r||D).querySelector(s)}
+  function lee(k){try{return localStorage.getItem(k)}catch(e){return null}}
   function crear(){
     if(BTN||!D.body)return;
     BTN=D.createElement('button');BTN.type='button';BTN.id='vistas-btn';BTN.className='vistas-btn';
@@ -20,10 +21,14 @@
     PAN.innerHTML='<p class="vp-t">Cómo lo ves</p>'+
       '<div class="vp-g"><span class="vp-l">Modo</span><div class="vp-s" data-slot="modo"></div><small>«Más básico»: Cuevi te guía paso a paso y se pliega lo técnico.</small></div>'+
       '<div class="vp-g"><span class="vp-l">Diseño</span><div class="vp-s" data-slot="diseno"></div></div>'+
-      '<div class="vp-g"><span class="vp-l">Tema</span><div class="vp-s vp-temas" data-slot="tema" role="group" aria-label="Tema"></div></div>';
+      '<div class="vp-g"><span class="vp-l">Tema</span><div class="vp-s vp-temas" data-slot="tema" role="group" aria-label="Tema"></div></div>'+
+      '<div class="vp-g vp-nav" hidden><span class="vp-l">Navegación (laboratorio)</span><div class="vp-s vp-temas vp-dos" data-slot="nav" role="group" aria-label="Dónde van las fases"></div><small>Dónde van las 8 fases: en la barra de la izquierda de siempre, o en una barra horizontal abajo con tu curva.</small></div>';
     var T=q('[data-slot="tema"]',PAN);
     TEMAS.forEach(function(t){var b=D.createElement('button');b.type='button';b.className='vp-tema';b.dataset.th=t[0];b.textContent=t[1];
       b.addEventListener('click',function(){if(typeof window.MCT_TEMA==='function')window.MCT_TEMA(t[0]);sync()});T.appendChild(b)});
+    var N=q('[data-slot="nav"]',PAN);
+    [['lateral','Lateral'],['inferior','Abajo']].forEach(function(t){var b=D.createElement('button');b.type='button';b.className='vp-tema';b.dataset.nav=t[0];b.textContent=t[1];
+      b.addEventListener('click',function(){var actual=lee('lab_nav')==='lateral'?'lateral':'inferior';if(actual===t[0])return;try{localStorage.setItem('lab_nav',t[0])}catch(e){}location.reload()});N.appendChild(b)});
     D.body.appendChild(BTN);D.body.appendChild(PAN);D.body.classList.add('vistas-on');
     BTN.addEventListener('click',function(e){e.stopPropagation();abierto?cerrar(true):abrir()});
     PAN.addEventListener('keydown',function(e){e.stopPropagation();if(e.key==='Escape'){e.preventDefault();cerrar(true)}});
@@ -32,9 +37,10 @@
     try{new MutationObserver(sync).observe(D.documentElement,{attributes:true,attributeFilter:['data-theme']})}catch(e){}
     sync();
   }
-  function sync(){if(!PAN)return;var th=D.documentElement.dataset.theme||'cueva';
-    Array.prototype.forEach.call(PAN.querySelectorAll('.vp-tema'),function(b){b.setAttribute('aria-pressed',String(b.dataset.th===th))})}
-  function abrir(){crear();abierto=true;PAN.hidden=false;BTN.setAttribute('aria-expanded','true');BTN.classList.add('on');
+  function sync(){if(!PAN)return;var th=D.documentElement.dataset.theme||'cueva';var nv=q('.vp-nav',PAN);if(nv)nv.hidden=!D.body.classList.contains('lab');
+    var nav=lee('lab_nav')==='lateral'?'lateral':'inferior';Array.prototype.forEach.call(PAN.querySelectorAll('[data-nav]'),function(b){b.setAttribute('aria-pressed',String(b.dataset.nav===nav))});
+    Array.prototype.forEach.call(PAN.querySelectorAll('[data-th]'),function(b){b.setAttribute('aria-pressed',String(b.dataset.th===th))})}
+  function abrir(){crear();sync();abierto=true;PAN.hidden=false;BTN.setAttribute('aria-expanded','true');BTN.classList.add('on');
     var b=q('button',PAN);if(b)try{b.focus({preventScroll:true})}catch(e){}}
   function cerrar(foco){if(!PAN)return;abierto=false;PAN.hidden=true;BTN.setAttribute('aria-expanded','false');BTN.classList.remove('on');if(foco)try{BTN.focus({preventScroll:true})}catch(e){}}
   function slot(n){crear();return PAN?q('[data-slot="'+n+'"]',PAN):null}

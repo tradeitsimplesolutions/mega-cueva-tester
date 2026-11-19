@@ -217,6 +217,17 @@ def laboratorio(nav, url, errores):
         "const t=[...document.querySelectorAll('#lab-fases [data-fase]')].map(b=>b.getBoundingClientRect().top);"
         "return t.length===8&&r.bottom>innerHeight-30&&Math.max(...t)-Math.min(...t)<30})()"))
     ok("B", "dock: sin curva todavía, avisa «Aún sin curva»", "Aún sin curva" in texto(pg, "#lab-dock"))
+    # Vistas › Navegación: se puede volver a la barra lateral de siempre y de nuevo al dock
+    pg.click("#vistas-btn")
+    pg.click("#vistas-pan [data-nav=lateral]")
+    pg.wait_for_selector("#lab-fases .lab-fase", timeout=60000)
+    pg.wait_for_timeout(900)
+    ok("B", "navegación «Lateral»: vuelve la barra de la izquierda y no hay dock", pg.evaluate("!document.querySelector('#lab-dock')&&!!document.querySelector('.lab-side #lab-fases')"))
+    pg.click("#vistas-btn")
+    pg.click("#vistas-pan [data-nav=inferior]")
+    pg.wait_for_selector("#lab-dock", timeout=60000)
+    pg.wait_for_timeout(900)
+    ok("B", "navegación «Abajo»: vuelve el dock con las fases", pg.evaluate("!!document.querySelector('#lab-dock #lab-fases')"))
     bloqueadas = [f for f in ("hip", "reg", "bt") if (ir(pg, f), "IR A LA FASE 01" in texto(pg, f"#lab-v-{f}"))[1]]
     ok("B", "sin AED, las fases 02-04 piden hacer antes el AED", len(bloqueadas) == 3, ",".join(bloqueadas))
 
@@ -682,17 +693,19 @@ def vistas(nav, url, errores):
     ok("V", "Cuevi es el robot de TISS (no el muñeco pixel)", pg.evaluate("!!document.querySelector('#mb-guia .mct-bot svg')&&!document.querySelector('#mb-guia img.mb-cuevi')"))
     pg.mouse.move(1350, 140)
     pg.wait_for_timeout(1000)
-    ry_der = float(pg.evaluate("parseFloat(getComputedStyle(document.querySelector('#mb-guia .mct-bot')).getPropertyValue('--ry'))"))
+    giro = "(()=>{const b=document.querySelector('#mb-guia .mct-bot');return b.dataset.giro!==undefined?parseFloat(b.dataset.giro)*57.3:parseFloat(getComputedStyle(b).getPropertyValue('--ry'))})()"
+    ry_der = float(pg.evaluate(giro))
     pg.mouse.move(30, 760)
     pg.wait_for_timeout(1000)
-    ry_izq = float(pg.evaluate("parseFloat(getComputedStyle(document.querySelector('#mb-guia .mct-bot')).getPropertyValue('--ry'))"))
+    ry_izq = float(pg.evaluate(giro))
     ok("V", "el robot sigue el cursor (gira hacia donde mueves el ratón)", ry_der - ry_izq > 8, f"derecha {ry_der:.1f}° · izquierda {ry_izq:.1f}°")
     ok("V", "el robot cambia de gesto con el estado (pensando / celebra)", pg.evaluate(
         "(()=>{const b=document.querySelector('#mb-guia .mct-bot');MCT_BOT.estado(b,'celebra');const a=getComputedStyle(b.querySelector('.b-boca-s')).display;"
         "MCT_BOT.estado(b,'pensando');const c=getComputedStyle(b.querySelector('.b-boca-s')).display;MCT_BOT.estado(b,'normal');return a==='inline'||a==='block'?c==='none':false})()"))
     pg.click("#vistas-btn")
     grupos = pg.evaluate("[...document.querySelectorAll('#vistas-pan [data-slot]')].map(s=>s.dataset.slot+':'+s.querySelectorAll('button').length)")
-    ok("V", "el panel trae Modo, Diseño (premium/original) y Tema (3)", grupos == ["modo:1", "diseno:1", "tema:3"], str(grupos))
+    ok("V", "el panel trae Modo, Diseño (premium/original) y Tema (3); la navegación del laboratorio no sale en la pública",
+       grupos == ["modo:1", "diseno:1", "tema:3", "nav:2"] and pg.evaluate("document.querySelector('.vp-nav').hidden"), str(grupos))
     for th in ("tiss-dark", "tiss-clear", "cueva"):
         pg.click(f"#vistas-pan [data-th={th}]")
         pg.wait_for_timeout(200)

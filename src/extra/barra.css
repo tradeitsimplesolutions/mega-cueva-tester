@@ -28,3 +28,6 @@ body.vistas-on.vistas-on .bx-top{padding-right:7.2rem}
 @media (max-width:700px){.vistas-btn{top:8px;right:8px;padding:.3rem .6rem}.vistas-btn .vb-t{display:none}.vistas-pan{top:48px;right:8px}
   body.vistas-on.vistas-on .top,body.vistas-on.vistas-on .lab-top,body.vistas-on.vistas-on .bx-top{padding-right:3.4rem}}
 @media print{.vistas-btn,.vistas-pan{display:none!important}}
+
+.vp-dos{grid-template-columns:repeat(2,minmax(0,1fr))}
+.vp-nav[hidden]{display:none}
